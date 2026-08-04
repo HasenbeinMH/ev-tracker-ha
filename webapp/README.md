@@ -4,24 +4,42 @@ Browser-Version des EV Trackers. Nutzt dieselben Kern-Module und dasselbe
 Datenbankformat wie die Desktop-App – die Desktop-App im Hauptordner bleibt
 unverändert nutzbar.
 
-## Start mit Docker (empfohlen)
+## Deployment über Portainer + GitHub (empfohlen)
+
+1. Projekt liegt in einem (privaten!) GitHub-Repository.
+2. In Portainer: **Stacks → Add stack → Repository**
+   - Repository URL: `https://github.com/<benutzer>/<repo>`
+   - Bei privatem Repo: Authentication aktivieren (GitHub-Benutzer + Personal Access Token)
+   - Compose path: `webapp/docker-compose.yml`
+3. **Deploy the stack** – Portainer klont das Repo und baut das Image selbst.
+4. Danach im Browser: `http://<docker-host>:8099`
+
+Updates: neuen Stand nach GitHub pushen, dann in Portainer **Pull and redeploy**.
+
+### Wichtig: HA-Adresse im Container
+
+`homeassistant.local` (mDNS) funktioniert **innerhalb von Containern meist nicht**.
+In den Einstellungen der Web-App daher die **IP-Adresse** des HA-Servers eintragen,
+z.B. `http://192.168.1.x:8123` (ebenso bei der InfluxDB-URL).
+
+### Bestehende Desktop-Datenbank übernehmen
+
+Die DB liegt im benannten Volume `ev_tracker_data` unter `/data/ev_tracker.db`.
+Vorhandene Desktop-DB in den laufenden Container kopieren:
+
+```bash
+docker cp ev_tracker.db ev-tracker:/data/ev_tracker.db
+docker restart ev-tracker
+```
+
+## Start mit Docker lokal
 
 ```bash
 cd webapp
 docker compose up -d --build
 ```
 
-Danach im Browser: **http://localhost:8099** (bzw. die IP des Docker-Hosts).
-
-Die Datenbank liegt im Unterordner `webapp/data/ev_tracker.db` (Docker-Volume).
-
-### Bestehende Desktop-Datenbank übernehmen
-
-Die Datenbank der Desktop-App einfach hineinkopieren (bei gestopptem Container):
-
-```bash
-copy ..\ev_tracker.db data\ev_tracker.db
-```
+Danach im Browser: **http://localhost:8099**
 
 ## Start ohne Docker (lokal testen)
 
