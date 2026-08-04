@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block titel %}Rechnungen{% endblock %}
+{% block inhalt %}
+<h1>📄 Rechnungsimport</h1>
+<p class="hint">PDF-Laderechnung (EWE go, EnBW, medl) hochladen oder Rechnungstext einfügen.
+  Erkannte Vorgänge erscheinen als editierbare Vorschau.</p>
+
+<div class="card">
+  <form class="inline" id="pdf-form">
+    <label class="feld">PDF-Datei
+      <input type="file" name="pdf" accept=".pdf" required>
+    </label>
+    <button type="submit">🔍 Auslesen</button>
+  </form>
+</div>
+
+<div class="card">
+  <form id="text-form">
+    <label class="feld" style="width:100%">Rechnungstext (z.B. aus E-Mail)
+      <textarea name="text" rows="4" style="width:100%"></textarea>
+    </label>
+    <button type="submit" style="margin-top:8px">🔍 Text auslesen</button>
+  </form>
+</div>
+
+<div id="vorschau" style="display:none">
+  <h2 id="anbieter-info"></h2>
+  <div class="tabelle-scroll"><table id="vorschau-tabelle">
+    <tr><th>Datum</th><th>kWh</th><th>ct/kWh</th><th>Gesamt €</th><th>Anbieter</th><th>kW</th><th>Typ</th><th>Notiz</th><th></th></tr>
+  </table></div>
+  <div style="margin-top:12px; display:flex; gap:10px">
+    <button id="btn-add-row" class="secondary">➕ Zeile hinzufügen</button>
+    <button id="btn-apply" style="background:#3a7a3a">✓ Alle Zeilen übernehmen</button>
+  </div>
+</div>
+
+<div class="log" id="log" style="display:none"></div>
+<div class="fehlerbox" id="fehler" style="display:none"></div>
+
+<script>
+async function parseRequest(formData) {
+  document.getElementById("log").style.display = "none";
+  document.getElementById("fehler").style.display = "none";
+  const resp = await fetch("/api/rechnung/parse", { method: "POST", body: formData });
+  const data = await resp.json();
+  if (data.error) { zeigeFehler(data.error); return; }
+  document.getElementById("anbieter-info").textContent =
+    data.anbieter !== "Unbekannt" ? "✓ Anbieter erkannt: " + data.anbieter
+                                  : "⚠ Anbieter nicht eindeutig erkannt";
+  zeigeVorschau(data.vorgaenge);
+}
+
+document.getElementById("pdf-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  parseRequest(new FormData(e.target));
+});
+document.getElementById("text-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  parseRequest(new FormData(e.target));
+});
+
+function zeile(v) {
+  const tr = document.createElement("tr");
+  tr.innerHTML =
+    `<td><input class="breit" data-key="datum" value="${v.datum ?? ""}" placeholder="JJJJ-MM-TT"></td>` +
+    `<td><input data-key="kwh" value="${v.kwh ?? ""}"></td>` +
+    `<td><input data-key="ct" value="${v.ct ?? ""}"></td>` +
+    `<td><input data-key="gesamt" value="${v.gesamt ?? ""}"></td>` +
+    `<td><input class="breit" data-key="anbieter" value="${v.anbieter ?? ""}"></td>` +
+    `<td><input data-key="kw" value="${v.kw ?? ""}" style="width:55px"></td>` +
+    `<td><select data-key="ladetyp"><option${v.ladetyp === "AC" ? " selected" : ""}>AC</option><option${v.ladetyp === "DC" ? " selected" : ""}>DC</option></select></td>` +
+    `<td><input class="breit" data-key="notiz" value="${v.notiz ?? ""}"></td>` +
+    `<td><button class="danger" onclick="this.closest('tr').remove()">🗑</button></td>`;
+  return tr;
+}
+
+function zeigeVorschau(vorgaenge) {
+  const tabelle = document.getElementById("vorschau-tabelle");
+  tabelle.querySelectorAll("tr:not(:first-child)").forEach(tr => tr.remove());
+  for (const v of vorgaenge) tabelle.appendChild(zeile(v));
+  if (!vorgaenge.length) tabelle.appendChild(zeile({}));
+  document.getElementById("vorschau").style.display = "block";
+}
+
+document.getElementById("btn-add-row").addEventListener("click", () => {
+  document.getElementById("vorschau-tabelle").appendChild(zeile({}));
+});
+
+document.getElementById("btn-apply").addEventListener("click", async () => {
+  const rows = [];
+  document.querySelectorAll("#vorschau-tabelle tr:not(:first-child)").forEach(tr => {
+    const r = {};
+    tr.querySelectorAll("[data-key]").forEach(el => r[el.dataset.key] = el.value);
+    rows.push(r);
+  });
+  const resp = await fetch("/api/rechnung/apply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rows }),
+  });
+  const data = await resp.json();
+  const log = document.getElementById("log");
+  log.textContent = data.log.join("\n") || "Nichts übernommen.";
+  log.style.display = "block";
+  if (data.fehler.length) zeigeFehler(data.fehler.join("\n"));
+  else document.getElementById("vorschau").style.display = "none";
+});
+
+function zeigeFehler(text) {
+  const box = document.getElementById("fehler");
+  box.textContent = text;
+  box.style.display = "block";
+}
+</script>
+{% endblock %}

@@ -1,0 +1,19 @@
+# Datenbank & Logs – enthalten Token/Passwörter, NIE committen!
+ev_tracker.db
+*.db
+ev_tracker.log
+*.log
+
+# Python
+__pycache__/
+*.pyc
+
+# Generiert
+plotly.min.js
+webapp/static/plotly.min.js
+webapp/data/
+
+# Windows/Editor
+Thumbs.db
+desktop.ini
+*.tmp.*

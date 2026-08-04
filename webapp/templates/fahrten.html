@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block titel %}Fahrten{% endblock %}
+{% block inhalt %}
+<h1>🚗 Gefahrene Kilometer (monatlich)</h1>
+<p class="hint">Trage die im Monat gefahrenen Gesamtkilometer ein.</p>
+
+<div class="card">
+  <form class="inline" method="post" action="/fahrten">
+    <label class="feld">Monat
+      <input type="month" name="monat" value="{{ now.strftime('%Y-%m') }}" required>
+    </label>
+    <label class="feld">Kilometer
+      <input name="km" placeholder="z.B. 1250" required>
+    </label>
+    <button type="submit">💾 Speichern</button>
+  </form>
+</div>
+
+<div class="tabelle-scroll"><table>
+  <tr><th>Monat</th><th>km</th><th>Benzin-Äquivalent</th><th>CO2-Ersparnis</th><th></th></tr>
+  {% for d in rows %}
+  <tr>
+    <td>{{ d.monat }}</td>
+    <td>{{ "{:,.0f}".format(d.km).replace(",", ".") }} km</td>
+    <td>{{ "%.1f"|format(d.liter)|replace(".", ",") }} L</td>
+    <td class="gruen">{{ "%.1f"|format(d.co2)|replace(".", ",") }} kg</td>
+    <td>
+      <form method="post" action="/fahrten/delete"
+            onsubmit="return confirm('Monat {{ d.monat }} löschen?')">
+        <input type="hidden" name="monat" value="{{ d.monat }}">
+        <button class="danger">🗑</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

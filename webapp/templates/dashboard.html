@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block titel %}Dashboard{% endblock %}
+{% block inhalt %}
+<h1>Übersicht</h1>
+
+<div class="statgrid">
+  <div class="stat"><span class="wert" style="color:#4a90c4">{{ "{:,.0f}".format(kz.gesamt_km).replace(",", ".") }}</span><span class="einheit">km</span><div class="label">Gesamtstrecke</div></div>
+  <div class="stat"><span class="wert" style="color:#7a6aaa">{{ "{:,.1f}".format(kz.gesamt_kwh).replace(",", "X").replace(".", ",").replace("X", ".") }}</span><span class="einheit">kWh</span><div class="label">Geladene Energie</div></div>
+  <div class="stat"><span class="wert" style="color:#5aaa78">{{ "%.2f"|format(kz.ersparnis_kraft)|replace(".", ",") }}</span><span class="einheit">€</span><div class="label">Kraftstoff-Ersparnis</div></div>
+  <div class="stat"><span class="wert" style="color:#c4963a">{{ "%.2f"|format(kz.kfz_steuer)|replace(".", ",") }}</span><span class="einheit">€</span><div class="label">Steuer-Ersparnis</div></div>
+  <div class="stat"><span class="wert" style="color:#5aaa78">{{ "%.2f"|format(kz.thg_gesamt)|replace(".", ",") }}</span><span class="einheit">€</span><div class="label">THG-Ertrag</div></div>
+  <div class="stat"><span class="wert" style="color:#3a9aaa">{{ "{:,.0f}".format(kz.co2_gespart).replace(",", ".") }}</span><span class="einheit">kg</span><div class="label">CO2 gespart</div></div>
+  <div class="stat"><span class="wert" style="color:#4a90c4">{{ "%.2f"|format(kz.ersparnis_gesamt)|replace(".", ",") }}</span><span class="einheit">€</span><div class="label">Gesamt-Ersparnis</div></div>
+</div>
+
+<div class="chartgrid">
+  {% for key, titel in [
+      ('monatlich', 'Monatliche Kosten & Ersparnis'),
+      ('kosten', 'Kraftstoffkosten Vergleich'),
+      ('co2', 'CO2-Ersparnis'),
+      ('verbrauch', 'Verbrauch kWh/100km'),
+      ('benzin', 'Benzinpreisentwicklung'),
+      ('strom', 'Stromtarifverlauf'),
+      ('anbieter', 'Ladekosten nach Anbieter'),
+      ('thg', 'THG-Quote Erträge')] %}
+  <div class="chart">
+    <div class="titel">{{ titel }}</div>
+    {{ charts[key] | safe }}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

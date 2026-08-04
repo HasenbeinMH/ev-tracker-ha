@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block titel %}Stromtarif{% endblock %}
+{% block inhalt %}
+<h1>⚡ Stromtarif-Verlauf</h1>
+{% if aktuell %}
+<p class="hint gruen">Aktueller Tarif: {{ "%.2f"|format(aktuell.preis_kwh)|replace(".", ",") }} ct/kWh
+  ({{ aktuell.tarif_name or "kein Name" }}) · ab {{ aktuell.gueltig_ab }}</p>
+{% else %}
+<p class="hint">Noch kein Tarif hinterlegt.</p>
+{% endif %}
+
+<div class="card">
+  <form class="inline" method="post" action="/stromtarif">
+    <label class="feld">Gültig ab
+      <input type="date" name="gueltig_ab" value="{{ heute }}" required>
+    </label>
+    <label class="feld">ct/kWh
+      <input name="preis" placeholder="z.B. 31,5" required>
+    </label>
+    <label class="feld">Tarifname
+      <input name="name" placeholder="z.B. E.ON Strom 24">
+    </label>
+    <button type="submit">💾 Speichern</button>
+  </form>
+</div>
+
+<div class="tabelle-scroll"><table>
+  <tr><th>Gültig ab</th><th>ct/kWh</th><th>Tarifname</th><th></th></tr>
+  {% for d in rows %}
+  <tr>
+    <td>{{ d.gueltig_ab }}</td>
+    <td>{{ "%.2f"|format(d.preis_kwh)|replace(".", ",") }} ct</td>
+    <td>{{ d.tarif_name or "" }}</td>
+    <td>
+      <form method="post" action="/stromtarif/delete"
+            onsubmit="return confirm('Tarif ab {{ d.gueltig_ab }} löschen?')">
+        <input type="hidden" name="id" value="{{ d.id }}">
+        <button class="danger">🗑</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

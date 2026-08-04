@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block titel %}Steuer & THG{% endblock %}
+{% block inhalt %}
+<h1>💶 KFZ-Steuer & THG-Quote</h1>
+
+<div class="card">
+  <h2 style="margin-top:0">KFZ-Steuer Benziner</h2>
+  <form class="inline" method="post" action="/steuer/kfz">
+    <label class="feld">€/Jahr
+      <input name="betrag" value="{{ '%.2f'|format(kfz)|replace('.', ',') }}" required>
+    </label>
+    <button type="submit">💾 Speichern</button>
+    {% if kfz > 0 %}
+    <span class="gruen" style="align-self:center">
+      Ersparnis: {{ "%.2f"|format(kfz)|replace(".", ",") }} €/Jahr (E-Auto: 0,00 €)
+    </span>
+    {% endif %}
+  </form>
+</div>
+
+<h2>🌿 THG-Quote Einträge</h2>
+<div class="card">
+  <form class="inline" method="post" action="/steuer/thg">
+    <label class="feld">Datum
+      <input type="date" name="datum" value="{{ heute }}" required>
+    </label>
+    <label class="feld">Betrag €
+      <input name="betrag" placeholder="z.B. 75,00" required>
+    </label>
+    <label class="feld">Anbieter
+      <input name="anbieter" placeholder="z.B. ADAC" list="thg-anbieter">
+      <datalist id="thg-anbieter">
+        <option>ADAC</option><option>Volkswagen Financial Services</option>
+        <option>finn.auto</option><option>zinq</option><option>Sonstige</option>
+      </datalist>
+    </label>
+    <label class="feld">Notiz
+      <input name="notiz" placeholder="optional">
+    </label>
+    <button type="submit">➕ Hinzufügen</button>
+  </form>
+</div>
+
+<div class="tabelle-scroll"><table>
+  <tr><th>Datum</th><th>Betrag</th><th>Anbieter</th><th>Notiz</th><th></th></tr>
+  {% for d in rows %}
+  <tr>
+    <td>{{ d.datum }}</td>
+    <td class="gruen">{{ "%.2f"|format(d.betrag)|replace(".", ",") }} €</td>
+    <td>{{ d.anbieter }}</td>
+    <td class="muted">{{ d.notiz or "" }}</td>
+    <td>
+      <form method="post" action="/steuer/thg/delete"
+            onsubmit="return confirm('THG-Eintrag vom {{ d.datum }} löschen?')">
+        <input type="hidden" name="id" value="{{ d.id }}">
+        <button class="danger">🗑</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table></div>
+<p class="gruen" style="font-weight:700">THG Gesamt: {{ "%.2f"|format(thg_gesamt)|replace(".", ",") }} €</p>
+{% endblock %}

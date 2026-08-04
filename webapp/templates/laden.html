@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block titel %}Laden{% endblock %}
+{% block inhalt %}
+<h1>🔌 Ladevorgänge</h1>
+{% if tarif %}
+<p class="hint">Aktueller Stromtarif: {{ "%.2f"|format(tarif.preis_kwh)|replace(".", ",") }} ct/kWh
+  ({{ tarif.tarif_name or "kein Name" }}) · PV: {{ "%.1f"|format(pv_ct)|replace(".", ",") }} ct/kWh</p>
+{% endif %}
+
+<div class="card">
+  <form class="inline" method="post" action="/laden">
+    <label class="feld">Datum
+      <input type="date" name="datum" value="{{ heute }}" required>
+    </label>
+    <label class="feld">kWh
+      <input name="kwh" id="inp-kwh" placeholder="32,5" required style="width:90px">
+    </label>
+    <label class="feld">ct/kWh
+      <input name="preis_kwh" id="inp-ct" placeholder="ct" style="width:80px">
+    </label>
+    <label class="feld">Gesamt €
+      <input name="gesamt" id="inp-gesamt" placeholder="auto" style="width:90px">
+    </label>
+    <label class="feld">Anbieter
+      <select name="anbieter">
+        {% for a in anbieter %}<option>{{ a.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="feld">kW
+      <input name="leistung" placeholder="11" style="width:60px">
+    </label>
+    <label class="feld">Typ
+      <select name="ladetyp"><option>AC</option><option>DC</option></select>
+    </label>
+    <label class="feld">Notiz
+      <input name="notiz" placeholder="optional">
+    </label>
+    <button type="submit">➕ Hinzufügen</button>
+  </form>
+</div>
+
+<div class="tabelle-scroll"><table>
+  <tr><th>Datum</th><th>kWh</th><th>ct/kWh</th><th>Gesamt €</th><th>Anbieter</th><th>kW</th><th>Typ</th><th>Notiz</th><th></th></tr>
+  {% for d in rows %}
+  <tr>
+    <td>{{ d.datum }}</td>
+    <td>{{ "%.2f"|format(d.menge_kwh)|replace(".", ",") }}</td>
+    <td>{{ ("%.2f"|format(d.preis_kwh)|replace(".", ",")) if d.preis_kwh else "—" }}</td>
+    <td>{{ "%.2f"|format(d.gesamtpreis)|replace(".", ",") }} €</td>
+    <td>{{ d.anbieter }}</td>
+    <td>{{ ("%.0f"|format(d.ladeleistung_kw)) if d.ladeleistung_kw else "—" }}</td>
+    <td>{{ d.ladetyp }}</td>
+    <td class="muted">{{ d.notiz or "" }}</td>
+    <td>
+      <form method="post" action="/laden/delete"
+            onsubmit="return confirm('Ladevorgang vom {{ d.datum }} löschen?')">
+        <input type="hidden" name="id" value="{{ d.id }}">
+        <button class="danger">🗑</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table></div>
+
+<script>
+// Gesamtpreis automatisch berechnen
+function calcGesamt() {
+  const kwh = parseFloat(document.getElementById("inp-kwh").value.replace(",", "."));
+  const ct  = parseFloat(document.getElementById("inp-ct").value.replace(",", "."));
+  if (!isNaN(kwh) && !isNaN(ct)) {
+    document.getElementById("inp-gesamt").value = (kwh * ct / 100).toFixed(2);
+  }
+}
+document.getElementById("inp-kwh").addEventListener("input", calcGesamt);
+document.getElementById("inp-ct").addEventListener("input", calcGesamt);
+</script>
+{% endblock %}

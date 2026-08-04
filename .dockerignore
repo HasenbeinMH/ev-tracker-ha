@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+ev_tracker.db
+ev_tracker.log
+plotly.min.js
+webapp/data/
+webapp/static/plotly.min.js
+.dockerignore

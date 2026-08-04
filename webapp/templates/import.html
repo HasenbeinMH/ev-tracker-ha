@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block titel %}HA Import{% endblock %}
+{% block inhalt %}
+<h1>📥 Datenimport – Home Assistant / InfluxDB</h1>
+<p class="hint">
+  Datenquelle: <strong>{{ "InfluxDB (mit HA-API-Fallback)" if cfg.datasource == "influxdb" else "Home Assistant API" }}</strong>
+  – änderbar in den <a href="/einstellungen" style="color:#7a9ec4">Einstellungen</a>.
+</p>
+
+<div class="card">
+  <form class="inline" id="import-form">
+    <label class="feld">Von Monat
+      <select name="von_monat">
+        {% for m in MONATE %}<option value="{{ loop.index }}" {{ "selected" if loop.index == monat }}>{{ m }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="feld">Von Jahr
+      <select name="von_jahr">
+        {% for j in jahre %}<option {{ "selected" if j == jahr }}>{{ j }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="feld">Bis Monat
+      <select name="bis_monat">
+        {% for m in MONATE %}<option value="{{ loop.index }}" {{ "selected" if loop.index == monat }}>{{ m }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="feld">Bis Jahr
+      <select name="bis_jahr">
+        {% for j in jahre %}<option {{ "selected" if j == jahr }}>{{ j }}</option>{% endfor %}
+      </select>
+    </label>
+    <button type="submit" id="btn-fetch">⬇ Daten abrufen</button>
+  </form>
+  <div id="progress-bereich" style="display:none; margin-top:12px">
+    <progress id="progress" value="0" max="1"></progress>
+    <div class="hint" id="progress-text"></div>
+  </div>
+</div>
+
+<div id="vorschau" style="display:none">
+  <h2>Vorschau – alle Werte editierbar, leeres Feld wird nicht übernommen</h2>
+  <div class="tabelle-scroll"><table id="vorschau-tabelle">
+    <tr><th>Monat</th><th>km</th><th>PV kWh</th><th>WB/Netz kWh</th><th>€/L</th></tr>
+  </table></div>
+  <div style="margin-top:12px">
+    <button id="btn-apply" style="background:#3a7a3a">✓ Alle Werte in DB übernehmen</button>
+  </div>
+</div>
+
+<div class="log" id="log" style="display:none"></div>
+<div class="fehlerbox" id="fehler" style="display:none"></div>
+
+<script>
+let jobId = null;
+let pollTimer = null;
+let vorschauRows = [];
+
+document.getElementById("import-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  document.getElementById("btn-fetch").disabled = true;
+  document.getElementById("log").style.display = "none";
+  document.getElementById("fehler").style.display = "none";
+  document.getElementById("vorschau").style.display = "none";
+  const resp = await fetch("/api/import/start", { method: "POST", body: form });
+  const data = await resp.json();
+  if (data.error) { zeigeFehler(data.error); document.getElementById("btn-fetch").disabled = false; return; }
+  jobId = data.job_id;
+  document.getElementById("progress-bereich").style.display = "block";
+  document.getElementById("progress").max = data.total;
+  pollTimer = setInterval(pollStatus, 1500);
+});
+
+async function pollStatus() {
+  const resp = await fetch("/api/import/status/" + jobId);
+  const job = await resp.json();
+  document.getElementById("progress").value = job.progress;
+  document.getElementById("progress-text").textContent =
+    job.progress + " / " + job.total + " Monate abgerufen …";
+  if (job.done) {
+    clearInterval(pollTimer);
+    document.getElementById("btn-fetch").disabled = false;
+    document.getElementById("progress-bereich").style.display = "none";
+    if (job.fehler.length) zeigeFehler(job.fehler.join("\n"));
+    zeigeVorschau(job.rows);
+  }
+}
+
+function zeigeVorschau(rows) {
+  vorschauRows = rows;
+  const tabelle = document.getElementById("vorschau-tabelle");
+  tabelle.querySelectorAll("tr:not(:first-child)").forEach(tr => tr.remove());
+  for (const r of rows) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${r.label}</td>` +
+      ["km", "pv", "wallbox", "benzin"].map(k =>
+        `<td><input data-monat="${r.monat}" data-key="${k}" value="${r[k] ?? ""}"></td>`
+      ).join("");
+    tabelle.appendChild(tr);
+  }
+  document.getElementById("vorschau").style.display = "block";
+}
+
+document.getElementById("btn-apply").addEventListener("click", async () => {
+  const rowsByMonat = {};
+  for (const r of vorschauRows) rowsByMonat[r.monat] = { monat: r.monat };
+  document.querySelectorAll("#vorschau-tabelle input").forEach(inp => {
+    rowsByMonat[inp.dataset.monat][inp.dataset.key] = inp.value.trim();
+  });
+  const resp = await fetch("/api/import/apply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rows: Object.values(rowsByMonat) }),
+  });
+  const data = await resp.json();
+  const log = document.getElementById("log");
+  log.textContent = data.log.length ? data.log.join("\n") : "Keine Werte übernommen.";
+  log.style.display = "block";
+  document.getElementById("vorschau").style.display = "none";
+});
+
+function zeigeFehler(text) {
+  const box = document.getElementById("fehler");
+  box.textContent = text;
+  box.style.display = "block";
+}
+</script>
+{% endblock %}

@@ -1,0 +1,14 @@
+services:
+  ev-tracker:
+    build:
+      context: ..
+      dockerfile: webapp/Dockerfile
+    container_name: ev-tracker
+    ports:
+      - "8099:8000"
+    volumes:
+      - ev_tracker_data:/data
+    restart: unless-stopped
+
+volumes:
+  ev_tracker_data:

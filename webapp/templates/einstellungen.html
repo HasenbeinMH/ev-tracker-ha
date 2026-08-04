@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block titel %}Einstellungen{% endblock %}
+{% block inhalt %}
+<h1>⚙️ Einstellungen</h1>
+
+<h2>Berechnungsparameter</h2>
+<div class="card">
+  <form class="inline" method="post" action="/einstellungen/parameter">
+    <label class="feld">Benziner L/100km
+      <input name="benziner_verbrauch" value="{{ '%.1f'|format(cfg.benziner_verbrauch)|replace('.', ',') }}" style="width:80px">
+    </label>
+    <label class="feld">EV Referenz kWh/100km
+      <input name="ev_verbrauch" value="{{ '%.1f'|format(cfg.ev_verbrauch)|replace('.', ',') }}" style="width:80px">
+    </label>
+    <label class="feld">PV-Preis ct/kWh
+      <input name="pv_preis" value="{{ '%.1f'|format(cfg.pv_preis_ct)|replace('.', ',') }}" style="width:80px">
+    </label>
+    <label class="feld">CO2 kg/L Benzin
+      <input name="co2_benzin" value="{{ '%.3f'|format(cfg.co2_faktor_benzin)|replace('.', ',') }}" style="width:80px">
+    </label>
+    <label class="feld">KFZ-Steuer €/Jahr
+      <input name="kfz_steuer" value="{{ '%.2f'|format(kfz)|replace('.', ',') }}" style="width:90px">
+    </label>
+    <button type="submit">💾 Speichern</button>
+  </form>
+</div>
+
+<h2>Lade-Anbieter</h2>
+<div class="card">
+  <form class="inline" method="post" action="/einstellungen/anbieter">
+    <label class="feld">Neuer Anbieter
+      <input name="name" placeholder="z.B. Tesla Supercharger">
+    </label>
+    <label class="feld">&nbsp;
+      <label style="flex-direction:row; align-items:center; gap:6px; color:var(--text); font-size:13px">
+        <input type="checkbox" name="gruenstrom" value="1"> Grünstrom
+      </label>
+    </label>
+    <button type="submit">➕ Hinzufügen</button>
+  </form>
+  <table style="margin-top:12px">
+    <tr><th>Anbieter</th><th>Grünstrom</th><th>Typ</th><th></th></tr>
+    {% for a in anbieter %}
+    <tr>
+      <td>{{ a.name }}</td>
+      <td>{{ "🌿 Ja" if a.gruenstrom else "—" }}</td>
+      <td class="muted">{{ "System" if a.ist_system else "Eigener" }}</td>
+      <td>
+        {% if not a.ist_system %}
+        <form method="post" action="/einstellungen/anbieter/delete"
+              onsubmit="return confirm('Anbieter {{ a.name }} löschen?')">
+          <input type="hidden" name="id" value="{{ a.id }}">
+          <button class="danger">🗑</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<h2>Home Assistant & InfluxDB</h2>
+<form method="post" action="/einstellungen/ha">
+<div class="card">
+  <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
+    <label class="feld">Datenquelle
+      <select name="datasource">
+        <option value="ha" {{ "selected" if ha.datasource != "influxdb" }}>Home Assistant API</option>
+        <option value="influxdb" {{ "selected" if ha.datasource == "influxdb" }}>InfluxDB</option>
+      </select>
+    </label>
+    <label class="feld">HA URL
+      <input name="ha_url" value="{{ ha.ha_url }}" style="width:260px">
+    </label>
+    <label class="feld">HA Token {{ "(gesetzt – leer lassen zum Behalten)" if ha.ha_token }}
+      <input type="password" name="ha_token" placeholder="{{ '••••••••' if ha.ha_token else 'Long-Lived Access Token' }}" style="width:260px">
+    </label>
+    <button type="button" class="secondary" onclick="testeVerbindung('ha', this)">HA testen</button>
+  </div>
+
+  <h2>Sensoren (Entity-ID für HA · Friendly Name für InfluxDB)</h2>
+  <table>
+    <tr><th>Sensor</th><th>Entity-ID (HA)</th><th>Friendly Name (InfluxDB)</th></tr>
+    {% for ha_key, fn_key, label in sensor_felder %}
+    <tr>
+      <td style="white-space:nowrap">{{ label }}</td>
+      <td><input class="breit" name="{{ ha_key }}" value="{{ ha[ha_key] }}"></td>
+      <td>{% if fn_key %}<input class="breit" name="{{ fn_key }}" value="{{ ha[fn_key] }}">{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <h2>InfluxDB 1.x Verbindung</h2>
+  <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
+    <label class="feld">URL
+      <input name="influx_url" value="{{ ha.influx_url }}" style="width:200px">
+    </label>
+    <label class="feld">Port
+      <input name="influx_port" value="{{ ha.influx_port }}" style="width:70px">
+    </label>
+    <label class="feld">Datenbank
+      <input name="influx_database" value="{{ ha.influx_database }}" style="width:140px">
+    </label>
+    <label class="feld">Benutzer
+      <input name="influx_user" value="{{ ha.influx_user }}" style="width:120px">
+    </label>
+    <label class="feld">Passwort {{ "(gesetzt)" if ha.influx_password }}
+      <input type="password" name="influx_password" placeholder="{{ '••••••••' if ha.influx_password else 'optional' }}" style="width:120px">
+    </label>
+    <label class="feld">Meas. km
+      <input name="influx_measurement_km" value="{{ ha.influx_measurement_km }}" style="width:70px">
+    </label>
+    <label class="feld">Meas. kWh
+      <input name="influx_measurement_kwh" value="{{ ha.influx_measurement_kwh }}" style="width:70px">
+    </label>
+    <label class="feld">Meas. EUR/L
+      <input name="influx_measurement_eur_l" value="{{ ha.influx_measurement_eur_l }}" style="width:70px">
+    </label>
+    <button type="button" class="secondary" onclick="testeVerbindung('influx', this)">InfluxDB testen</button>
+  </div>
+
+  <div style="margin-top:14px">
+    <button type="submit">💾 Alle Einstellungen speichern</button>
+    <span id="test-ergebnis" style="margin-left:12px; font-size:12px"></span>
+  </div>
+</div>
+</form>
+
+<script>
+async function testeVerbindung(art, btn) {
+  const span = document.getElementById("test-ergebnis");
+  btn.disabled = true;
+  span.textContent = "Teste …";
+  span.className = "muted";
+  try {
+    const resp = await fetch("/api/test/" + art, { method: "POST" });
+    const data = await resp.json();
+    span.textContent = (data.ok ? "✓ " : "✗ ") + data.text;
+    span.className = data.ok ? "gruen" : "rot";
+  } catch (e) {
+    span.textContent = "✗ " + e;
+    span.className = "rot";
+  }
+  btn.disabled = false;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,144 @@
+:root {
+  --bg: #12141a;
+  --card: #1c1f28;
+  --border: #252830;
+  --border2: #2e3340;
+  --text: #c8ccd4;
+  --muted: #6b7280;
+  --blau: #2d6a9f;
+  --blau-hell: #7a9ec4;
+  --gruen: #5aaa78;
+  --rot: #8b3333;
+  --gelb: #c4963a;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+}
+nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 16px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+nav .logo { font-weight: 700; color: var(--blau-hell); margin-right: 16px; padding: 12px 0; }
+nav a {
+  color: #8b9ab0;
+  text-decoration: none;
+  padding: 12px 13px;
+  font-size: 13px;
+  border-bottom: 2px solid transparent;
+}
+nav a:hover { color: var(--text); }
+nav a.aktiv { color: #e8eaf0; border-bottom-color: var(--blau); font-weight: 600; }
+main { max-width: 1280px; margin: 0 auto; padding: 20px 16px 60px; }
+h1 { font-size: 19px; color: var(--blau-hell); margin: 6px 0 16px; }
+h2 { font-size: 15px; color: var(--blau-hell); margin: 22px 0 10px; }
+.hint { color: var(--muted); font-size: 12px; margin: 4px 0 14px; }
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.statgrid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+.stat {
+  flex: 1 1 150px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.stat .wert { font-size: 20px; font-weight: 700; }
+.stat .einheit { font-size: 11px; color: var(--muted); margin-left: 3px; }
+.stat .label { font-size: 10px; color: #4b5263; margin-top: 3px; }
+.chartgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 900px) { .chartgrid { grid-template-columns: 1fr; } }
+.chart {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.chart .titel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blau-hell);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  text-align: left;
+  color: var(--blau-hell);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
+tr:hover td { background: #1f2330; }
+form.inline { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+label.feld { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--blau-hell); }
+input, select, textarea {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: inherit;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--blau); }
+button, .btn {
+  background: var(--blau);
+  color: #e8eaf0;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+button:hover { background: #3578b0; }
+button.danger { background: var(--rot); padding: 4px 10px; font-size: 12px; }
+button.danger:hover { background: #a03a3a; }
+button.secondary { background: var(--border); border: 1px solid var(--border2); color: var(--text); }
+button.secondary:hover { background: var(--border2); }
+button:disabled { background: var(--border); color: #555; cursor: default; }
+.gruen { color: var(--gruen); }
+.gelb { color: var(--gelb); }
+.rot { color: #aa5a5a; }
+.muted { color: var(--muted); }
+.log {
+  background: #1a2a1a;
+  border: 1px solid #2a4a2a;
+  border-radius: 6px;
+  color: var(--gruen);
+  font-size: 12px;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+  margin-top: 12px;
+}
+.fehlerbox {
+  background: #2a1a1a;
+  border: 1px solid #4a2a2a;
+  border-radius: 6px;
+  color: #cc8888;
+  font-size: 12px;
+  padding: 10px 12px;
+  margin-top: 12px;
+}
+progress { width: 100%; height: 6px; accent-color: var(--blau); }
+.tabelle-scroll { overflow-x: auto; }
+td input { width: 90px; padding: 4px 6px; font-size: 12px; }
+td input.breit { width: 100%; min-width: 130px; }
