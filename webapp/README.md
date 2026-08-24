@@ -10,7 +10,7 @@ unverändert nutzbar.
 2. In Portainer: **Stacks → Add stack → Repository**
    - Repository URL: `https://github.com/<benutzer>/<repo>`
    - Bei privatem Repo: Authentication aktivieren (GitHub-Benutzer + Personal Access Token)
-   - Compose path: `webapp/docker-compose.yml`
+   - Compose path: `docker-compose.yml`
 3. **Deploy the stack** – Portainer klont das Repo und baut das Image selbst.
 4. Danach im Browser: `http://<docker-host>:8099`
 
@@ -35,7 +35,7 @@ docker restart ev-tracker
 ## Start mit Docker lokal
 
 ```bash
-cd webapp
+cd ..
 docker compose up -d --build
 ```
 

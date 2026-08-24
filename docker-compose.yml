@@ -1,8 +1,10 @@
 services:
   ev-tracker:
     build:
-      context: ..
+      context: .
       dockerfile: webapp/Dockerfile
+    image: ev-tracker:latest
+    pull_policy: build
     container_name: ev-tracker
     ports:
       - "8099:8000"
