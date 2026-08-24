@@ -10,6 +10,10 @@ services:
       - "8099:8000"
     volumes:
       - ev_tracker_data:/data
+    environment:
+      # Eigenes Geheimwort setzen – wird für /api/backup benötigt.
+      # In Portainer unter "Environment variables" überschreibbar.
+      - EV_TRACKER_BACKUP_TOKEN=${EV_TRACKER_BACKUP_TOKEN:-bitte-aendern}
     restart: unless-stopped
 
 volumes:

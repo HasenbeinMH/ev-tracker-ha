@@ -13,8 +13,10 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, Request, UploadFile, File, Form
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import (HTMLResponse, RedirectResponse, JSONResponse,
+                               FileResponse)
 from fastapi.staticfiles import StaticFiles
+from starlette.background import BackgroundTask
 from fastapi.templating import Jinja2Templates
 
 import database as db
@@ -514,6 +516,41 @@ def rechnung_apply(payload: dict):
                            r.get("notiz") or "Rechnungsimport")
         log.append(f"{datum}: {kwh:.2f} kWh · {gesamt:.2f} € ({anbieter})")
     return {"log": log, "fehler": fehler}
+
+
+# ─────────────────────────────────────────────────────────────
+#  Backup der Datenbank (Token-geschützt)
+# ─────────────────────────────────────────────────────────────
+
+BACKUP_TOKEN = os.environ.get("EV_TRACKER_BACKUP_TOKEN", "")
+
+
+@app.get("/api/backup")
+def backup(token: str = ""):
+    """Liefert eine konsistente Kopie der SQLite-Datenbank.
+    Nur aktiv, wenn EV_TRACKER_BACKUP_TOKEN gesetzt ist."""
+    if not BACKUP_TOKEN:
+        return JSONResponse(
+            {"error": "Backup deaktiviert – EV_TRACKER_BACKUP_TOKEN nicht gesetzt."},
+            status_code=403)
+    if token != BACKUP_TOKEN:
+        return JSONResponse({"error": "Ungültiger Token."}, status_code=403)
+
+    import sqlite3
+    ziel = os.path.join(STATIC_DIR, f"_backup_{uuid.uuid4().hex}.db")
+    quelle = sqlite3.connect(db.DB_PATH)
+    kopie = sqlite3.connect(ziel)
+    try:
+        with kopie:
+            quelle.backup(kopie)   # konsistent auch bei laufenden Schreibzugriffen
+    finally:
+        kopie.close()
+        quelle.close()
+
+    stamp = datetime.now().strftime("%Y-%m-%d")
+    return FileResponse(ziel, filename=f"ev_tracker_{stamp}.db",
+                        media_type="application/octet-stream",
+                        background=BackgroundTask(os.remove, ziel))
 
 
 # ─────────────────────────────────────────────────────────────
