@@ -83,6 +83,39 @@ python settings_tool.py export meine_einstellungen.json
 python settings_tool.py import meine_einstellungen.json
 ```
 
+## Berichte per E-Mail
+
+Der Reiter **Berichte** erstellt Monats- und Jahresberichte mit Kennzahlen,
+Vergleich zur Vorperiode, Aufstellung nach Ladeanbieter und (im Jahresbericht)
+Monatsverlauf.
+
+- **Vorschau** – Bericht im Browser ansehen, bevor er verschickt wird
+- **Jetzt senden** – Einzelversand an einen beliebigen Empfaenger
+- **Automatischer Versand** – Monatsbericht am 1. des Folgemonats,
+  Jahresbericht am 1. Januar, jeweils ab einstellbarer Uhrzeit
+
+Der Zeitplan laeuft als Hintergrund-Thread in der App und prueft stuendlich.
+Ein Merker in der Datenbank verhindert Doppelversand; schlaegt der Versand fehl
+(z.B. Mailserver nicht erreichbar), wird es zur naechsten vollen Stunde erneut
+versucht.
+
+### SMTP einrichten
+
+Zugangsdaten stehen unter **Berichte → Postausgang**:
+
+| Feld | Beispiel web.de |
+|---|---|
+| Server | `smtp.web.de` |
+| Port | `587` (STARTTLS) oder `465` (SSL) |
+| Benutzer / Absender | die eigene Mailadresse |
+
+Bei web.de und GMX muss der **SMTP-Zugang im Postfach freigeschaltet** sein
+(Einstellungen → POP3/IMAP). Das Passwortfeld leer lassen behaelt das
+gespeicherte Passwort.
+
+**Hinweis zur Datenlage:** Kilometer und Benzinpreise werden nur monatsweise
+erfasst – deshalb gibt es Monats- und Jahresberichte, aber keinen Wochenbericht.
+
 ## Backup nach OneDrive (rclone auf dem Docker-PC)
 
 `backup.sh` laeuft per Cronjob auf dem Docker-PC und laedt einen

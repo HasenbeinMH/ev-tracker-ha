@@ -21,6 +21,8 @@ from fastapi.templating import Jinja2Templates
 
 import database as db
 import berechnung
+import berichte
+import mailer
 import charts
 from ha_client import HAClient, InfluxClient
 from pdf_parser import parse_rechnung_pdf, parse_rechnung_text
@@ -43,6 +45,7 @@ def _ensure_plotly_js():
 
 db.init_db()
 db.init_ha_settings()
+db.init_mail_settings()
 _ensure_plotly_js()
 
 app = FastAPI(title="EV Tracker")
@@ -665,6 +668,119 @@ async def settings_import(datei: UploadFile = File(...)):
 
     return {"anzahl": len(werte), "anbieter": neue_anbieter,
             "exportiert": daten.get("exportiert", "?")}
+
+
+# ─────────────────────────────────────────────────────────────
+#  Berichte (Monat / Jahr) und Mailversand
+# ─────────────────────────────────────────────────────────────
+
+def _bericht_bauen(typ: str, jahr: int, monat: int) -> dict:
+    return (berichte.jahresbericht(jahr) if typ == "jahr"
+            else berichte.monatsbericht(jahr, monat))
+
+
+@app.get("/berichte", response_class=HTMLResponse)
+def berichte_seite(request: Request):
+    jetzt = datetime.now()
+    # Voreinstellung: der zuletzt abgeschlossene Monat
+    v_jahr, v_monat = (jetzt.year, jetzt.month - 1) if jetzt.month > 1         else (jetzt.year - 1, 12)
+    return render(request, "berichte.html", aktiv="berichte",
+                  mail=db.get_mail_settings(),
+                  jahre=list(range(2023, jetzt.year + 1)),
+                  jahr=v_jahr, monat=v_monat)
+
+
+@app.get("/api/bericht/vorschau", response_class=HTMLResponse)
+def bericht_vorschau(typ: str = "monat", jahr: int = 0, monat: int = 0):
+    jetzt = datetime.now()
+    bericht = _bericht_bauen(typ, jahr or jetzt.year, monat or jetzt.month)
+    return HTMLResponse(berichte.als_html(bericht))
+
+
+@app.post("/api/bericht/senden")
+def bericht_senden(typ: str = Form("monat"), jahr: int = Form(0),
+                   monat: int = Form(0), empfaenger: str = Form("")):
+    jetzt = datetime.now()
+    bericht = _bericht_bauen(typ, jahr or jetzt.year, monat or jetzt.month)
+    ok, meldung = mailer.sende_mail(
+        betreff=f"EV Tracker – {bericht['titel']}",
+        html=berichte.als_html(bericht),
+        text=berichte.als_text(bericht),
+        empfaenger=empfaenger.strip())
+    return {"ok": ok, "meldung": meldung}
+
+
+@app.post("/einstellungen/mail")
+async def einstellungen_mail(request: Request):
+    form = await request.form()
+    felder = ["mail_smtp_server", "mail_smtp_port", "mail_benutzer",
+              "mail_passwort", "mail_absender", "mail_empfaenger",
+              "mail_uhrzeit"]
+    werte = {k: str(form.get(k, "")).strip() for k in felder if k in form}
+    # Leeres Passwortfeld = gespeichertes Passwort behalten
+    if werte.get("mail_passwort") == "":
+        werte.pop("mail_passwort", None)
+    for schalter in ["mail_aktiv", "mail_monat_aktiv", "mail_jahr_aktiv"]:
+        werte[schalter] = "1" if form.get(schalter) else "0"
+    db.set_einstellungen(werte)
+    return RedirectResponse("/berichte", status_code=303)
+
+
+# ── Zeitplan: prueft stuendlich, ob ein Bericht faellig ist ──────────────────
+
+def _versand_pruefen():
+    """Verschickt faellige Berichte. Merker verhindert Doppelversand."""
+    cfg = db.get_mail_settings()
+    if cfg.get("mail_aktiv") != "1":
+        return
+    jetzt = datetime.now()
+    try:
+        stunde = int((cfg.get("mail_uhrzeit") or "08:00").split(":")[0])
+    except ValueError:
+        stunde = 8
+    if jetzt.hour < stunde:
+        return
+
+    # Monatsbericht: ab dem 1. des Folgemonats, einmal pro Monat
+    if cfg.get("mail_monat_aktiv") == "1":
+        v_jahr, v_monat = ((jetzt.year, jetzt.month - 1) if jetzt.month > 1
+                           else (jetzt.year - 1, 12))
+        marke = f"{v_jahr}-{v_monat:02d}"
+        if cfg.get("mail_letzter_monat") != marke:
+            bericht = berichte.monatsbericht(v_jahr, v_monat)
+            ok, meldung = mailer.sende_mail(
+                betreff=f"EV Tracker – {bericht['titel']}",
+                html=berichte.als_html(bericht),
+                text=berichte.als_text(bericht), cfg=cfg)
+            if ok:
+                db.set_einstellung("mail_letzter_monat", marke)
+            print(f"[Bericht] Monat {marke}: {meldung}", flush=True)
+
+    # Jahresbericht: ab dem 1. Januar, einmal pro Jahr
+    if cfg.get("mail_jahr_aktiv") == "1":
+        vorjahr = str(jetzt.year - 1)
+        if cfg.get("mail_letztes_jahr") != vorjahr:
+            bericht = berichte.jahresbericht(int(vorjahr))
+            ok, meldung = mailer.sende_mail(
+                betreff=f"EV Tracker – {bericht['titel']}",
+                html=berichte.als_html(bericht),
+                text=berichte.als_text(bericht), cfg=cfg)
+            if ok:
+                db.set_einstellung("mail_letztes_jahr", vorjahr)
+            print(f"[Bericht] Jahr {vorjahr}: {meldung}", flush=True)
+
+
+def _zeitplan_schleife():
+    import time
+    while True:
+        try:
+            _versand_pruefen()
+        except Exception as e:
+            print(f"[Bericht] Fehler im Zeitplan: {e}", flush=True)
+        time.sleep(3600)
+
+
+threading.Thread(target=_zeitplan_schleife, daemon=True).start()
 
 
 # ─────────────────────────────────────────────────────────────

@@ -251,6 +251,24 @@ def get_lade_gesamt():
     return row["kwh"] or 0.0, row["kosten"] or 0.0
 
 
+def get_ladevorgaenge_zeitraum(von: str, bis: str):
+    """Ladevorgaenge zwischen zwei Datumsangaben (YYYY-MM-DD, inklusive)."""
+    with closing(get_connection()) as conn:
+        rows = conn.execute(
+            "SELECT * FROM ladevorgang WHERE datum >= ? AND datum <= ? ORDER BY datum",
+            (von, bis)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_thg_zeitraum(von: str, bis: str):
+    """THG-Eintraege zwischen zwei Datumsangaben (inklusive)."""
+    with closing(get_connection()) as conn:
+        rows = conn.execute(
+            "SELECT * FROM thg_quote WHERE datum >= ? AND datum <= ? ORDER BY datum",
+            (von, bis)).fetchall()
+    return [dict(r) for r in rows]
+
+
 # --- Stromtarif ---
 def add_stromtarif(gueltig_ab, preis_kwh, tarif_name=""):
     with closing(get_connection()) as conn:
@@ -384,6 +402,40 @@ HA_ENTITY_DEFAULTS = {
     # Datenquelle: "ha" oder "influxdb"
     "datasource":                "ha",
 }
+
+
+MAIL_DEFAULTS = {
+    "mail_aktiv":        "0",
+    "mail_smtp_server":  "smtp.web.de",
+    "mail_smtp_port":    "587",
+    "mail_benutzer":     "",
+    "mail_passwort":     "",
+    "mail_absender":     "",
+    "mail_empfaenger":   "",
+    "mail_uhrzeit":      "08:00",
+    "mail_monat_aktiv":  "1",
+    "mail_jahr_aktiv":   "1",
+    # Merker, wann zuletzt versendet wurde (Format YYYY-MM bzw. YYYY)
+    "mail_letzter_monat": "",
+    "mail_letztes_jahr":  "",
+}
+
+
+def init_mail_settings():
+    with closing(get_connection()) as conn:
+        for key, val in MAIL_DEFAULTS.items():
+            conn.execute("INSERT OR IGNORE INTO einstellungen VALUES (?,?)", (key, val))
+        conn.commit()
+
+
+def get_mail_settings() -> dict:
+    keys = list(MAIL_DEFAULTS.keys())
+    with closing(get_connection()) as conn:
+        rows = conn.execute(
+            f"SELECT key, value FROM einstellungen WHERE key IN ({','.join('?'*len(keys))})", keys
+        ).fetchall()
+    gefunden = {r["key"]: r["value"] for r in rows}
+    return {k: gefunden.get(k, MAIL_DEFAULTS[k]) for k in keys}
 
 
 def init_ha_settings():

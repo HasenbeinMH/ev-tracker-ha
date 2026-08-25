@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block titel %}Berichte{% endblock %}
+{% block inhalt %}
+<h1>📊 Berichte per E-Mail</h1>
+<p class="hint">
+  Monats- und Jahresbericht mit Kennzahlen, Vergleich zur Vorperiode,
+  Anbieter-Aufstellung und Monatsverlauf.
+</p>
+
+<h2>Vorschau &amp; Einzelversand</h2>
+<div class="card">
+  <div class="inline">
+    <label class="feld">Bericht
+      <select id="typ" onchange="typWechsel()">
+        <option value="monat">Monatsbericht</option>
+        <option value="jahr">Jahresbericht</option>
+      </select>
+    </label>
+    <label class="feld" id="monat-feld">Monat
+      <select id="monat">
+        {% for m in MONATE %}<option value="{{ loop.index }}" {{ "selected" if loop.index == monat }}>{{ m }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="feld">Jahr
+      <select id="jahr">
+        {% for j in jahre %}<option {{ "selected" if j == jahr }}>{{ j }}</option>{% endfor %}
+      </select>
+    </label>
+    <button type="button" onclick="vorschau()">👁 Vorschau</button>
+    <label class="feld">Empfänger (leer = Standard)
+      <input id="empfaenger" placeholder="{{ mail.mail_empfaenger or 'in Einstellungen hinterlegen' }}"
+             style="width:220px">
+    </label>
+    <button type="button" class="secondary" onclick="senden(this)">✉ Jetzt senden</button>
+    <span id="send-meldung" style="align-self:center; font-size:12px"></span>
+  </div>
+</div>
+
+<div id="vorschau-box" style="display:none">
+  <h2>Vorschau</h2>
+  <div class="card" style="padding:0; overflow:hidden">
+    <iframe id="vorschau-rahmen" style="width:100%; height:700px; border:none; background:#fff"></iframe>
+  </div>
+</div>
+
+<h2>Automatischer Versand</h2>
+<form method="post" action="/einstellungen/mail">
+<div class="card">
+  <div class="inline">
+    <label style="flex-direction:row; align-items:center; gap:6px; font-size:13px">
+      <input type="checkbox" name="mail_aktiv" value="1" {{ "checked" if mail.mail_aktiv == "1" }}>
+      Automatischen Versand aktivieren
+    </label>
+    <label style="flex-direction:row; align-items:center; gap:6px; font-size:13px">
+      <input type="checkbox" name="mail_monat_aktiv" value="1" {{ "checked" if mail.mail_monat_aktiv == "1" }}>
+      Monatsbericht
+    </label>
+    <label style="flex-direction:row; align-items:center; gap:6px; font-size:13px">
+      <input type="checkbox" name="mail_jahr_aktiv" value="1" {{ "checked" if mail.mail_jahr_aktiv == "1" }}>
+      Jahresbericht
+    </label>
+    <label class="feld">ab Uhrzeit
+      <input name="mail_uhrzeit" value="{{ mail.mail_uhrzeit }}" style="width:70px">
+    </label>
+  </div>
+  <p class="hint">
+    Der Monatsbericht geht am 1. des Folgemonats raus, der Jahresbericht am 1. Januar –
+    jeweils ab der eingestellten Uhrzeit und nur einmal pro Periode.
+    {% if mail.mail_letzter_monat %}<br>Zuletzt versendet: Monat {{ mail.mail_letzter_monat }}{% endif %}
+    {% if mail.mail_letztes_jahr %} · Jahr {{ mail.mail_letztes_jahr }}{% endif %}
+  </p>
+
+  <h2 style="margin-top:18px">Postausgang (SMTP)</h2>
+  <div class="inline">
+    <label class="feld">Server
+      <input name="mail_smtp_server" value="{{ mail.mail_smtp_server }}" style="width:180px">
+    </label>
+    <label class="feld">Port
+      <input name="mail_smtp_port" value="{{ mail.mail_smtp_port }}" style="width:70px">
+    </label>
+    <label class="feld">Benutzer
+      <input name="mail_benutzer" value="{{ mail.mail_benutzer }}" style="width:200px">
+    </label>
+    <label class="feld">Passwort {{ "(gesetzt)" if mail.mail_passwort }}
+      <input type="password" name="mail_passwort"
+             placeholder="{{ '••••••••' if mail.mail_passwort else 'SMTP-Passwort' }}" style="width:150px">
+    </label>
+    <label class="feld">Absender
+      <input name="mail_absender" value="{{ mail.mail_absender }}" style="width:200px">
+    </label>
+    <label class="feld">Empfänger
+      <input name="mail_empfaenger" value="{{ mail.mail_empfaenger }}" style="width:200px">
+    </label>
+  </div>
+  <p class="hint">
+    Port 587 = STARTTLS, Port 465 = SSL. Bei web.de/GMX muss der SMTP-Zugang im
+    Postfach freigeschaltet sein. Passwortfeld leer lassen = gespeichertes behalten.
+  </p>
+  <button type="submit">💾 Speichern</button>
+</div>
+</form>
+
+<script>
+function typWechsel() {
+  const jahr = document.getElementById("typ").value === "jahr";
+  document.getElementById("monat-feld").style.display = jahr ? "none" : "";
+}
+
+function parameter() {
+  const typ = document.getElementById("typ").value;
+  return "typ=" + typ +
+         "&jahr=" + document.getElementById("jahr").value +
+         "&monat=" + document.getElementById("monat").value;
+}
+
+function vorschau() {
+  document.getElementById("vorschau-box").style.display = "block";
+  document.getElementById("vorschau-rahmen").src = "/api/bericht/vorschau?" + parameter();
+}
+
+async function senden(btn) {
+  const m = document.getElementById("send-meldung");
+  const typ = document.getElementById("typ").value;
+  if (!confirm("Bericht jetzt per E-Mail verschicken?")) return;
+  btn.disabled = true;
+  m.textContent = "Sende …"; m.className = "muted";
+  const fd = new FormData();
+  fd.append("typ", typ);
+  fd.append("jahr", document.getElementById("jahr").value);
+  fd.append("monat", document.getElementById("monat").value);
+  fd.append("empfaenger", document.getElementById("empfaenger").value.trim());
+  const r = await fetch("/api/bericht/senden", { method: "POST", body: fd });
+  const d = await r.json();
+  m.textContent = (d.ok ? "✓ " : "✗ ") + d.meldung;
+  m.className = d.ok ? "gruen" : "rot";
+  btn.disabled = false;
+}
+
+typWechsel();
+</script>
+{% endblock %}
