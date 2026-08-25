@@ -63,6 +63,26 @@ uvicorn webapp.app:app --reload
   Einstellungen – also erst „Alle Einstellungen speichern", dann testen.
 - Token-/Passwort-Felder: leer lassen = gespeicherten Wert behalten.
 
+## Einstellungen sichern / laden
+
+Auf der Einstellungsseite gibt es Buttons zum Export/Import aller Parameter,
+Sensor-Zuordnungen und Anbieter als JSON-Datei – praktisch, um die Konfiguration
+(u.a. den 183 Zeichen langen HA-Token) zwischen Desktop-App und Web-Version zu
+uebertragen, ohne sie abzutippen.
+
+- **Exportieren (mit Zugangsdaten)** – enthaelt HA-Token und InfluxDB-Passwort
+  im Klartext. Sicher aufbewahren!
+- **Ohne Token/Passwort** – zum Weitergeben oder Versionieren.
+- **Importieren** – Datei waehlen, bestehende Werte werden ueberschrieben.
+  Leere Zugangsdaten in der Datei lassen vorhandene Werte unangetastet.
+
+Dasselbe Format nutzt das CLI-Werkzeug der Desktop-App:
+
+```bash
+python settings_tool.py export meine_einstellungen.json
+python settings_tool.py import meine_einstellungen.json
+```
+
 ## Backup nach OneDrive (rclone auf dem Docker-PC)
 
 Wie beim Angel-Logbuch: `backup.sh` läuft per Cronjob **auf dem Docker-PC** und

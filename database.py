@@ -163,6 +163,22 @@ def get_config() -> dict:
     }
 
 
+def get_alle_einstellungen() -> dict:
+    """Alle Schlüssel/Werte der Einstellungen-Tabelle (für Export)."""
+    with closing(get_connection()) as conn:
+        rows = conn.execute("SELECT key, value FROM einstellungen").fetchall()
+    return {r["key"]: r["value"] for r in rows}
+
+
+def set_einstellungen(werte: dict):
+    """Mehrere Einstellungen auf einmal schreiben (für Import)."""
+    with closing(get_connection()) as conn:
+        for key, val in werte.items():
+            conn.execute("INSERT OR REPLACE INTO einstellungen VALUES (?,?)",
+                         (key, str(val)))
+        conn.commit()
+
+
 # --- Fahrten (Monats-km) ---
 def set_fahrt_monat(monat, km):
     with closing(get_connection()) as conn:

@@ -519,6 +519,79 @@ def rechnung_apply(payload: dict):
 
 
 # ─────────────────────────────────────────────────────────────
+#  Einstellungen als Datei sichern / laden
+# ─────────────────────────────────────────────────────────────
+
+GEHEIM_KEYS = {"ha_token", "influx_password"}
+
+
+@app.get("/api/settings/export")
+def settings_export(secrets: int = 1):
+    """Exportiert alle Einstellungen + Anbieter als JSON-Datei."""
+    import json
+    werte = db.get_alle_einstellungen()
+    if not secrets:
+        werte = {k: v for k, v in werte.items() if k not in GEHEIM_KEYS}
+
+    daten = {
+        "typ": "ev-tracker-einstellungen",
+        "version": 1,
+        "exportiert": datetime.now().isoformat(timespec="seconds"),
+        "enthaelt_zugangsdaten": bool(secrets),
+        "einstellungen": werte,
+        "lade_anbieter": [
+            {"name": a["name"], "gruenstrom": a["gruenstrom"],
+             "ist_system": a["ist_system"]}
+            for a in db.get_lade_anbieter()
+        ],
+    }
+    pfad = os.path.join(STATIC_DIR, f"_settings_{uuid.uuid4().hex}.json")
+    with open(pfad, "w", encoding="utf-8") as f:
+        json.dump(daten, f, indent=2, ensure_ascii=False)
+
+    stamp = datetime.now().strftime("%Y-%m-%d")
+    return FileResponse(pfad, filename=f"ev_tracker_einstellungen_{stamp}.json",
+                        media_type="application/json",
+                        background=BackgroundTask(os.remove, pfad))
+
+
+@app.post("/api/settings/import")
+async def settings_import(datei: UploadFile = File(...)):
+    """Liest eine zuvor exportierte JSON-Datei ein."""
+    import json
+    try:
+        daten = json.loads((await datei.read()).decode("utf-8"))
+    except Exception as e:
+        return JSONResponse({"error": f"Datei nicht lesbar: {e}"}, status_code=400)
+
+    if daten.get("typ") != "ev-tracker-einstellungen":
+        return JSONResponse(
+            {"error": "Das ist keine EV-Tracker-Einstellungsdatei."}, status_code=400)
+
+    werte = daten.get("einstellungen") or {}
+    if not isinstance(werte, dict) or not werte:
+        return JSONResponse({"error": "Keine Einstellungen in der Datei."},
+                            status_code=400)
+
+    # Leere Zugangsdaten nicht über vorhandene schreiben
+    vorhanden = db.get_alle_einstellungen()
+    werte = {k: v for k, v in werte.items()
+             if not (k in GEHEIM_KEYS and not str(v).strip() and vorhanden.get(k))}
+    db.set_einstellungen(werte)
+
+    neue_anbieter = 0
+    bekannt = {a["name"] for a in db.get_lade_anbieter()}
+    for a in daten.get("lade_anbieter") or []:
+        name = (a.get("name") or "").strip()
+        if name and name not in bekannt:
+            db.add_lade_anbieter(name, 1 if a.get("gruenstrom") else 0)
+            neue_anbieter += 1
+
+    return {"anzahl": len(werte), "anbieter": neue_anbieter,
+            "exportiert": daten.get("exportiert", "?")}
+
+
+# ─────────────────────────────────────────────────────────────
 #  Backup der Datenbank (Token-geschützt)
 # ─────────────────────────────────────────────────────────────
 

@@ -25,6 +25,28 @@
   </form>
 </div>
 
+<h2>Einstellungen sichern / laden</h2>
+<div class="card">
+  <p class="hint" style="margin-top:0">
+    Sichert alle Parameter, Sensor-Zuordnungen und Anbieter als JSON-Datei –
+    praktisch zum Übertragen zwischen Desktop-App und Web-Version.
+  </p>
+  <div class="inline">
+    <a class="btn" href="/api/settings/export?secrets=1">⬇ Exportieren (mit Zugangsdaten)</a>
+    <a class="btn secondary" href="/api/settings/export?secrets=0"
+       style="text-decoration:none; display:inline-block">⬇ Ohne Token/Passwort</a>
+    <label class="feld">Datei laden
+      <input type="file" id="settings-datei" accept=".json">
+    </label>
+    <button type="button" class="secondary" onclick="importiereSettings()">⬆ Importieren</button>
+    <span id="import-status" style="align-self:center; font-size:12px"></span>
+  </div>
+  <p class="hint" style="margin-bottom:0">
+    ⚠️ Die Datei „mit Zugangsdaten" enthält HA-Token und InfluxDB-Passwort im Klartext –
+    sicher aufbewahren, nicht weitergeben.
+  </p>
+</div>
+
 <h2>Lade-Anbieter</h2>
 <div class="card">
   <form class="inline" method="post" action="/einstellungen/anbieter">
@@ -127,6 +149,23 @@
 </form>
 
 <script>
+async function importiereSettings() {
+  const datei = document.getElementById("settings-datei").files[0];
+  const status = document.getElementById("import-status");
+  if (!datei) { status.textContent = "Bitte zuerst eine Datei wählen."; status.className = "gelb"; return; }
+  if (!confirm("Einstellungen aus '" + datei.name + "' uebernehmen? Bestehende Werte werden ueberschrieben.")) return;
+  const fd = new FormData();
+  fd.append("datei", datei);
+  status.textContent = "Lade …"; status.className = "muted";
+  const resp = await fetch("/api/settings/import", { method: "POST", body: fd });
+  const data = await resp.json();
+  if (data.error) { status.textContent = "✗ " + data.error; status.className = "rot"; return; }
+  status.textContent = `✓ ${data.anzahl} Einstellungen übernommen` +
+      (data.anbieter ? `, ${data.anbieter} neue Anbieter` : "");
+  status.className = "gruen";
+  setTimeout(() => location.reload(), 1200);
+}
+
 async function testeVerbindung(art, btn) {
   const span = document.getElementById("test-ergebnis");
   btn.disabled = true;
