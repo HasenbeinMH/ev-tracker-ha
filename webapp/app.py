@@ -672,6 +672,122 @@ async def settings_import(datei: UploadFile = File(...)):
 # ─────────────────────────────────────────────────────────────
 
 BACKUP_TOKEN = os.environ.get("EV_TRACKER_BACKUP_TOKEN", "")
+DATA_DIR = os.path.dirname(db.DB_PATH) or "."
+STATUS_DATEI = os.path.join(DATA_DIR, "backup_status.json")
+LOG_DATEI = os.path.join(DATA_DIR, "backup.log")
+TRIGGER_DATEI = os.path.join(DATA_DIR, ".backup_now")
+
+
+@app.get("/backup", response_class=HTMLResponse)
+def backup_seite(request: Request):
+    return render(request, "backup.html", aktiv="backup", db_pfad=db.DB_PATH)
+
+
+@app.get("/api/backup/status")
+def backup_status():
+    """Status des letzten Backups (wird von backup.sh geschrieben)."""
+    import json
+    if not os.path.exists(STATUS_DATEI):
+        return {"status": "never", "meldung": "Noch kein Backup gelaufen"}
+    try:
+        with open(STATUS_DATEI, encoding="utf-8") as f:
+            daten = json.load(f)
+    except Exception as e:
+        return {"status": "error", "meldung": f"Statusdatei unlesbar: {e}"}
+
+    roh = daten.get("last_backup_iso") or daten.get("last_backup", "")
+    try:
+        if "_" in roh:   # Format 2026-08-25_02-30-01
+            datum, zeit = roh.split("_")
+            roh = f"{datum} {zeit.replace('-', ':')}"
+        letzte = datetime.fromisoformat(roh)
+        if letzte.tzinfo is not None:
+            letzte = letzte.replace(tzinfo=None)
+        stunden = (datetime.now() - letzte).total_seconds() / 3600
+        daten["alter_stunden"] = round(stunden, 1)
+        daten["aktuell"] = stunden < 26
+    except Exception:
+        daten["alter_stunden"] = None
+        daten["aktuell"] = False
+
+    daten["wartet"] = os.path.exists(TRIGGER_DATEI)
+    daten["db_groesse_kb"] = (round(os.path.getsize(db.DB_PATH) / 1024)
+                              if os.path.exists(db.DB_PATH) else 0)
+    return daten
+
+
+@app.get("/api/backup/log")
+def backup_log(zeilen: int = 100):
+    if not os.path.exists(LOG_DATEI):
+        return {"zeilen": [], "meldung": "Noch kein Protokoll vorhanden"}
+    try:
+        with open(LOG_DATEI, encoding="utf-8", errors="replace") as f:
+            alle = f.readlines()
+        return {"zeilen": [z.rstrip() for z in alle[-zeilen:]]}
+    except Exception as e:
+        return {"zeilen": [], "meldung": str(e)}
+
+
+@app.post("/api/backup/run")
+def backup_ausloesen():
+    """Legt die Trigger-Datei an – der Cronjob auf dem Host startet backup.sh."""
+    try:
+        with open(TRIGGER_DATEI, "w", encoding="utf-8") as f:
+            f.write(datetime.now().isoformat())
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+    return {"ok": True,
+            "meldung": "Backup angefordert – startet innerhalb der naechsten Minuten."}
+
+
+@app.post("/api/backup/restore")
+async def backup_restore(datei: UploadFile = File(...), bestaetigt: str = Form("")):
+    """Stellt eine gesicherte Datenbank wieder her (mit Sicherheitskopie vorher)."""
+    import sqlite3
+    if bestaetigt != "ja":
+        return JSONResponse({"error": "Nicht bestaetigt."}, status_code=400)
+
+    roh = await datei.read()
+    if not roh.startswith(b"SQLite format 3"):
+        return JSONResponse({"error": "Das ist keine SQLite-Datenbank."}, status_code=400)
+
+    tmp = os.path.join(DATA_DIR, f"_restore_{uuid.uuid4().hex}.db")
+    with open(tmp, "wb") as f:
+        f.write(roh)
+
+    # Pruefen, ob die erwarteten Tabellen vorhanden sind
+    try:
+        pruef = sqlite3.connect(tmp)
+        tabellen = {r[0] for r in pruef.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+        pruef.close()
+        fehlend = {"einstellungen", "ladevorgang", "fahrten_monat"} - tabellen
+        if fehlend:
+            os.remove(tmp)
+            return JSONResponse(
+                {"error": f"Datei ist keine EV-Tracker-Datenbank (fehlend: {', '.join(sorted(fehlend))})"},
+                status_code=400)
+    except Exception as e:
+        os.remove(tmp)
+        return JSONResponse({"error": f"Datei nicht lesbar: {e}"}, status_code=400)
+
+    # Sicherheitskopie der aktuellen Datenbank
+    stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    sicherung = os.path.join(DATA_DIR, f"vor_restore_{stamp}.db")
+    if os.path.exists(db.DB_PATH):
+        quelle = sqlite3.connect(db.DB_PATH)
+        kopie = sqlite3.connect(sicherung)
+        try:
+            with kopie:
+                quelle.backup(kopie)
+        finally:
+            kopie.close()
+            quelle.close()
+
+    os.replace(tmp, db.DB_PATH)
+    db.init_db()
+    return {"ok": True, "sicherung": os.path.basename(sicherung),
+            "meldung": "Datenbank wiederhergestellt."}
 
 
 @app.get("/api/backup")

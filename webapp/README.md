@@ -85,24 +85,37 @@ python settings_tool.py import meine_einstellungen.json
 
 ## Backup nach OneDrive (rclone auf dem Docker-PC)
 
-Wie beim Angel-Logbuch: `backup.sh` läuft per Cronjob **auf dem Docker-PC** und
-lädt einen SQLite-Hot-Backup-Snapshot per rclone nach OneDrive – unabhängig davon,
-ob der Windows-PC läuft.
+`backup.sh` laeuft per Cronjob auf dem Docker-PC und laedt einen
+SQLite-Hot-Backup-Snapshot per rclone nach OneDrive – unabhaengig davon, ob der
+Windows-PC laeuft.
 
 ```bash
-# einmalig einrichten
 chmod +x /home/smarthome/ev-tracker/backup.sh
 crontab -e
-# folgende Zeile ergänzen (täglich 02:00 Uhr):
-0 2 * * * /home/smarthome/ev-tracker/backup.sh
 ```
 
-- Ziel: `onedrive:EV-Tracker-Backup/data/` (nutzt das vorhandene rclone-Remote `onedrive`)
-- Aufbewahrung: 60 Tage, ältere Snapshots werden automatisch gelöscht
-- Protokoll: `backup.log`, Status zusätzlich als `data/backup_status.json`
-- Braucht kein `sqlite3` auf dem Host – fällt automatisch auf Python im Container zurück
+Zwei Zeilen eintragen:
 
-Manuell testen: `/home/smarthome/ev-tracker/backup.sh`
+```
+0 2 * * * /home/smarthome/ev-tracker/backup.sh
+*/5 * * * * [ -f /home/smarthome/ev-tracker/data/.backup_now ] && /home/smarthome/ev-tracker/backup.sh
+```
+
+Die erste sichert taeglich um 02:00 Uhr. Die zweite prueft alle 5 Minuten, ob in
+der Weboberflaeche ein Backup angefordert wurde („Backup jetzt anstossen").
+
+- Ziel: `onedrive:EV-Tracker-Backup/data/` (nutzt das vorhandene rclone-Remote `onedrive`)
+- Aufbewahrung: 60 Tage, aeltere Snapshots werden automatisch geloescht
+- Protokoll und Status landen im Datenordner, damit die Webapp sie anzeigen kann
+- Braucht kein `sqlite3` auf dem Host – faellt automatisch auf Python im Container zurueck
+
+### Backup-Seite in der Webapp
+
+Der Reiter **Backup** zeigt Status, Alter der letzten Sicherung, Anzahl der
+Sicherungen in OneDrive und das Protokoll. Dort laesst sich auch ein Backup
+anstossen und eine Sicherung wieder einspielen: Datei hochladen, zweimal
+bestaetigen – die aktuelle Datenbank wird vorher als `vor_restore_….db` im
+Datenordner gesichert.
 
 ### Zusätzlich: Backup über HTTP
 

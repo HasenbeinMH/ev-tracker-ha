@@ -13,12 +13,14 @@ CONTAINER="ev-tracker"
 RCLONE_REMOTE="onedrive:EV-Tracker-Backup"
 RETENTION_DAYS=60
 
-LOG_FILE="$(dirname "$0")/backup.log"
+LOG_FILE="$DATA_DIR/backup.log"     # im Datenordner: Webapp kann mitlesen
+TRIGGER="$DATA_DIR/.backup_now"    # von der Webapp angelegt = Backup anstossen
 TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
 TMP_DIR="/tmp/ev-tracker-backup-$$"
 # ────────────────────────────────────────────────────────────
 
 mkdir -p "$TMP_DIR"
+rm -f "$TRIGGER"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 log() {
@@ -80,6 +82,7 @@ REMOTE_FILES=$(rclone ls "${RCLONE_REMOTE}/data/" 2>/dev/null | wc -l)
 cat > "$DATA_DIR/backup_status.json" << STATUS
 {
   "last_backup": "$TIMESTAMP",
+  "last_backup_iso": "$(date -Iseconds)",
   "status": "$FINAL_STATUS",
   "size": "$(du -h "$DB_SNAP" | cut -f1)",
   "remote_files": $REMOTE_FILES

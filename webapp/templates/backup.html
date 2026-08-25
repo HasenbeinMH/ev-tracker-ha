@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block titel %}Backup{% endblock %}
+{% block inhalt %}
+<h1>💾 Backup &amp; Wiederherstellung</h1>
+<p class="hint">
+  Ein Cronjob auf dem Docker-PC sichert die Datenbank täglich per rclone nach OneDrive.
+  Hier siehst du den Status, kannst ein Backup anstoßen oder eine Sicherung einspielen.
+</p>
+
+<div class="statgrid">
+  <div class="stat"><span class="wert" id="stat-status">…</span><div class="label">Letztes Backup</div></div>
+  <div class="stat"><span class="wert" id="stat-alter">…</span><span class="einheit">Std.</span><div class="label">Alter</div></div>
+  <div class="stat"><span class="wert" id="stat-groesse">…</span><span class="einheit">KB</span><div class="label">Datenbank aktuell</div></div>
+  <div class="stat"><span class="wert" id="stat-anzahl">…</span><div class="label">Sicherungen in OneDrive</div></div>
+</div>
+
+<div class="card">
+  <div class="inline">
+    <button type="button" onclick="starteBackup(this)">▶ Backup jetzt anstoßen</button>
+    <button type="button" class="secondary" onclick="ladeStatus(); ladeLog()">🔄 Aktualisieren</button>
+    <a class="btn secondary" href="/api/backup?token=" style="text-decoration:none"
+       id="download-link" title="Braucht das Backup-Geheimwort">⬇ Datenbank herunterladen</a>
+    <span id="backup-meldung" style="align-self:center; font-size:12px"></span>
+  </div>
+  <p class="hint" style="margin-bottom:0">
+    Der Anstoß legt eine Markierung an; der Cronjob startet das Backup innerhalb weniger Minuten.
+  </p>
+</div>
+
+<h2>Protokoll</h2>
+<div class="card">
+  <pre id="log-inhalt" style="margin:0; max-height:320px; overflow:auto; font-size:11px;
+       color:var(--text); white-space:pre-wrap">…</pre>
+</div>
+
+<h2>Wiederherstellen</h2>
+<div class="card">
+  <p class="hint" style="margin-top:0">
+    Eine gesicherte <code>.db</code>-Datei aus OneDrive hochladen. Die aktuelle Datenbank
+    wird vorher automatisch als <code>vor_restore_….db</code> im Datenordner gesichert.
+  </p>
+  <div class="inline">
+    <label class="feld">Sicherungsdatei
+      <input type="file" id="restore-datei" accept=".db">
+    </label>
+    <button type="button" class="danger" style="padding:8px 16px; font-size:13px"
+            onclick="restore()">⚠ Datenbank ersetzen</button>
+    <span id="restore-meldung" style="align-self:center; font-size:12px"></span>
+  </div>
+</div>
+
+<script>
+async function ladeStatus() {
+  const r = await fetch("/api/backup/status");
+  const d = await r.json();
+  const s = document.getElementById("stat-status");
+  if (d.status === "never") {
+    s.textContent = "nie"; s.style.color = "#c4963a";
+  } else if (d.status === "ok") {
+    s.textContent = (d.last_backup || "").split("_")[0] || "ok";
+    s.style.color = d.aktuell ? "#5aaa78" : "#c4963a";
+  } else {
+    s.textContent = "Fehler"; s.style.color = "#aa5a5a";
+  }
+  document.getElementById("stat-alter").textContent =
+    d.alter_stunden === null || d.alter_stunden === undefined ? "?" : d.alter_stunden;
+  document.getElementById("stat-groesse").textContent = d.db_groesse_kb ?? "?";
+  document.getElementById("stat-anzahl").textContent = d.remote_files ?? "?";
+  if (d.wartet) {
+    document.getElementById("backup-meldung").textContent = "⏳ Backup ist angefordert und wartet auf den Cronjob";
+    document.getElementById("backup-meldung").className = "gelb";
+  }
+}
+
+async function ladeLog() {
+  const r = await fetch("/api/backup/log");
+  const d = await r.json();
+  document.getElementById("log-inhalt").textContent =
+    d.zeilen && d.zeilen.length ? d.zeilen.join("\n") : (d.meldung || "Kein Protokoll");
+}
+
+async function starteBackup(btn) {
+  btn.disabled = true;
+  const m = document.getElementById("backup-meldung");
+  m.textContent = "Wird angefordert …"; m.className = "muted";
+  const r = await fetch("/api/backup/run", { method: "POST" });
+  const d = await r.json();
+  m.textContent = d.error ? "✗ " + d.error : "✓ " + d.meldung;
+  m.className = d.error ? "rot" : "gruen";
+  btn.disabled = false;
+  setTimeout(() => { ladeStatus(); ladeLog(); }, 3000);
+}
+
+async function restore() {
+  const datei = document.getElementById("restore-datei").files[0];
+  const m = document.getElementById("restore-meldung");
+  if (!datei) { m.textContent = "Bitte Datei wählen"; m.className = "gelb"; return; }
+  if (!confirm("Die aktuelle Datenbank wird durch '" + datei.name + "' ersetzt. Fortfahren?")) return;
+  if (!confirm("Wirklich sicher? Alle Daten seit dieser Sicherung gehen verloren.")) return;
+  const fd = new FormData();
+  fd.append("datei", datei);
+  fd.append("bestaetigt", "ja");
+  m.textContent = "Stelle wieder her …"; m.className = "muted";
+  const r = await fetch("/api/backup/restore", { method: "POST", body: fd });
+  const d = await r.json();
+  if (d.error) { m.textContent = "✗ " + d.error; m.className = "rot"; return; }
+  m.textContent = "✓ " + d.meldung + " (Sicherung: " + d.sicherung + ")";
+  m.className = "gruen";
+  setTimeout(() => ladeStatus(), 1500);
+}
+
+ladeStatus();
+ladeLog();
+</script>
+{% endblock %}
