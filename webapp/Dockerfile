@@ -6,8 +6,8 @@ WORKDIR /app
 COPY webapp/requirements-web.txt .
 RUN pip install --no-cache-dir -r requirements-web.txt
 
-# Kern-Module aus dem Hauptordner
-COPY database.py berechnung.py ha_client.py pdf_parser.py charts.py ./
+# Kern-Module aus dem Hauptordner (alle, damit keins vergessen wird)
+COPY *.py ./
 # Web-App
 COPY webapp/ ./webapp/
 # Backup-Skript mitliefern – so laesst es sich per
