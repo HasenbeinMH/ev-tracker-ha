@@ -18,6 +18,7 @@ COLORS = {
 }
 
 LAYOUT_DEFAULTS = dict(
+    separators=",.",   # deutsches Format: 1.234,56
     paper_bgcolor=COLORS["bg"],
     plot_bgcolor=COLORS["card"],
     font=dict(color=COLORS["text"], family="Segoe UI, sans-serif", size=11),
@@ -63,9 +64,11 @@ def chart_benzinpreise(daten, large=False):
         marker=dict(size=5),
         fill="tozeroy",
         fillcolor="rgba(196,122,58,0.12)",
-        name="€/L"
+        name="€/L",
+        hovertemplate="%{x}: %{y:.2f} €/L<extra></extra>"
     ))
     fig.update_layout(**LAYOUT_DEFAULTS, title=dict(text="Benzinpreise €/L", font=dict(size=12)))
+    fig.update_yaxes(tickformat=".2f")
     return _fig_to_html_large(fig) if large else _fig_to_html(fig)
 
 
