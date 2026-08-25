@@ -9,12 +9,10 @@ services:
     ports:
       - "8099:8000"
     volumes:
-      - ev_tracker_data:/data
+      # Fester Pfad auf dem Docker-Host – damit backup.sh direkt an die DB kommt
+      - ${EV_TRACKER_DATA_DIR:-/home/smarthome/ev-tracker/data}:/data
     environment:
-      # Eigenes Geheimwort setzen – wird für /api/backup benötigt.
-      # In Portainer unter "Environment variables" überschreibbar.
-      - EV_TRACKER_BACKUP_TOKEN=${EV_TRACKER_BACKUP_TOKEN:-bitte-aendern}
+      - TZ=Europe/Berlin
+      # Geheimwort für GET /api/backup (leer = Endpunkt deaktiviert)
+      - EV_TRACKER_BACKUP_TOKEN=${EV_TRACKER_BACKUP_TOKEN:-}
     restart: unless-stopped
-
-volumes:
-  ev_tracker_data:

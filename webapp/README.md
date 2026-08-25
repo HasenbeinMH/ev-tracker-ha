@@ -22,14 +22,19 @@ Updates: neuen Stand nach GitHub pushen, dann in Portainer **Pull and redeploy**
 In den Einstellungen der Web-App daher die **IP-Adresse** des HA-Servers eintragen,
 z.B. `http://192.168.1.x:8123` (ebenso bei der InfluxDB-URL).
 
+### Datenverzeichnis auf dem Docker-Host
+
+Die Datenbank liegt **nicht** in einem Named Volume, sondern unter
+`/home/smarthome/ev-tracker/data/ev_tracker.db` – so kommt das Backup-Skript
+direkt heran. Anderer Pfad: Umgebungsvariable `EV_TRACKER_DATA_DIR` setzen.
+
 ### Bestehende Desktop-Datenbank übernehmen
 
-Die DB liegt im benannten Volume `ev_tracker_data` unter `/data/ev_tracker.db`.
-Vorhandene Desktop-DB in den laufenden Container kopieren:
+Vor dem ersten Start einfach dorthin kopieren (per scp/WinSCP vom Windows-PC):
 
 ```bash
-docker cp ev_tracker.db ev-tracker:/data/ev_tracker.db
-docker restart ev-tracker
+mkdir -p /home/smarthome/ev-tracker/data
+cp ev_tracker.db /home/smarthome/ev-tracker/data/ev_tracker.db
 ```
 
 ## Start mit Docker lokal
@@ -58,23 +63,32 @@ uvicorn webapp.app:app --reload
   Einstellungen – also erst „Alle Einstellungen speichern", dann testen.
 - Token-/Passwort-Felder: leer lassen = gespeicherten Wert behalten.
 
-## Backup der Datenbank nach OneDrive
+## Backup nach OneDrive (rclone auf dem Docker-PC)
 
-Das Skript `backup_db.py` (im Hauptordner) sichert beide Datenbanken nach
-`D:\OneDrive\EV-Tracker-Backup` und löscht Sicherungen älter als 30 Tage.
-Eine tägliche Windows-Aufgabe („EV Tracker DB-Backup", 20:00 Uhr) ruft es auf.
+Wie beim Angel-Logbuch: `backup.sh` läuft per Cronjob **auf dem Docker-PC** und
+lädt einen SQLite-Hot-Backup-Snapshot per rclone nach OneDrive – unabhängig davon,
+ob der Windows-PC läuft.
 
-Gesichert werden:
-1. die lokale Desktop-DB – immer
-2. die Docker-Webapp-DB – sobald zwei Umgebungsvariablen gesetzt sind:
-
+```bash
+# einmalig einrichten
+chmod +x /home/smarthome/ev-tracker/backup.sh
+crontab -e
+# folgende Zeile ergänzen (täglich 02:00 Uhr):
+0 2 * * * /home/smarthome/ev-tracker/backup.sh
 ```
-EV_TRACKER_WEBAPP_URL   z.B. http://192.168.1.50:8099
-EV_TRACKER_BACKUP_TOKEN dasselbe Geheimwort wie im Container
-```
 
-Der Container liefert die DB über `GET /api/backup?token=…`. Der Endpunkt ist
-deaktiviert, solange `EV_TRACKER_BACKUP_TOKEN` im Container nicht gesetzt ist –
-so kann niemand im Netz die Datenbank samt Zugangsdaten herunterladen.
+- Ziel: `onedrive:EV-Tracker-Backup/data/` (nutzt das vorhandene rclone-Remote `onedrive`)
+- Aufbewahrung: 60 Tage, ältere Snapshots werden automatisch gelöscht
+- Protokoll: `backup.log`, Status zusätzlich als `data/backup_status.json`
+- Braucht kein `sqlite3` auf dem Host – fällt automatisch auf Python im Container zurück
 
-Manuell ausführen: `python backup_db.py` · Protokoll: `backup.log`
+Manuell testen: `/home/smarthome/ev-tracker/backup.sh`
+
+### Zusätzlich: Backup über HTTP
+
+`GET /api/backup?token=…` liefert die Datenbank als Download – praktisch für ein
+schnelles Backup aus dem Browser. Der Endpunkt ist deaktiviert, solange
+`EV_TRACKER_BACKUP_TOKEN` im Container nicht gesetzt ist.
+
+Auf dem Windows-PC sichert `backup_db.py` (tägliche Aufgabe „EV Tracker DB-Backup")
+weiterhin die **Desktop**-Datenbank nach `D:\OneDrive\EV-Tracker-Backup`.
