@@ -92,7 +92,7 @@
       </select>
     </label>
     <label class="feld">HA URL
-      <input name="ha_url" value="{{ ha.ha_url }}" style="width:260px">
+      <input name="ha_url" value="{{ ha.ha_url }}" placeholder="http://192.168.0.59:8123" style="width:260px">
     </label>
     <label class="feld">HA Token {{ "(gesetzt – leer lassen zum Behalten)" if ha.ha_token }}
       <input type="password" name="ha_token" placeholder="{{ '••••••••' if ha.ha_token else 'Long-Lived Access Token' }}" style="width:260px">
@@ -115,7 +115,7 @@
   <h2>InfluxDB 1.x Verbindung</h2>
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
     <label class="feld">URL
-      <input name="influx_url" value="{{ ha.influx_url }}" style="width:200px">
+      <input name="influx_url" value="{{ ha.influx_url }}" placeholder="http://192.168.0.59" style="width:200px">
     </label>
     <label class="feld">Port
       <input name="influx_port" value="{{ ha.influx_port }}" style="width:70px">

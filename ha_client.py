@@ -19,6 +19,14 @@ from datetime import datetime
 from collections import defaultdict
 
 
+def _normalize_url(url: str) -> str:
+    """Ergaenzt ein fehlendes http:// – haeufiger Eingabefehler in den Einstellungen."""
+    u = (url or "").strip().rstrip("/")
+    if u and not u.startswith(("http://", "https://")):
+        u = "http://" + u
+    return u
+
+
 def _esc_str(s: str) -> str:
     """Escapt einen Wert für ein einfach-quotiertes InfluxQL-String-Literal."""
     return s.replace("\\", "\\\\").replace("'", "\\'")
@@ -31,7 +39,7 @@ def _esc_ident(s: str) -> str:
 
 class HAClient:
     def __init__(self, url: str, token: str):
-        self.url   = url.rstrip("/")
+        self.url   = _normalize_url(url)
         self.token = token
 
     # ─────────────────────────────────────────
@@ -500,7 +508,7 @@ class InfluxClient:
                  meas_km:    str = "km",
                  meas_kwh:   str = "kWh",
                  meas_eur_l: str = "EUR/L"):
-        self.base     = f"{url.rstrip('/')}:{port}"
+        self.base     = f"{_normalize_url(url)}:{port}"
         self.database = database
         self.user     = user
         self.password = password
