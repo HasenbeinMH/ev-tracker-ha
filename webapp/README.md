@@ -89,20 +89,20 @@ python settings_tool.py import meine_einstellungen.json
 SQLite-Hot-Backup-Snapshot per rclone nach OneDrive – unabhaengig davon, ob der
 Windows-PC laeuft.
 
+Das Skript steckt im Image – nach jedem Redeploy auf den Host holen:
+
 ```bash
-chmod +x /home/smarthome/ev-tracker/backup.sh
-crontab -e
+docker cp ev-tracker:/app/backup.sh /home/smarthome/ev-tracker/backup.sh && chmod +x /home/smarthome/ev-tracker/backup.sh
 ```
 
-Zwei Zeilen eintragen:
+Cron-Eintraege einmalig anlegen (ohne Editor):
 
-```
-0 2 * * * /home/smarthome/ev-tracker/backup.sh
-*/5 * * * * [ -f /home/smarthome/ev-tracker/data/.backup_now ] && /home/smarthome/ev-tracker/backup.sh
+```bash
+(crontab -l 2>/dev/null; echo "0 2 * * * /home/smarthome/ev-tracker/backup.sh"; echo "*/5 * * * * [ -f /home/smarthome/ev-tracker/data/.backup_now ] && /home/smarthome/ev-tracker/backup.sh") | crontab -
 ```
 
-Die erste sichert taeglich um 02:00 Uhr. Die zweite prueft alle 5 Minuten, ob in
-der Weboberflaeche ein Backup angefordert wurde („Backup jetzt anstossen").
+Die erste Zeile sichert taeglich um 02:00 Uhr. Die zweite prueft alle 5 Minuten,
+ob in der Weboberflaeche ein Backup angefordert wurde („Backup jetzt anstossen").
 
 - Ziel: `onedrive:EV-Tracker-Backup/data/` (nutzt das vorhandene rclone-Remote `onedrive`)
 - Aufbewahrung: 60 Tage, aeltere Snapshots werden automatisch geloescht
