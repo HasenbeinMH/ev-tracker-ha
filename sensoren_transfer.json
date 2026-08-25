@@ -1,0 +1,27 @@
+{
+  "typ": "ev-tracker-einstellungen",
+  "version": 1,
+  "exportiert": "Sensor-Zuordnungen vom Desktop",
+  "einstellungen": {
+    "ha_odometer": "sensor.ceed_odometer",
+    "ha_ev_battery": "sensor.ceed_car_battery_level",
+    "ha_ev_range": "sensor.ceed_fuel_driving_range",
+    "ha_pv_production": "sensor.se_modbus_daten_ac_energy_kwh",
+    "ha_grid_consumption": "sensor.se_modbus_daten_m1_imported_kwh",
+    "ha_grid_export": "sensor.se_modbus_daten_m1_exported_kwh",
+    "ha_wallbox_energy": "",
+    "ha_tankerkoenig": "sensor.tramin_grossenbaumer_str_56_super_e10",
+    "ha_tankerkoenig_2": "sensor.aral_grossenbaumer_strasse_67_super_e10",
+    "fn_pv_production": "SE Modbus Daten (AC Energy kWh)",
+    "fn_grid_consumption": "SE Modbus Daten (M1 IMPORTED KWH)",
+    "fn_grid_export": "SE Modbus Daten (M1 EXPORTED KWH)",
+    "fn_wallbox_energy": "",
+    "fn_tankerkoenig": "Tramin Großenbaumer Str. 56 Super E10",
+    "fn_tankerkoenig_2": "ARAL Grossenbaumer Straße  67 Super E10",
+    "fn_odometer": "Ceed Kilometerstand",
+    "influx_measurement_km": "km",
+    "influx_measurement_kwh": "kWh",
+    "influx_measurement_eur_l": "€"
+  },
+  "lade_anbieter": []
+}
