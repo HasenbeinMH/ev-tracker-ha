@@ -89,6 +89,13 @@ python settings_tool.py import meine_einstellungen.json
 SQLite-Hot-Backup-Snapshot per rclone nach OneDrive – unabhaengig davon, ob der
 Windows-PC laeuft.
 
+**Einmalig nach dem ersten Deploy:** Docker legt den Datenordner als `root` an –
+dem Cronjob fehlen dann die Schreibrechte fuer Protokoll und Statusdatei:
+
+```bash
+sudo chown -R $USER: /home/smarthome/ev-tracker/data
+```
+
 Das Skript steckt im Image – nach jedem Redeploy auf den Host holen:
 
 ```bash

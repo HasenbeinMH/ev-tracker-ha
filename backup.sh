@@ -20,7 +20,17 @@ TMP_DIR="/tmp/ev-tracker-backup-$$"
 # ────────────────────────────────────────────────────────────
 
 mkdir -p "$TMP_DIR"
+
+# Schreibrechte pruefen – sonst laeuft der Cron-Watcher endlos weiter,
+# weil die Trigger-Datei nicht geloescht werden kann.
+if [ ! -w "$DATA_DIR" ]; then
+    echo "FEHLER: Kein Schreibrecht auf $DATA_DIR"
+    echo "Docker legt den Ordner als root an. Einmalig korrigieren mit:"
+    echo "  sudo chown -R \$USER: $DATA_DIR"
+    exit 1
+fi
 rm -f "$TRIGGER"
+
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 log() {
