@@ -101,6 +101,25 @@
   </div>
 
   <h2>Sensoren (Entity-ID für HA · Friendly Name für InfluxDB)</h2>
+  <p class="hint">
+    Wichtig: Bei den kWh-Feldern die Sensoren eintragen, die <strong>ins Auto geladene</strong>
+    Energie zählen – nicht die gesamte PV-Erzeugung oder den Hausnetzbezug.
+  </p>
+
+  <div class="card" style="background:#171a21">
+    <div class="inline">
+      <label class="feld">Sensor suchen
+        <input id="sensor-suche" placeholder="z.B. laden oder odometer" style="width:230px">
+      </label>
+      <button type="button" class="secondary" onclick="sucheSensoren()">🔍 In HA suchen</button>
+      <label class="feld">Sensor prüfen (Monatswerte)
+        <input id="sensor-pruef" placeholder="sensor.xyz" style="width:230px">
+      </label>
+      <button type="button" class="secondary" onclick="pruefeSensor()">🔬 Prüfen</button>
+    </div>
+    <div id="sensor-ergebnis" style="margin-top:10px; font-size:12px"></div>
+  </div>
+
   <table>
     <tr><th>Sensor</th><th>Entity-ID (HA)</th><th>Friendly Name (InfluxDB)</th></tr>
     {% for ha_key, fn_key, label in sensor_felder %}
@@ -149,6 +168,43 @@
 </form>
 
 <script>
+async function sucheSensoren() {
+  const q = document.getElementById("sensor-suche").value.trim();
+  const box = document.getElementById("sensor-ergebnis");
+  box.innerHTML = "<span class='muted'>Suche …</span>";
+  const resp = await fetch("/api/entities?q=" + encodeURIComponent(q));
+  const d = await resp.json();
+  if (d.error) { box.innerHTML = "<span class='rot'>✗ " + d.error + "</span>"; return; }
+  if (!d.treffer.length) { box.innerHTML = "<span class='gelb'>Keine Treffer</span>"; return; }
+  let html = `<div class="muted">${d.anzahl} Treffer${d.anzahl > 60 ? " (zeige 60)" : ""} – auf eine Zeile klicken, um sie zu prüfen:</div>`;
+  html += "<div class='tabelle-scroll' style='max-height:260px; overflow-y:auto'><table>";
+  html += "<tr><th>Entity-ID</th><th>Name</th><th>Wert</th><th>Typ</th></tr>";
+  for (const t of d.treffer) {
+    html += `<tr style="cursor:pointer" onclick="document.getElementById('sensor-pruef').value='${t.entity_id}'; pruefeSensor()">` +
+            `<td>${t.entity_id}</td><td>${t.name}</td>` +
+            `<td>${t.state} ${t.einheit}</td><td class="muted">${t.klasse || "-"}</td></tr>`;
+  }
+  box.innerHTML = html + "</table></div>";
+}
+
+async function pruefeSensor() {
+  const eid = document.getElementById("sensor-pruef").value.trim();
+  const box = document.getElementById("sensor-ergebnis");
+  if (!eid) { box.innerHTML = "<span class='gelb'>Bitte Entity-ID eingeben</span>"; return; }
+  box.innerHTML = "<span class='muted'>Prüfe " + eid + " – das dauert einen Moment …</span>";
+  const resp = await fetch("/api/diagnose?entity=" + encodeURIComponent(eid));
+  const d = await resp.json();
+  if (d.error) { box.innerHTML = "<span class='rot'>✗ " + d.error + "</span>"; return; }
+  let html = `<div><strong>${d.entity}</strong> ${d.name ? "(" + d.name + ")" : ""} · aktuell: ${d.state} ${d.einheit}</div>`;
+  html += "<table style='margin-top:6px'><tr><th>Monat</th><th>Delta (Zähler)</th><th>Summe (Tageswerte)</th><th>Mittelwert</th></tr>";
+  for (const m of d.monate) {
+    const f = v => v === null ? "<span class='muted'>–</span>" : v;
+    html += `<tr><td>${m.monat}</td><td>${f(m.delta)}</td><td>${f(m.summe)}</td><td>${f(m.mittel)}</td></tr>`;
+  }
+  html += "</table><div class='hint'>km und Netz/PV-Laden nutzen <em>Delta</em>, Benzinpreis den <em>Mittelwert</em>. Überall „–“ = keine Daten für diesen Zeitraum.</div>";
+  box.innerHTML = html;
+}
+
 async function importiereSettings() {
   const datei = document.getElementById("settings-datei").files[0];
   const status = document.getElementById("import-status");

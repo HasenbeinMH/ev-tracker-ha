@@ -457,6 +457,82 @@ def test_influx():
 
 
 # ─────────────────────────────────────────────────────────────
+#  Sensor-Suche und -Diagnose
+# ─────────────────────────────────────────────────────────────
+
+def _ha_client():
+    cfg = db.get_ha_settings()
+    if not (cfg.get("ha_url") and cfg.get("ha_token")):
+        return None
+    return HAClient(cfg["ha_url"], cfg["ha_token"])
+
+
+@app.get("/api/entities")
+def entities_suchen(q: str = ""):
+    """Sucht Entities in Home Assistant nach Namensbestandteil."""
+    client = _ha_client()
+    if client is None:
+        return JSONResponse({"error": "HA nicht konfiguriert."}, status_code=400)
+    try:
+        alle = client._get("/api/states")
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+
+    begriffe = [t for t in q.lower().split() if t]
+    treffer = []
+    for st in alle or []:
+        eid = st.get("entity_id", "")
+        attr = st.get("attributes", {})
+        name = attr.get("friendly_name", "")
+        heu = f"{eid} {name}".lower()
+        if begriffe and not all(t in heu for t in begriffe):
+            continue
+        treffer.append({
+            "entity_id": eid,
+            "name": name,
+            "state": st.get("state"),
+            "einheit": attr.get("unit_of_measurement", ""),
+            "klasse": attr.get("state_class", ""),
+        })
+    treffer.sort(key=lambda t: t["entity_id"])
+    return {"anzahl": len(treffer), "treffer": treffer[:60]}
+
+
+@app.get("/api/diagnose")
+def sensor_diagnose(entity: str, jahr: int = 0, monat: int = 0):
+    """Prueft einen Sensor: aktueller Wert + Monatswerte der letzten 3 Monate."""
+    client = _ha_client()
+    if client is None:
+        return JSONResponse({"error": "HA nicht konfiguriert."}, status_code=400)
+    if not entity.strip():
+        return JSONResponse({"error": "Keine Entity angegeben."}, status_code=400)
+
+    ergebnis = {"entity": entity, "state": None, "einheit": "", "monate": []}
+    try:
+        st = client._get(f"/api/states/{entity}")
+        ergebnis["state"] = st.get("state")
+        ergebnis["einheit"] = st.get("attributes", {}).get("unit_of_measurement", "")
+        ergebnis["name"] = st.get("attributes", {}).get("friendly_name", "")
+    except Exception as e:
+        return JSONResponse({"error": f"Entity nicht gefunden: {e}"}, status_code=400)
+
+    jetzt = datetime.now()
+    j, m = (jahr or jetzt.year), (monat or jetzt.month)
+    for _ in range(3):
+        delta = client.get_month_delta(entity, j, m)
+        summe = client.get_month_sum_from_daily(entity, j, m)
+        mittel = client.get_month_avg(entity, j, m)
+        ergebnis["monate"].append({
+            "monat": f"{MONATE[m-1][:3]} {j}",
+            "delta": delta, "summe": summe, "mittel": mittel,
+        })
+        m -= 1
+        if m < 1:
+            m, j = 12, j - 1
+    return ergebnis
+
+
+# ─────────────────────────────────────────────────────────────
 #  Rechnungsimport (PDF / Text)
 # ─────────────────────────────────────────────────────────────
 
@@ -630,16 +706,13 @@ def backup(token: str = ""):
 #  Einstellungen
 # ─────────────────────────────────────────────────────────────
 
+# Nur diese Sensoren werden tatsaechlich importiert.
 SENSOR_FELDER = [
-    ("ha_odometer",         "fn_odometer",         "Odometer (km)"),
-    ("ha_ev_battery",       None,                  "EV Batterie (%)"),
-    ("ha_ev_range",         None,                  "Reichweite (km)"),
-    ("ha_pv_production",    "fn_pv_production",    "PV Erzeugung (kWh)"),
-    ("ha_grid_consumption", "fn_grid_consumption", "Netzbezug (kWh)"),
-    ("ha_grid_export",      "fn_grid_export",      "Netzeinspeisung (kWh)"),
-    ("ha_wallbox_energy",   "fn_wallbox_energy",   "Wallbox geladen (kWh)"),
-    ("ha_tankerkoenig",     "fn_tankerkoenig",     "Tankerkönig E10 Sensor 1"),
-    ("ha_tankerkoenig_2",   "fn_tankerkoenig_2",   "Tankerkönig E10 Sensor 2"),
+    ("ha_odometer",       "fn_odometer",       "Kilometerstand (km)"),
+    ("ha_pv_production",  "fn_pv_production",  "PV ins Auto geladen (kWh)"),
+    ("ha_wallbox_energy", "fn_wallbox_energy", "Netz ins Auto geladen (kWh)"),
+    ("ha_tankerkoenig",   "fn_tankerkoenig",   "Benzinpreis Sensor 1 (€/L)"),
+    ("ha_tankerkoenig_2", "fn_tankerkoenig_2", "Benzinpreis Sensor 2 (€/L)"),
 ]
 
 
