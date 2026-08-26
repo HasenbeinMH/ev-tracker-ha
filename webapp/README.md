@@ -99,6 +99,32 @@ Ein Merker in der Datenbank verhindert Doppelversand; schlaegt der Versand fehl
 (z.B. Mailserver nicht erreichbar), wird es zur naechsten vollen Stunde erneut
 versucht.
 
+### Monatsabschluss: warten, bis die Daten vollstaendig sind
+
+Am 1. des Folgemonats sind die Daten meist noch nicht gepflegt. Deshalb prueft
+die App vor dem Versand, ob der Monat abschlussreif ist:
+
+- Sind gefahrene Kilometer und Benzinpreis erfasst?
+- Gibt es Ladevorgaenge?
+- **Wurde auswaerts geladen, ohne dass ein Beleg erfasst ist?**
+
+Der letzte Punkt kommt aus dem Batterieverlauf in Home Assistant: Steigt der
+Ladestand des Autos (Sensor „EV Batterie"), war das ein Ladevorgang. Jede
+erkannte Ladung wird mit den erfassten Ladevorgaengen abgeglichen (Datum +/- 1 Tag).
+Bleibt eine uebrig, wurde vermutlich auswaerts geladen und die Rechnung fehlt noch –
+der Bericht wartet dann.
+
+Sobald die Daten nachgetragen sind, geht der Bericht bei der naechsten stuendlichen
+Pruefung automatisch raus. Als Notbremse wird spaetestens am eingestellten Tag
+(Standard: 10.) trotzdem versendet, dann mit einem Hinweis auf die fehlenden Daten.
+
+Auf der Berichte-Seite zeigt **„Monat pruefen"** den Status jederzeit an,
+inklusive Liste der erkannten, aber nicht erfassten Ladungen mit geschaetzter kWh-Menge.
+
+Einstellbar: Akkukapazitaet (fuer die kWh-Schaetzung), ab wieviel Prozentpunkten
+Anstieg eine Ladung gilt (Standard 5), und die Wartefrist. Ohne Batteriesensor
+oder ohne HA-Verbindung meldet die Pruefung „unbekannt" und blockiert nicht.
+
 ### SMTP einrichten
 
 Zugangsdaten stehen unter **Berichte → Postausgang**:

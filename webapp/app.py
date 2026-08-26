@@ -22,6 +22,7 @@ from fastapi.templating import Jinja2Templates
 import database as db
 import berechnung
 import berichte
+import ladeerkennung
 import mailer
 import charts
 from ha_client import HAClient, InfluxClient
@@ -690,6 +691,40 @@ def berichte_seite(request: Request):
                   jahr=v_jahr, monat=v_monat)
 
 
+def _monat_pruefen(jahr: int, monat: int) -> dict:
+    """Ist der Monat abschlussreif? Prueft Datenbestand und offene Ladevorgaenge."""
+    import calendar
+    schluessel = f"{jahr}-{monat:02d}"
+    letzter = calendar.monthrange(jahr, monat)[1]
+
+    fahrten = {f["monat"]: f["km"] for f in db.get_fahrten_monate()}
+    preise = {b["monat"] for b in db.get_benzinpreise()}
+    lade = db.get_ladevorgaenge_zeitraum(f"{schluessel}-01", f"{schluessel}-{letzter:02d}")
+
+    offen = []
+    if not fahrten.get(schluessel):
+        offen.append("Gefahrene Kilometer fehlen")
+    if schluessel not in preise:
+        offen.append("Benzinpreis fehlt")
+    if not lade:
+        offen.append("Keine Ladevorgänge erfasst")
+
+    # Auswärts geladen, aber kein Beleg erfasst?
+    ladung = ladeerkennung.pruefe_monat(jahr, monat)
+    if ladung["status"] == "fehlend":
+        offen.append(ladung["meldung"])
+
+    return {"monat": schluessel, "bereit": not offen, "offen": offen,
+            "ladeerkennung": ladung,
+            "km": fahrten.get(schluessel), "ladevorgaenge": len(lade)}
+
+
+@app.get("/api/bericht/pruefung")
+def bericht_pruefung(jahr: int = 0, monat: int = 0):
+    jetzt = datetime.now()
+    return _monat_pruefen(jahr or jetzt.year, monat or jetzt.month)
+
+
 @app.get("/api/bericht/vorschau", response_class=HTMLResponse)
 def bericht_vorschau(typ: str = "monat", jahr: int = 0, monat: int = 0):
     jetzt = datetime.now()
@@ -715,12 +750,14 @@ async def einstellungen_mail(request: Request):
     form = await request.form()
     felder = ["mail_smtp_server", "mail_smtp_port", "mail_benutzer",
               "mail_passwort", "mail_absender", "mail_empfaenger",
-              "mail_uhrzeit"]
+              "mail_uhrzeit", "bericht_max_wartetage",
+              "akku_kapazitaet_kwh", "lade_min_anstieg"]
     werte = {k: str(form.get(k, "")).strip() for k in felder if k in form}
     # Leeres Passwortfeld = gespeichertes Passwort behalten
     if werte.get("mail_passwort") == "":
         werte.pop("mail_passwort", None)
-    for schalter in ["mail_aktiv", "mail_monat_aktiv", "mail_jahr_aktiv"]:
+    for schalter in ["mail_aktiv", "mail_monat_aktiv", "mail_jahr_aktiv",
+                     "bericht_warten"]:
         werte[schalter] = "1" if form.get(schalter) else "0"
     db.set_einstellungen(werte)
     return RedirectResponse("/berichte", status_code=303)
@@ -747,7 +784,23 @@ def _versand_pruefen():
                            else (jetzt.year - 1, 12))
         marke = f"{v_jahr}-{v_monat:02d}"
         if cfg.get("mail_letzter_monat") != marke:
+            hinweis = ""
+            if cfg.get("bericht_warten", "1") == "1":
+                try:
+                    wartetage = int(cfg.get("bericht_max_wartetage") or 10)
+                except ValueError:
+                    wartetage = 10
+                pruefung = _monat_pruefen(v_jahr, v_monat)
+                if not pruefung["bereit"]:
+                    if jetzt.day <= wartetage:
+                        print(f"[Bericht] {marke} noch nicht abschlussreif: "
+                              f"{'; '.join(pruefung['offen'])}", flush=True)
+                        return
+                    hinweis = ("Hinweis: Der Monat war beim Versand noch unvollständig – "
+                               + "; ".join(pruefung["offen"]))
             bericht = berichte.monatsbericht(v_jahr, v_monat)
+            if hinweis:
+                bericht["hinweis"] = hinweis
             ok, meldung = mailer.sende_mail(
                 betreff=f"EV Tracker – {bericht['titel']}",
                 html=berichte.als_html(bericht),

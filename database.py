@@ -418,6 +418,12 @@ MAIL_DEFAULTS = {
     # Merker, wann zuletzt versendet wurde (Format YYYY-MM bzw. YYYY)
     "mail_letzter_monat": "",
     "mail_letztes_jahr":  "",
+    # Auf vollstaendige Daten warten, bevor der Monatsbericht rausgeht
+    "bericht_warten":       "1",
+    "bericht_max_wartetage": "10",
+    # Ladeerkennung ueber den Batteriestand
+    "akku_kapazitaet_kwh":  "58.3",
+    "lade_min_anstieg":     "5",
 }
 
 

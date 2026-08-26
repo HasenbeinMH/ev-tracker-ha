@@ -7,6 +7,18 @@
   Anbieter-Aufstellung und Monatsverlauf.
 </p>
 
+<h2>Monatsabschluss</h2>
+<div class="card">
+  <div class="inline">
+    <button type="button" class="secondary" onclick="pruefen(this)">🔍 Monat prüfen</button>
+    <span class="hint" style="align-self:center; margin:0">
+      Prüft, ob km, Benzinpreis und alle Ladevorgänge erfasst sind – erkannte
+      Ladungen werden dafür mit dem Batterieverlauf aus Home Assistant abgeglichen.
+    </span>
+  </div>
+  <div id="pruef-ergebnis" style="margin-top:10px; font-size:13px"></div>
+</div>
+
 <h2>Vorschau &amp; Einzelversand</h2>
 <div class="card">
   <div class="inline">
@@ -63,6 +75,21 @@
       <input name="mail_uhrzeit" value="{{ mail.mail_uhrzeit }}" style="width:70px">
     </label>
   </div>
+  <div class="inline" style="margin-top:10px">
+    <label style="flex-direction:row; align-items:center; gap:6px; font-size:13px">
+      <input type="checkbox" name="bericht_warten" value="1" {{ "checked" if mail.bericht_warten == "1" }}>
+      Erst senden, wenn der Monat vollständig ist
+    </label>
+    <label class="feld">spätestens nach Tag
+      <input name="bericht_max_wartetage" value="{{ mail.bericht_max_wartetage }}" style="width:60px">
+    </label>
+    <label class="feld">Akkukapazität kWh
+      <input name="akku_kapazitaet_kwh" value="{{ mail.akku_kapazitaet_kwh }}" style="width:70px">
+    </label>
+    <label class="feld">Ladung ab % Anstieg
+      <input name="lade_min_anstieg" value="{{ mail.lade_min_anstieg }}" style="width:60px">
+    </label>
+  </div>
   <p class="hint">
     Der Monatsbericht geht am 1. des Folgemonats raus, der Jahresbericht am 1. Januar –
     jeweils ab der eingestellten Uhrzeit und nur einmal pro Periode.
@@ -101,6 +128,39 @@
 </form>
 
 <script>
+async function pruefen(btn) {
+  const box = document.getElementById("pruef-ergebnis");
+  const jahr = document.getElementById("jahr").value;
+  const monat = document.getElementById("monat").value;
+  btn.disabled = true;
+  box.innerHTML = "<span class='muted'>Prüfe – Batterieverlauf wird aus HA geholt …</span>";
+  try {
+    const r = await fetch(`/api/bericht/pruefung?jahr=${jahr}&monat=${monat}`);
+    const d = await r.json();
+    let html = d.bereit
+      ? `<span class="gruen"><strong>✓ ${d.monat} ist abschlussreif</strong></span>`
+      : `<span class="gelb"><strong>⚠ ${d.monat} ist noch nicht vollständig</strong></span>`;
+    if (d.offen && d.offen.length) {
+      html += "<ul style='margin:6px 0 0 18px; padding:0'>" +
+              d.offen.map(o => `<li>${o}</li>`).join("") + "</ul>";
+    }
+    const le = d.ladeerkennung || {};
+    html += `<div class="hint" style="margin-top:8px">Ladeerkennung: ${le.meldung || "–"}`;
+    if (le.fehlend && le.fehlend.length) {
+      html += "<table style='margin-top:6px'><tr><th>Datum</th><th>Batterie</th><th>geschätzt</th></tr>" +
+        le.fehlend.map(f =>
+          `<tr><td>${f.datum}</td><td>${f.von_prozent} % → ${f.bis_prozent} %</td>` +
+          `<td>~${f.kwh} kWh</td></tr>`).join("") + "</table>" +
+        "<div style='margin-top:6px'>Diese Ladevorgänge im Reiter " +
+        "<a href='/laden' style='color:#7a9ec4'>Laden</a> nachtragen.</div>";
+    }
+    box.innerHTML = html + "</div>";
+  } catch (e) {
+    box.innerHTML = "<span class='rot'>✗ " + e + "</span>";
+  }
+  btn.disabled = false;
+}
+
 function typWechsel() {
   const jahr = document.getElementById("typ").value === "jahr";
   document.getElementById("monat-feld").style.display = jahr ? "none" : "";

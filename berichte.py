@@ -227,7 +227,10 @@ def als_html(bericht: dict) -> str:
         f'<div class="kopf"><h1>&#9889; EV Tracker – {bericht["titel"]}</h1>'
         f'<div>Vergleich mit {bericht["vergleich_titel"]}</div></div>'
         '<div class="inhalt">'
-        f'<div style="margin:0 -1%">{kacheln}</div>'
+        + (f'<div style="background:#fff8e1;border:1px solid #e6d9a8;'
+           f'border-radius:6px;padding:10px 12px;font-size:12px;margin-bottom:14px">'
+           f'&#9888; {bericht["hinweis"]}</div>' if bericht.get("hinweis") else '')
+        + f'<div style="margin:0 -1%">{kacheln}</div>'
         f'<h2>Kennzahlen</h2><table>{tabelle}</table>'
         f'{anbieter_html}{monats_html}</div>'
         f'<div class="fuss">Automatisch erstellt vom EV Tracker am '
