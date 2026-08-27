@@ -103,6 +103,25 @@ zuletzt lief und was er geschrieben hat.
 Direkt im Anschluss prueft die App, ob ein Bericht faellig ist – so sind die
 Daten beim Berichtsversand auf dem aktuellen Stand.
 
+## Daten nachtraeglich korrigieren
+
+Ladevorgaenge lassen sich im Reiter **Laden** direkt in der Tabelle bearbeiten
+(Stift-Symbol): Datum, kWh, Preis, Anbieter, Leistung, Typ und Notiz. Das ist
+vor allem fuer automatisch importierte Werte nuetzlich, wenn ein Sensor etwas
+anderes gezaehlt hat als gedacht.
+
+Kilometer und Benzinpreise werden korrigiert, indem derselbe Monat oben im
+Formular erneut gespeichert wird – der alte Wert wird dabei ueberschrieben.
+
+## Verbrauchsauswertung
+
+Der Reiter **Fahrten** zeigt den Verbrauch in kWh/100 km:
+
+- niedrigster und hoechster Monatsverbrauch (mit Monatsangabe)
+- Durchschnitt nach Kilometern gewichtet (Gesamt-kWh / Gesamt-km)
+- einfaches Mittel ueber alle Monate
+- Monatstabelle mit Balken zum Vergleich
+
 ## Berichte per E-Mail
 
 Der Reiter **Berichte** erstellt Monats- und Jahresberichte mit Kennzahlen,

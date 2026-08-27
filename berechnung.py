@@ -49,3 +49,43 @@ def ersparnis_uebersicht() -> dict:
         "ersparnis_gesamt": ersparnis_kraft + kfz_steuer + thg_gesamt,
         "co2_gespart":      co2_kg(liter, cfg["co2_faktor_benzin"]),
     }
+
+
+def verbrauch_pro_monat() -> list:
+    """Verbrauch je Monat in kWh/100km, nur Monate mit km und Ladung.
+    Rueckgabe: [{"monat", "km", "kwh", "verbrauch"}] aufsteigend nach Monat."""
+    fahrten = {f["monat"]: f["km"] for f in db.get_fahrten_monate()}
+    kwh_je_monat = {}
+    for l in db.get_ladevorgaenge(limit=100000):
+        monat = (l["datum"] or "")[:7]
+        kwh_je_monat[monat] = kwh_je_monat.get(monat, 0.0) + l["menge_kwh"]
+
+    ergebnis = []
+    for monat in sorted(set(fahrten) & set(kwh_je_monat)):
+        km, kwh = fahrten[monat], kwh_je_monat[monat]
+        if km > 0 and kwh > 0:
+            ergebnis.append({"monat": monat, "km": km, "kwh": kwh,
+                             "verbrauch": kwh / km * 100})
+    return ergebnis
+
+
+def verbrauch_statistik() -> dict:
+    """Bester, schlechtester und durchschnittlicher Monatsverbrauch.
+
+    Der Durchschnitt ist gewichtet (Gesamt-kWh / Gesamt-km), damit lange Monate
+    staerker zaehlen als kurze.
+    """
+    monate = verbrauch_pro_monat()
+    if not monate:
+        return {"monate": [], "niedrigster": None, "hoechster": None,
+                "schnitt": None, "schnitt_ungewichtet": None}
+
+    gesamt_km = sum(m["km"] for m in monate)
+    gesamt_kwh = sum(m["kwh"] for m in monate)
+    return {
+        "monate": monate,
+        "niedrigster": min(monate, key=lambda m: m["verbrauch"]),
+        "hoechster": max(monate, key=lambda m: m["verbrauch"]),
+        "schnitt": gesamt_kwh / gesamt_km * 100 if gesamt_km else None,
+        "schnitt_ungewichtet": sum(m["verbrauch"] for m in monate) / len(monate),
+    }

@@ -221,6 +221,27 @@ def add_ladevorgang(datum, menge_kwh, preis_kwh, gesamtpreis, anbieter, ladeleis
         conn.commit()
 
 
+def get_ladevorgang(id):
+    """Einzelnen Ladevorgang laden (fuer die Bearbeitung)."""
+    with closing(get_connection()) as conn:
+        row = conn.execute("SELECT * FROM ladevorgang WHERE id=?", (id,)).fetchone()
+    return dict(row) if row else None
+
+
+def update_ladevorgang(id, datum, menge_kwh, preis_kwh, gesamtpreis, anbieter,
+                       ladeleistung_kw, ladetyp, notiz=""):
+    """Aendert einen bestehenden Ladevorgang."""
+    with closing(get_connection()) as conn:
+        conn.execute("""
+            UPDATE ladevorgang
+               SET datum=?, menge_kwh=?, preis_kwh=?, gesamtpreis=?, anbieter=?,
+                   ladeleistung_kw=?, ladetyp=?, notiz=?
+             WHERE id=?
+        """, (datum, menge_kwh, preis_kwh, gesamtpreis, anbieter,
+              ladeleistung_kw, ladetyp, notiz, id))
+        conn.commit()
+
+
 def ladevorgang_exists(datum, menge_kwh, anbieter):
     """Duplikat-Schutz beim Import: existiert bereits ein Vorgang mit
     gleichem Datum, Anbieter und (nahezu) gleicher kWh-Menge?"""

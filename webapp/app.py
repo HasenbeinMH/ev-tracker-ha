@@ -116,7 +116,8 @@ def fahrten(request: Request):
         liter = berechnung.benzin_liter(d["km"], cfg["benziner_verbrauch"])
         rows.append({**d, "liter": liter,
                      "co2": berechnung.co2_kg(liter, cfg["co2_faktor_benzin"])})
-    return render(request, "fahrten.html", rows=rows, aktiv="fahrten")
+    return render(request, "fahrten.html", rows=rows, aktiv="fahrten",
+                  verbrauch=berechnung.verbrauch_statistik())
 
 
 @app.post("/fahrten")
@@ -162,6 +163,24 @@ def laden_add(datum: str = Form(...), kwh: str = Form(...),
         db.add_ladevorgang(datum, kwh_v, ct_v, gesamt_v, anbieter,
                            parse_de(leistung), ladetyp, notiz)
     return RedirectResponse("/laden", status_code=303)
+
+
+@app.post("/laden/update")
+def laden_update(id: int = Form(...), datum: str = Form(...), kwh: str = Form(...),
+                 preis_kwh: str = Form(""), gesamt: str = Form(""),
+                 anbieter: str = Form(...), leistung: str = Form(""),
+                 ladetyp: str = Form("AC"), notiz: str = Form("")):
+    kwh_v = parse_de(kwh)
+    ct_v = parse_de(preis_kwh)
+    gesamt_v = parse_de(gesamt)
+    if gesamt_v is None and kwh_v is not None and ct_v is not None:
+        gesamt_v = round(kwh_v * ct_v / 100, 2)
+    if kwh_v is None or kwh_v <= 0 or gesamt_v is None:
+        return JSONResponse({"error": "kWh und Gesamtpreis muessen Zahlen sein."},
+                            status_code=400)
+    db.update_ladevorgang(id, datum, kwh_v, ct_v, gesamt_v, anbieter,
+                          parse_de(leistung), ladetyp, notiz)
+    return {"ok": True}
 
 
 @app.post("/laden/delete")

@@ -16,6 +16,56 @@
   </form>
 </div>
 
+{% if verbrauch.niedrigster %}
+<h2>Verbrauchsauswertung (kWh/100 km)</h2>
+<div class="statgrid">
+  <div class="stat">
+    <span class="wert gruen">{{ "%.1f"|format(verbrauch.niedrigster.verbrauch)|replace(".", ",") }}</span>
+    <span class="einheit">kWh/100km</span>
+    <div class="label">Niedrigster – {{ verbrauch.niedrigster.monat }}</div>
+  </div>
+  <div class="stat">
+    <span class="wert" style="color:#c47a3a">{{ "%.1f"|format(verbrauch.hoechster.verbrauch)|replace(".", ",") }}</span>
+    <span class="einheit">kWh/100km</span>
+    <div class="label">Höchster – {{ verbrauch.hoechster.monat }}</div>
+  </div>
+  <div class="stat">
+    <span class="wert">{{ "%.1f"|format(verbrauch.schnitt)|replace(".", ",") }}</span>
+    <span class="einheit">kWh/100km</span>
+    <div class="label">Durchschnitt (nach km gewichtet)</div>
+  </div>
+  <div class="stat">
+    <span class="wert" style="color:#7a6aaa">{{ "%.1f"|format(verbrauch.schnitt_ungewichtet)|replace(".", ",") }}</span>
+    <span class="einheit">kWh/100km</span>
+    <div class="label">Mittel der {{ verbrauch.monate|length }} Monate</div>
+  </div>
+</div>
+<div class="tabelle-scroll"><table>
+  <tr><th>Monat</th><th>km</th><th>kWh</th><th>Verbrauch</th><th></th></tr>
+  {% for m in verbrauch.monate|reverse %}
+  <tr>
+    <td>{{ m.monat }}</td>
+    <td>{{ "{:,.0f}".format(m.km).replace(",", ".") }}</td>
+    <td>{{ "%.1f"|format(m.kwh)|replace(".", ",") }}</td>
+    <td{% if m.monat == verbrauch.niedrigster.monat %} class="gruen"
+       {% elif m.monat == verbrauch.hoechster.monat %} style="color:#c47a3a"{% endif %}>
+      {{ "%.1f"|format(m.verbrauch)|replace(".", ",") }} kWh/100km
+    </td>
+    <td class="muted" style="width:40%">
+      {% set breite = (m.verbrauch / verbrauch.hoechster.verbrauch * 100)|round|int %}
+      <div style="background:#2d6a9f; height:8px; border-radius:4px; width:{{ breite }}%"></div>
+    </td>
+  </tr>
+  {% endfor %}
+</table></div>
+<p class="hint">
+  Verbrauch = geladene kWh des Monats ÷ gefahrene km × 100. Auffällig hohe Werte
+  entstehen, wenn ein Ladevorgang erfasst ist, der nicht ins Auto ging
+  (z.B. gesamte PV-Erzeugung statt Auto-Ladung).
+</p>
+{% endif %}
+
+<h2>Monatsübersicht</h2>
 <div class="tabelle-scroll"><table>
   <tr><th>Monat</th><th>km</th><th>Benzin-Äquivalent</th><th>CO2-Ersparnis</th><th></th></tr>
   {% for d in rows %}

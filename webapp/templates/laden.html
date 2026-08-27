@@ -42,7 +42,11 @@
 <div class="tabelle-scroll"><table>
   <tr><th>Datum</th><th>kWh</th><th>ct/kWh</th><th>Gesamt €</th><th>Anbieter</th><th>kW</th><th>Typ</th><th>Notiz</th><th></th></tr>
   {% for d in rows %}
-  <tr>
+  <tr data-id="{{ d.id }}"
+      data-datum="{{ d.datum }}" data-kwh="{{ d.menge_kwh }}"
+      data-ct="{{ d.preis_kwh or '' }}" data-gesamt="{{ d.gesamtpreis }}"
+      data-anbieter="{{ d.anbieter }}" data-kw="{{ d.ladeleistung_kw or '' }}"
+      data-typ="{{ d.ladetyp }}" data-notiz="{{ d.notiz or '' }}">
     <td>{{ d.datum }}</td>
     <td>{{ "%.2f"|format(d.menge_kwh)|replace(".", ",") }}</td>
     <td>{{ ("%.2f"|format(d.preis_kwh)|replace(".", ",")) if d.preis_kwh else "—" }}</td>
@@ -51,8 +55,10 @@
     <td>{{ ("%.0f"|format(d.ladeleistung_kw)) if d.ladeleistung_kw else "—" }}</td>
     <td>{{ d.ladetyp }}</td>
     <td class="muted">{{ d.notiz or "" }}</td>
-    <td>
-      <form method="post" action="/laden/delete"
+    <td style="white-space:nowrap">
+      <button class="secondary" style="padding:4px 9px; font-size:12px"
+              onclick="bearbeiten(this)" title="Bearbeiten">✏</button>
+      <form method="post" action="/laden/delete" style="display:inline"
             onsubmit="return confirm('Ladevorgang vom {{ d.datum }} löschen?')">
         <input type="hidden" name="id" value="{{ d.id }}">
         <button class="danger">🗑</button>
@@ -63,6 +69,42 @@
 </table></div>
 
 <script>
+const ANBIETER = [{% for a in anbieter %}"{{ a.name }}"{{ "," if not loop.last }}{% endfor %}];
+
+function bearbeiten(btn) {
+  const tr = btn.closest("tr");
+  if (tr.dataset.bearbeitung === "1") return;
+  tr.dataset.bearbeitung = "1";
+  const d = tr.dataset;
+  const optionen = ANBIETER.map(a =>
+      `<option${a === d.anbieter ? " selected" : ""}>${a}</option>`).join("");
+  tr.innerHTML =
+    `<td><input value="${d.datum}" data-f="datum" style="width:110px"></td>` +
+    `<td><input value="${d.kwh}" data-f="kwh" style="width:70px"></td>` +
+    `<td><input value="${d.ct}" data-f="preis_kwh" style="width:65px"></td>` +
+    `<td><input value="${d.gesamt}" data-f="gesamt" style="width:70px"></td>` +
+    `<td><select data-f="anbieter">${optionen}</select></td>` +
+    `<td><input value="${d.kw}" data-f="leistung" style="width:50px"></td>` +
+    `<td><select data-f="ladetyp"><option${d.typ === "AC" ? " selected" : ""}>AC</option>` +
+    `<option${d.typ === "DC" ? " selected" : ""}>DC</option></select></td>` +
+    `<td><input value="${d.notiz}" data-f="notiz" class="breit"></td>` +
+    `<td style="white-space:nowrap">` +
+    `<button onclick="speichern(this)" style="padding:4px 9px; font-size:12px">💾</button> ` +
+    `<button class="secondary" onclick="location.reload()" ` +
+    `style="padding:4px 9px; font-size:12px">✕</button></td>`;
+}
+
+async function speichern(btn) {
+  const tr = btn.closest("tr");
+  const fd = new FormData();
+  fd.append("id", tr.dataset.id);
+  tr.querySelectorAll("[data-f]").forEach(el => fd.append(el.dataset.f, el.value.trim()));
+  const r = await fetch("/laden/update", { method: "POST", body: fd });
+  const d = await r.json().catch(() => ({}));
+  if (d.error) { alert(d.error); return; }
+  location.reload();
+}
+
 // Gesamtpreis automatisch berechnen
 function calcGesamt() {
   const kwh = parseFloat(document.getElementById("inp-kwh").value.replace(",", "."));
