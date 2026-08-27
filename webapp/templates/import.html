@@ -8,6 +8,22 @@
 </p>
 
 <div class="card">
+  <div class="inline">
+    <strong style="align-self:center; font-size:13px">🌙 Nächtlicher Abruf</strong>
+    <button type="button" class="secondary" onclick="autoImport(this)">▶ Jetzt ausführen</button>
+    <span id="auto-meldung" style="align-self:center; font-size:12px"></span>
+  </div>
+  <p class="hint" style="margin-bottom:0">
+    Jede Nacht um 0:00 Uhr holt die App km, geladene kWh und Benzinpreis für den
+    laufenden Monat und den Vormonat automatisch aus Home Assistant – bereits
+    importierte Werte werden aktualisiert, manuelle Einträge bleiben unberührt.
+    {% if mail.auto_import != "1" %}<br><span class="gelb">Derzeit deaktiviert
+    (Schalter im Reiter Berichte).</span>{% endif %}
+    {% if mail.auto_import_letzter %}<br>Zuletzt: {{ mail.auto_import_letzter }}{% endif %}
+  </p>
+</div>
+
+<div class="card">
   <form class="inline" id="import-form">
     <label class="feld">Von Monat
       <select name="von_monat">
@@ -56,6 +72,21 @@
 <div class="fehlerbox" id="fehler" style="display:none"></div>
 
 <script>
+async function autoImport(btn) {
+  const m = document.getElementById("auto-meldung");
+  btn.disabled = true;
+  m.textContent = "Hole Daten aus Home Assistant …"; m.className = "muted";
+  try {
+    const r = await fetch("/api/import/auto", { method: "POST" });
+    const d = await r.json();
+    m.textContent = "✓ " + (d.protokoll || []).join(" | ");
+    m.className = "gruen";
+  } catch (e) {
+    m.textContent = "✗ " + e; m.className = "rot";
+  }
+  btn.disabled = false;
+}
+
 let jobId = null;
 let pollTimer = null;
 let vorschauRows = [];

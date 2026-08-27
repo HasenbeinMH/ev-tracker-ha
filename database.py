@@ -251,6 +251,39 @@ def get_lade_gesamt():
     return row["kwh"] or 0.0, row["kosten"] or 0.0
 
 
+AUTO_NOTIZ = "Auto-Import HA"
+
+
+def upsert_auto_ladevorgang(datum, menge_kwh, preis_kwh, gesamtpreis, anbieter):
+    """Legt einen automatisch importierten Ladevorgang an oder aktualisiert ihn.
+
+    Erkennungsmerkmal ist Datum + Anbieter + die Notiz `AUTO_NOTIZ`; manuell
+    erfasste Vorgaenge bleiben davon unberuehrt.
+    Rueckgabe: "neu", "aktualisiert" oder "unveraendert".
+    """
+    with closing(get_connection()) as conn:
+        row = conn.execute(
+            """SELECT id, menge_kwh FROM ladevorgang
+               WHERE datum=? AND anbieter=? AND notiz LIKE ?""",
+            (datum, anbieter, AUTO_NOTIZ + "%")).fetchone()
+        if row:
+            if abs((row["menge_kwh"] or 0) - menge_kwh) < 0.01:
+                return "unveraendert"
+            conn.execute(
+                """UPDATE ladevorgang
+                   SET menge_kwh=?, preis_kwh=?, gesamtpreis=? WHERE id=?""",
+                (menge_kwh, preis_kwh, gesamtpreis, row["id"]))
+            conn.commit()
+            return "aktualisiert"
+        conn.execute(
+            """INSERT INTO ladevorgang (datum, menge_kwh, preis_kwh, gesamtpreis,
+                                        anbieter, ladeleistung_kw, ladetyp, notiz)
+               VALUES (?,?,?,?,?,?,?,?)""",
+            (datum, menge_kwh, preis_kwh, gesamtpreis, anbieter, 11, "AC", AUTO_NOTIZ))
+        conn.commit()
+        return "neu"
+
+
 def get_ladevorgaenge_zeitraum(von: str, bis: str):
     """Ladevorgaenge zwischen zwei Datumsangaben (YYYY-MM-DD, inklusive)."""
     with closing(get_connection()) as conn:
@@ -421,6 +454,9 @@ MAIL_DEFAULTS = {
     # Auf vollstaendige Daten warten, bevor der Monatsbericht rausgeht
     "bericht_warten":       "1",
     "bericht_max_wartetage": "10",
+    # Naechtlicher Datenabruf aus Home Assistant
+    "auto_import":         "1",
+    "auto_import_letzter": "",
     # Ladeerkennung ueber den Batteriestand
     "akku_kapazitaet_kwh":  "58.3",
     "lade_min_anstieg":     "5",

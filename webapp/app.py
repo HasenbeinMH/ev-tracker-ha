@@ -373,6 +373,7 @@ def import_page(request: Request):
     cfg = db.get_ha_settings()
     now = datetime.now()
     return render(request, "import.html", cfg=cfg, aktiv="import",
+                  mail=db.get_mail_settings(),
                   jahre=list(range(2023, now.year + 2)), jahr=now.year,
                   monat=now.month)
 
@@ -757,13 +758,84 @@ async def einstellungen_mail(request: Request):
     if werte.get("mail_passwort") == "":
         werte.pop("mail_passwort", None)
     for schalter in ["mail_aktiv", "mail_monat_aktiv", "mail_jahr_aktiv",
-                     "bericht_warten"]:
+                     "bericht_warten", "auto_import"]:
         werte[schalter] = "1" if form.get(schalter) else "0"
     db.set_einstellungen(werte)
     return RedirectResponse("/berichte", status_code=303)
 
 
 # ── Zeitplan: prueft stuendlich, ob ein Bericht faellig ist ──────────────────
+
+# ── Naechtlicher Datenabruf aus Home Assistant ──────────────────────────────
+
+def _auto_import(monate: list | None = None) -> list:
+    """Holt die aktuellen Monatswerte aus HA/InfluxDB und schreibt sie fort.
+
+    Standardmaessig laufender Monat und Vormonat – so wird der Vormonat noch
+    vervollstaendigt, falls spaet Daten nachkommen.
+    """
+    cfg = db.get_ha_settings()
+    use_influx = cfg.get("datasource", "ha") == "influxdb"
+    client = None
+    if cfg.get("ha_url") and cfg.get("ha_token"):
+        client = HAClient(cfg["ha_url"], cfg["ha_token"])
+    ic = None
+    if use_influx:
+        try:
+            ic = _make_influx_client(cfg)
+        except Exception as e:
+            return [f"InfluxDB nicht nutzbar: {e}"]
+    if client is None and ic is None:
+        return ["Keine Datenquelle konfiguriert"]
+
+    if monate is None:
+        jetzt = datetime.now()
+        vorher = ((jetzt.year, jetzt.month - 1) if jetzt.month > 1
+                  else (jetzt.year - 1, 12))
+        monate = [vorher, (jetzt.year, jetzt.month)]
+
+    pv_ct = db.get_einstellung("pv_preis_ct") or 13.0
+    tarif = db.get_aktueller_stromtarif()
+    netz_ct = tarif["preis_kwh"] if tarif else 30.0
+
+    protokoll = []
+    for jahr, monat in monate:
+        schluessel = f"{jahr}-{monat:02d}"
+        try:
+            werte = _fetch_monat(client, ic, cfg, use_influx, jahr, monat)
+        except Exception as e:
+            protokoll.append(f"{schluessel}: Abruf fehlgeschlagen ({e})")
+            continue
+
+        teile = []
+        if werte.get("km"):
+            db.set_fahrt_monat(schluessel, round(werte["km"], 1))
+            teile.append(f"{werte['km']:.0f} km")
+        if werte.get("benzin"):
+            db.set_benzinpreis(schluessel, round(werte["benzin"], 3))
+            teile.append(f"{werte['benzin']:.3f} €/L")
+        for key, anbieter, ct in [("pv", "Privat – PV", pv_ct),
+                                  ("wallbox", "Privat – Netzbezug", netz_ct)]:
+            kwh = werte.get(key)
+            if kwh:
+                ergebnis = db.upsert_auto_ladevorgang(
+                    f"{schluessel}-01", round(kwh, 3), ct,
+                    round(kwh * ct / 100, 2), anbieter)
+                if ergebnis != "unveraendert":
+                    teile.append(f"{key} {kwh:.1f} kWh ({ergebnis})")
+        protokoll.append(f"{schluessel}: " + (", ".join(teile) if teile
+                                              else "keine neuen Werte"))
+    return protokoll
+
+
+@app.post("/api/import/auto")
+def auto_import_jetzt():
+    """Naechtlichen Abruf manuell ausloesen."""
+    protokoll = _auto_import()
+    db.set_einstellung("auto_import_letzter",
+                       f"{datetime.now():%Y-%m-%d %H:%M} · " + " | ".join(protokoll))
+    return {"ok": True, "protokoll": protokoll}
+
 
 def _versand_pruefen():
     """Verschickt faellige Berichte. Merker verhindert Doppelversand."""
@@ -841,6 +913,18 @@ def _zeitplan_schleife():
         schlafen = max(60, (ziel - jetzt).total_seconds())
         print(f"[Bericht] Naechste Pruefung: {ziel:%d.%m.%Y %H:%M}", flush=True)
         time.sleep(schlafen)
+        # 1. Daten aus Home Assistant nachziehen
+        try:
+            if db.get_mail_settings().get("auto_import", "1") == "1":
+                protokoll = _auto_import()
+                db.set_einstellung(
+                    "auto_import_letzter",
+                    f"{datetime.now():%Y-%m-%d %H:%M} · " + " | ".join(protokoll))
+                for zeile in protokoll:
+                    print(f"[Auto-Import] {zeile}", flush=True)
+        except Exception as e:
+            print(f"[Auto-Import] Fehler: {e}", flush=True)
+        # 2. Bericht pruefen und ggf. versenden
         try:
             _versand_pruefen()
         except Exception as e:

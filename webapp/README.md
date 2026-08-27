@@ -83,6 +83,26 @@ python settings_tool.py export meine_einstellungen.json
 python settings_tool.py import meine_einstellungen.json
 ```
 
+## Naechtlicher Datenabruf
+
+Jede Nacht um 0:00 Uhr holt die App selbsttaetig die aktuellen Werte aus Home
+Assistant bzw. InfluxDB – fuer den **laufenden Monat und den Vormonat**:
+
+- gefahrene Kilometer und Benzinpreis (werden fortgeschrieben)
+- ins Auto geladene kWh aus PV und Netz (als Ladevorgang je Monat)
+
+Wiederholte Laeufe legen keine Duplikate an: Ein automatisch erzeugter
+Ladevorgang wird erkannt (Notiz „Auto-Import HA") und aktualisiert, sobald sich
+der Wert aendert. **Manuell erfasste Ladevorgaenge bleiben unberuehrt** – das
+gilt besonders fuer auswaerts geladene Rechnungen, die du selbst eintraegst.
+
+Der Abruf laesst sich im Reiter Berichte abschalten und im Reiter HA Import
+jederzeit von Hand ausloesen („Jetzt ausfuehren"). Dort steht auch, wann er
+zuletzt lief und was er geschrieben hat.
+
+Direkt im Anschluss prueft die App, ob ein Bericht faellig ist – so sind die
+Daten beim Berichtsversand auf dem aktuellen Stand.
+
 ## Berichte per E-Mail
 
 Der Reiter **Berichte** erstellt Monats- und Jahresberichte mit Kennzahlen,

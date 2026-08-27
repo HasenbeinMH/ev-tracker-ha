@@ -77,6 +77,10 @@
   </div>
   <div class="inline" style="margin-top:10px">
     <label style="flex-direction:row; align-items:center; gap:6px; font-size:13px">
+      <input type="checkbox" name="auto_import" value="1" {{ "checked" if mail.auto_import == "1" }}>
+      Nachts Daten aus Home Assistant holen
+    </label>
+    <label style="flex-direction:row; align-items:center; gap:6px; font-size:13px">
       <input type="checkbox" name="bericht_warten" value="1" {{ "checked" if mail.bericht_warten == "1" }}>
       Erst senden, wenn der Monat vollständig ist
     </label>
