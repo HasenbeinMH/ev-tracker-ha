@@ -412,7 +412,7 @@ MAIL_DEFAULTS = {
     "mail_passwort":     "",
     "mail_absender":     "",
     "mail_empfaenger":   "",
-    "mail_uhrzeit":      "08:00",
+    "mail_uhrzeit":      "00:00",
     "mail_monat_aktiv":  "1",
     "mail_jahr_aktiv":   "1",
     # Merker, wann zuletzt versendet wurde (Format YYYY-MM bzw. YYYY)

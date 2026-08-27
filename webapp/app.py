@@ -771,12 +771,6 @@ def _versand_pruefen():
     if cfg.get("mail_aktiv") != "1":
         return
     jetzt = datetime.now()
-    try:
-        stunde = int((cfg.get("mail_uhrzeit") or "08:00").split(":")[0])
-    except ValueError:
-        stunde = 8
-    if jetzt.hour < stunde:
-        return
 
     # Monatsbericht: ab dem 1. des Folgemonats, einmal pro Monat
     if cfg.get("mail_monat_aktiv") == "1":
@@ -823,14 +817,34 @@ def _versand_pruefen():
             print(f"[Bericht] Jahr {vorjahr}: {meldung}", flush=True)
 
 
+def _naechster_lauf(jetzt: datetime) -> datetime:
+    """Naechster Zeitpunkt der eingestellten Uhrzeit (Standard 00:00)."""
+    from datetime import timedelta
+    roh = (db.get_mail_settings().get("mail_uhrzeit") or "00:00").strip()
+    try:
+        stunde, minute = (int(t) for t in roh.split(":")[:2])
+    except ValueError:
+        stunde, minute = 0, 0
+    ziel = jetzt.replace(hour=min(stunde, 23), minute=min(minute, 59),
+                         second=0, microsecond=0)
+    if ziel <= jetzt:
+        ziel += timedelta(days=1)
+    return ziel
+
+
 def _zeitplan_schleife():
+    """Prueft einmal taeglich zur eingestellten Uhrzeit, ob ein Bericht faellig ist."""
     import time
     while True:
+        jetzt = datetime.now()
+        ziel = _naechster_lauf(jetzt)
+        schlafen = max(60, (ziel - jetzt).total_seconds())
+        print(f"[Bericht] Naechste Pruefung: {ziel:%d.%m.%Y %H:%M}", flush=True)
+        time.sleep(schlafen)
         try:
             _versand_pruefen()
         except Exception as e:
             print(f"[Bericht] Fehler im Zeitplan: {e}", flush=True)
-        time.sleep(3600)
 
 
 threading.Thread(target=_zeitplan_schleife, daemon=True).start()

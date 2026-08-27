@@ -91,13 +91,14 @@ Monatsverlauf.
 
 - **Vorschau** – Bericht im Browser ansehen, bevor er verschickt wird
 - **Jetzt senden** – Einzelversand an einen beliebigen Empfaenger
-- **Automatischer Versand** – Monatsbericht am 1. des Folgemonats,
-  Jahresbericht am 1. Januar, jeweils ab einstellbarer Uhrzeit
+- **Automatischer Versand** – Monatsbericht ab dem 1. des Folgemonats,
+  Jahresbericht ab dem 1. Januar
 
-Der Zeitplan laeuft als Hintergrund-Thread in der App und prueft stuendlich.
-Ein Merker in der Datenbank verhindert Doppelversand; schlaegt der Versand fehl
-(z.B. Mailserver nicht erreichbar), wird es zur naechsten vollen Stunde erneut
-versucht.
+Der Zeitplan laeuft als Hintergrund-Thread und prueft **einmal taeglich** zum
+eingestellten Zeitpunkt (Standard 00:00), ob ein Bericht faellig und der Zeitraum
+vollstaendig ist. Ein Merker in der Datenbank verhindert Doppelversand; schlaegt
+der Versand fehl (z.B. Mailserver nicht erreichbar), wird es beim naechsten
+naechtlichen Lauf erneut versucht.
 
 ### Monatsabschluss: warten, bis die Daten vollstaendig sind
 
@@ -114,8 +115,8 @@ erkannte Ladung wird mit den erfassten Ladevorgaengen abgeglichen (Datum +/- 1 T
 Bleibt eine uebrig, wurde vermutlich auswaerts geladen und die Rechnung fehlt noch –
 der Bericht wartet dann.
 
-Sobald die Daten nachgetragen sind, geht der Bericht bei der naechsten stuendlichen
-Pruefung automatisch raus. Als Notbremse wird spaetestens am eingestellten Tag
+Sobald die Daten nachgetragen sind, geht der Bericht beim naechsten naechtlichen
+Lauf automatisch raus. Als Notbremse wird spaetestens am eingestellten Tag
 (Standard: 10.) trotzdem versendet, dann mit einem Hinweis auf die fehlenden Daten.
 
 Auf der Berichte-Seite zeigt **„Monat pruefen"** den Status jederzeit an,
