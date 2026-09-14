@@ -23,6 +23,18 @@
   </p>
 </div>
 
+<h2>Protokoll</h2>
+<div class="card">
+  <div class="inline" style="margin-bottom:10px">
+    <button type="button" class="secondary" onclick="ladeImportLog()">🔄 Aktualisieren</button>
+    <span class="hint" style="align-self:center; margin:0">
+      Jeder Abruf mit Zeitstempel: gelesene Sensorwerte und was davon übernommen wurde.
+    </span>
+  </div>
+  <pre id="import-log" style="margin:0; max-height:300px; overflow:auto; font-size:11px;
+       color:var(--text); white-space:pre-wrap">…</pre>
+</div>
+
 <div class="card">
   <form class="inline" id="import-form">
     <label class="feld">Von Monat
@@ -72,6 +84,20 @@
 <div class="fehlerbox" id="fehler" style="display:none"></div>
 
 <script>
+async function ladeImportLog() {
+  const feld = document.getElementById("import-log");
+  try {
+    const r = await fetch("/api/import/log");
+    const d = await r.json();
+    feld.textContent = d.zeilen && d.zeilen.length
+      ? d.zeilen.join("\n")
+      : (d.meldung || "Kein Protokoll");
+    feld.scrollTop = feld.scrollHeight;   // neuester Eintrag sichtbar
+  } catch (e) {
+    feld.textContent = "Protokoll nicht abrufbar: " + e;
+  }
+}
+
 async function autoImport(btn) {
   const m = document.getElementById("auto-meldung");
   btn.disabled = true;
@@ -85,6 +111,7 @@ async function autoImport(btn) {
     m.textContent = "✗ " + e; m.className = "rot";
   }
   btn.disabled = false;
+  ladeImportLog();
 }
 
 let jobId = null;
@@ -153,6 +180,7 @@ document.getElementById("btn-apply").addEventListener("click", async () => {
   log.textContent = data.log.length ? data.log.join("\n") : "Keine Werte übernommen.";
   log.style.display = "block";
   document.getElementById("vorschau").style.display = "none";
+  ladeImportLog();
 });
 
 function zeigeFehler(text) {
@@ -160,5 +188,7 @@ function zeigeFehler(text) {
   box.textContent = text;
   box.style.display = "block";
 }
+
+ladeImportLog();
 </script>
 {% endblock %}

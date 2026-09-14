@@ -30,6 +30,9 @@ from pdf_parser import parse_rechnung_pdf, parse_rechnung_text
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
+# Datenverzeichnis: hier liegen Datenbank, Backup- und Importprotokoll
+DATA_DIR = os.path.dirname(db.DB_PATH) or "."
+IMPORT_LOG_DATEI = os.path.join(DATA_DIR, "import.log")
 
 MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni",
           "Juli", "August", "September", "Oktober", "November", "Dezember"]
@@ -101,6 +104,15 @@ def dashboard(request: Request):
         "thg": charts.chart_thg(thg, large=True),
     }
     return render(request, "dashboard.html", kz=kz, charts=charts_html, aktiv="dashboard")
+
+
+# ─────────────────────────────────────────────────────────────
+#  Hilfe / Handbuch
+# ─────────────────────────────────────────────────────────────
+
+@app.get("/hilfe", response_class=HTMLResponse)
+def hilfe(request: Request):
+    return render(request, "hilfe.html", aktiv="hilfe")
 
 
 # ─────────────────────────────────────────────────────────────
@@ -457,6 +469,8 @@ def import_apply(payload: dict):
                     teile.append(f"{key} {kwh:.1f} kWh")
         if teile:
             log.append(f"{monat}: " + ", ".join(teile))
+    _log_import([f"Zeitraum-Import übernommen ({len(log)} Monat(e))"] + log,
+                trenner=True)
     return {"log": log}
 
 
@@ -787,14 +801,63 @@ async def einstellungen_mail(request: Request):
 
 # ── Naechtlicher Datenabruf aus Home Assistant ──────────────────────────────
 
-def _auto_import(monate: list | None = None) -> list:
+def _log_import(zeilen: list, trenner: bool = False):
+    """Haengt Zeilen mit Zeitstempel an das Importprotokoll an.
+
+    Analog zu backup.log, damit sich nachvollziehen laesst, wann der Abruf lief
+    und welche Werte dabei aus Home Assistant kamen.
+    """
+    if not zeilen:
+        return
+    stempel = f"{datetime.now():%Y-%m-%d %H:%M:%S}"
+    try:
+        with open(IMPORT_LOG_DATEI, "a", encoding="utf-8") as f:
+            if trenner:
+                f.write(f"[{stempel}] " + "=" * 50 + "\n")
+            for zeile in zeilen:
+                f.write(f"[{stempel}] {zeile}\n")
+    except Exception as e:
+        print(f"[Auto-Import] Protokoll nicht schreibbar: {e}", flush=True)
+        return
+    _log_kuerzen()
+
+
+def _log_kuerzen(grenze: int = 4000, behalten: int = 2000):
+    """Haelt das Protokoll klein: ab `grenze` Zeilen bleiben die letzten `behalten`."""
+    try:
+        if not os.path.exists(IMPORT_LOG_DATEI):
+            return
+        with open(IMPORT_LOG_DATEI, encoding="utf-8", errors="replace") as f:
+            alle = f.readlines()
+        if len(alle) <= grenze:
+            return
+        with open(IMPORT_LOG_DATEI, "w", encoding="utf-8") as f:
+            f.writelines(alle[-behalten:])
+    except Exception:
+        pass
+
+
+def _rohwerte_text(werte: dict) -> str:
+    """Gelesene Sensorwerte lesbar machen – '—' fuer nicht gelieferte Werte."""
+    namen = [("km", "km"), ("pv", "PV kWh"), ("wallbox", "Netz kWh"),
+             ("benzin", "€/L")]
+    return " · ".join(
+        f"{label}={werte.get(key) if werte.get(key) is not None else '—'}"
+        for key, label in namen)
+
+
+def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> list:
     """Holt die aktuellen Monatswerte aus HA/InfluxDB und schreibt sie fort.
 
     Standardmaessig laufender Monat und Vormonat – so wird der Vormonat noch
     vervollstaendigt, falls spaet Daten nachkommen.
+    Jeder Lauf wird in import.log protokolliert.
     """
     cfg = db.get_ha_settings()
     use_influx = cfg.get("datasource", "ha") == "influxdb"
+    quelle_text = "InfluxDB (Fallback HA-API)" if use_influx else "Home Assistant API"
+    _log_import([f"Abruf gestartet ({quelle}) · Quelle: {quelle_text}"], trenner=True)
+
     client = None
     if cfg.get("ha_url") and cfg.get("ha_token"):
         client = HAClient(cfg["ha_url"], cfg["ha_token"])
@@ -803,8 +866,10 @@ def _auto_import(monate: list | None = None) -> list:
         try:
             ic = _make_influx_client(cfg)
         except Exception as e:
+            _log_import([f"✗ InfluxDB nicht nutzbar: {e}", "Abruf abgebrochen"])
             return [f"InfluxDB nicht nutzbar: {e}"]
     if client is None and ic is None:
+        _log_import(["✗ Keine Datenquelle konfiguriert", "Abruf abgebrochen"])
         return ["Keine Datenquelle konfiguriert"]
 
     if monate is None:
@@ -818,13 +883,18 @@ def _auto_import(monate: list | None = None) -> list:
     netz_ct = tarif["preis_kwh"] if tarif else 30.0
 
     protokoll = []
+    fehler = 0
     for jahr, monat in monate:
         schluessel = f"{jahr}-{monat:02d}"
         try:
             werte = _fetch_monat(client, ic, cfg, use_influx, jahr, monat)
         except Exception as e:
+            fehler += 1
+            _log_import([f"✗ {schluessel}: Abruf fehlgeschlagen ({e})"])
             protokoll.append(f"{schluessel}: Abruf fehlgeschlagen ({e})")
             continue
+
+        _log_import([f"{schluessel}: gelesen {_rohwerte_text(werte)}"])
 
         teile = []
         if werte.get("km"):
@@ -842,18 +912,34 @@ def _auto_import(monate: list | None = None) -> list:
                     round(kwh * ct / 100, 2), anbieter)
                 if ergebnis != "unveraendert":
                     teile.append(f"{key} {kwh:.1f} kWh ({ergebnis})")
-        protokoll.append(f"{schluessel}: " + (", ".join(teile) if teile
-                                              else "keine neuen Werte"))
+        zeile = ", ".join(teile) if teile else "keine neuen Werte"
+        _log_import([f"{schluessel}: übernommen {zeile}"])
+        protokoll.append(f"{schluessel}: {zeile}")
+
+    _log_import([f"Abruf beendet – {len(monate)} Monat(e), {fehler} Fehler"])
     return protokoll
 
 
 @app.post("/api/import/auto")
 def auto_import_jetzt():
     """Naechtlichen Abruf manuell ausloesen."""
-    protokoll = _auto_import()
+    protokoll = _auto_import(quelle="manuell")
     db.set_einstellung("auto_import_letzter",
                        f"{datetime.now():%Y-%m-%d %H:%M} · " + " | ".join(protokoll))
     return {"ok": True, "protokoll": protokoll}
+
+
+@app.get("/api/import/log")
+def import_log(zeilen: int = 200):
+    """Letzte Zeilen des Importprotokolls (neueste zuletzt)."""
+    if not os.path.exists(IMPORT_LOG_DATEI):
+        return {"zeilen": [], "meldung": "Noch kein Abruf protokolliert"}
+    try:
+        with open(IMPORT_LOG_DATEI, encoding="utf-8", errors="replace") as f:
+            alle = f.readlines()
+        return {"zeilen": [z.rstrip() for z in alle[-zeilen:]]}
+    except Exception as e:
+        return {"zeilen": [], "meldung": str(e)}
 
 
 def _versand_pruefen():
@@ -958,7 +1044,6 @@ threading.Thread(target=_zeitplan_schleife, daemon=True).start()
 # ─────────────────────────────────────────────────────────────
 
 BACKUP_TOKEN = os.environ.get("EV_TRACKER_BACKUP_TOKEN", "")
-DATA_DIR = os.path.dirname(db.DB_PATH) or "."
 STATUS_DATEI = os.path.join(DATA_DIR, "backup_status.json")
 LOG_DATEI = os.path.join(DATA_DIR, "backup.log")
 TRIGGER_DATEI = os.path.join(DATA_DIR, ".backup_now")
