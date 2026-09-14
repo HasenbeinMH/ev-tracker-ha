@@ -25,6 +25,7 @@ import berichte
 import ladeerkennung
 import mailer
 import charts
+from version import VERSION, CHANGELOG
 from ha_client import HAClient, InfluxClient
 from pdf_parser import parse_rechnung_pdf, parse_rechnung_text
 
@@ -56,6 +57,7 @@ app = FastAPI(title="EV Tracker")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 templates.env.globals["MONATE"] = MONATE
+templates.env.globals["VERSION"] = VERSION
 
 
 def render(request, template, **ctx):
@@ -112,7 +114,7 @@ def dashboard(request: Request):
 
 @app.get("/hilfe", response_class=HTMLResponse)
 def hilfe(request: Request):
-    return render(request, "hilfe.html", aktiv="hilfe")
+    return render(request, "hilfe.html", aktiv="hilfe", changelog=CHANGELOG)
 
 
 # ─────────────────────────────────────────────────────────────

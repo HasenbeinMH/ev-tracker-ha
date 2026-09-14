@@ -1,0 +1,82 @@
+# -*- coding: utf-8 -*-
+"""
+Version und Aenderungslog des EV Trackers.
+
+Einzige Quelle fuer beides: Die Versionsnummer steht in der Navigationsleiste,
+der Aenderungslog auf der Hilfeseite unter /hilfe#changelog.
+
+Pflege bei einer neuen Version:
+  1. VERSION erhoehen (schema: major.minor.patch)
+  2. Oben in CHANGELOG einen neuen Eintrag einfuegen - neueste Version zuerst
+  3. Datum im Format YYYY-MM-DD
+
+Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
+patch = Fehlerbehebung oder Detailverbesserung.
+"""
+
+VERSION = "1.4.0"
+
+# Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
+CHANGELOG = [
+    {
+        "version": "1.4.0",
+        "datum": "2026-09-14",
+        "titel": "Handbuch und Importprotokoll",
+        "aenderungen": [
+            "Neue Seite „Hilfe“: Bedienung aller Seiten und Herleitung jeder Kennzahl",
+            "Protokoll fuer den HA-Datenabruf auf der Seite „HA Import“ – "
+            "je Monat gelesene Sensorwerte und uebernommene Werte mit Zeitstempel",
+            "Der Zeitraum-Import wird ebenfalls protokolliert",
+            "Versionsnummer und Aenderungslog in der App sichtbar",
+        ],
+    },
+    {
+        "version": "1.3.0",
+        "datum": "2026-08-27",
+        "titel": "Naechtlicher Datenabruf",
+        "aenderungen": [
+            "Automatischer Abruf aus Home Assistant fuer laufenden Monat und Vormonat",
+            "Ladevorgaenge nachtraeglich bearbeitbar",
+            "Verbrauchsauswertung auf der Seite „Fahrten“ (kWh/100 km)",
+            "Berichts-Zeitplan laeuft einmal taeglich statt stuendlich",
+        ],
+    },
+    {
+        "version": "1.2.0",
+        "datum": "2026-08-26",
+        "titel": "Berichte per E-Mail",
+        "aenderungen": [
+            "Monats- und Jahresberichte mit Vergleich zur Vorperiode",
+            "Automatischer Versand mit Vorschau und Einzelversand",
+            "Monatsabschluss-Pruefung: Bericht wartet auf vollstaendige Daten",
+            "Ladeerkennung ueber den Batterieverlauf – meldet fehlende Belege",
+        ],
+    },
+    {
+        "version": "1.1.0",
+        "datum": "2026-08-25",
+        "titel": "Backup und Einstellungsverwaltung",
+        "aenderungen": [
+            "Taegliches Backup der Datenbank per rclone nach OneDrive",
+            "Backup-Seite mit Status, Protokoll und Wiederherstellung",
+            "Einstellungen als JSON-Datei sichern und laden",
+            "Sensor-Konfiguration auf die tatsaechlich importierten Sensoren reduziert",
+            "Fehlendes http:// in URLs wird automatisch ergaenzt",
+            "Deutsches Zahlenformat in den Diagrammen",
+        ],
+    },
+    {
+        "version": "1.0.0",
+        "datum": "2026-08-04",
+        "titel": "Erste Web-Version",
+        "aenderungen": [
+            "Web-Oberflaeche fuer Docker – loest die Desktop-App ab",
+            "Dashboard, Fahrten, Laden, Benzin, Stromtarif, Steuer & THG",
+            "Datenimport aus Home Assistant und InfluxDB",
+            "Rechnungsimport aus PDF und Text",
+        ],
+    },
+]
+
+# Hinweis: Die Versionsnummern bis 1.3.0 wurden nachtraeglich aus der
+# Git-Historie abgeleitet – zu diesen Staenden gab es noch keine Zaehlung.

@@ -35,6 +35,15 @@
   .hb td code{white-space:nowrap}
   .hb-oben{font-size:11px;color:var(--muted);text-decoration:none;float:right;font-weight:400}
   .hb-oben:hover{color:var(--blau-hell)}
+  .hb-rel{border-left:2px solid var(--border2);padding-left:16px;margin:0 0 4px}
+  .hb-rel-kopf{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+  .hb-ver{background:var(--blau);color:#fff;border-radius:4px;padding:1px 8px;
+          font-size:11px;font-weight:700;font-family:Consolas,monospace}
+  .hb-ver.alt{background:var(--border2);color:var(--muted)}
+  .hb-rel-titel{font-size:13px;font-weight:600;color:var(--text)}
+  .hb-rel-datum{font-size:11px;color:var(--muted)}
+  .hb-rel ul{margin:0 0 14px;padding-left:18px}
+  .hb-rel li{font-size:12.5px;color:var(--text)}
 </style>
 
 <div class="hb">
@@ -61,6 +70,7 @@
   <a href="#sensorwerte">Sensorwerte aus HA</a>
   <a href="#annahmen">Annahmen &amp; Grenzen</a>
   <a href="#faq">FAQ</a>
+  <a href="#changelog">Änderungslog</a>
 </div>
 
 <h2 id="start">Schnellstart <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
@@ -317,5 +327,21 @@
 <p>Benzin-Äquivalent und CO2 werden nie gespeichert, sondern bei jeder Anzeige neu gerechnet. Der Parameter wirkt deshalb auf die gesamte Historie.</p>
 <h3>Wo liegen meine Daten?</h3>
 <p>In einer SQLite-Datei im Datenverzeichnis des Containers, gesichert per Cronjob nach OneDrive. Über die Seite Backup lässt sie sich jederzeit herunterladen.</p>
+
+<h2 id="changelog">Änderungslog <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<p class="hint">Installierte Version: <b>v{{ VERSION }}</b> – die Nummer steht auch rechts in der Navigationsleiste.</p>
+{% for rel in changelog %}
+<div class="hb-rel">
+  <div class="hb-rel-kopf">
+    <span class="hb-ver {{ '' if loop.first else 'alt' }}">v{{ rel.version }}</span>
+    <span class="hb-rel-titel">{{ rel.titel }}</span>
+    <span class="hb-rel-datum">{{ rel.datum }}{{ ' · aktuell' if loop.first else '' }}</span>
+  </div>
+  <ul>
+    {% for a in rel.aenderungen %}<li>{{ a }}</li>{% endfor %}
+  </ul>
+</div>
+{% endfor %}
+<div class="hb-info"><b>Zählweise:</b> Die erste Stelle steht für große Umbauten, die zweite für neue Funktionen, die dritte für Fehlerbehebungen. Die Nummern bis v1.3.0 wurden nachträglich aus der Git-Historie abgeleitet – vorher gab es noch keine Zählung.</div>
 </div>
 {% endblock %}

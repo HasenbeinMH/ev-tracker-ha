@@ -25,6 +25,7 @@
       ('hilfe', '/hilfe', '❓ Hilfe')] %}
     <a href="{{ url }}" class="{{ 'aktiv' if aktiv == key else '' }}">{{ label }}</a>
   {% endfor %}
+  <a href="/hilfe#changelog" class="version" title="Änderungslog anzeigen">v{{ VERSION }}</a>
 </nav>
 <main>
 {% block inhalt %}{% endblock %}
