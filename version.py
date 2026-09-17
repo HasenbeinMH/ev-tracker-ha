@@ -24,6 +24,7 @@ CHANGELOG = [
         "titel": "Neues Dashboard",
         "aenderungen": [
             "Kopfzeile im Dashboard mit Fahrzeugbild und der Gesamt-Ersparnis",
+            "Kennzahl-Kacheln mit Symbol in der jeweiligen Kennzahlfarbe",
             "Charts auf Apache ECharts umgestellt: Farbverlaeufe, ruhigere Achsen, "
             "kompakte Legende und ein Tooltip mit allen Werten eines Monats",
             "Kraftstoffkosten-Vergleich als liegende Balken",

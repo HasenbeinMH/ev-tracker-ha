@@ -107,12 +107,38 @@ h2 { font-size: 15px; color: var(--blau-hell); margin: 22px 0 10px; }
 .statgrid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
 .stat {
   flex: 1 1 150px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px 14px;
 }
-.stat .wert { font-size: 20px; font-weight: 700; }
+/* Icon-Vorrat selbst nie anzeigen – eingebunden wird er ueber <use> */
+.ikonen { display: none; }
+.stat-icon {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  color: var(--farbe);
+  background: #22252f;                                     /* Rueckfall */
+  background: color-mix(in srgb, var(--farbe) 15%, transparent);
+}
+.stat-icon svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.stat .wert { font-size: 20px; font-weight: 700; color: var(--farbe); }
 .stat .einheit { font-size: 11px; color: var(--muted); margin-left: 3px; }
 .stat .label { font-size: 10px; color: #4b5263; margin-top: 3px; }
 .chartgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
