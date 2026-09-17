@@ -39,19 +39,9 @@ MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni",
           "Juli", "August", "September", "Oktober", "November", "Dezember"]
 
 
-def _ensure_plotly_js():
-    path = os.path.join(STATIC_DIR, "plotly.min.js")
-    if not os.path.exists(path):
-        import plotly.offline
-        os.makedirs(STATIC_DIR, exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(plotly.offline.get_plotlyjs())
-
-
 db.init_db()
 db.init_ha_settings()
 db.init_mail_settings()
-_ensure_plotly_js()
 
 app = FastAPI(title="EV Tracker")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -92,18 +82,18 @@ def dashboard(request: Request):
 
     charts_html = {
         "monatlich": charts.chart_monatliche_ersparnis(
-            fahrten, benzin, lade, benziner_l=cfg["benziner_verbrauch"], large=True),
+            fahrten, benzin, lade, benziner_l=cfg["benziner_verbrauch"]),
         "kosten": charts.chart_kosten_vergleich(
-            kz["benzin_kosten"], kz["strom_kosten"], large=True),
+            kz["benzin_kosten"], kz["strom_kosten"]),
         "co2": charts.chart_co2_ersparnis(
             fahrten, benziner_l=cfg["benziner_verbrauch"],
-            co2_faktor=cfg["co2_faktor_benzin"], large=True),
+            co2_faktor=cfg["co2_faktor_benzin"]),
         "verbrauch": charts.chart_verbrauch_100km(
-            lade, fahrten, ev_ref=cfg["ev_verbrauch"], large=True),
-        "benzin": charts.chart_benzinpreise(benzin, large=True),
-        "strom": charts.chart_stromtarif(stromtarife, large=True),
-        "anbieter": charts.chart_anbieter_verteilung(lade, large=True),
-        "thg": charts.chart_thg(thg, large=True),
+            lade, fahrten, ev_ref=cfg["ev_verbrauch"]),
+        "benzin": charts.chart_benzinpreise(benzin),
+        "strom": charts.chart_stromtarif(stromtarife),
+        "anbieter": charts.chart_anbieter_verteilung(lade),
+        "thg": charts.chart_thg(thg),
     }
     return render(request, "dashboard.html", kz=kz, charts=charts_html, aktiv="dashboard")
 

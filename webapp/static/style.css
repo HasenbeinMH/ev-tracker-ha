@@ -58,6 +58,52 @@ h2 { font-size: 15px; color: var(--blau-hell); margin: 22px 0 10px; }
   padding: 14px 16px;
   margin-bottom: 16px;
 }
+/* Dashboard-Kopfzeile mit Autobild. Das Bild hat einen dunklen Hintergrund (#14171e);
+   die Maske blendet seine Raender aus, damit keine Bildkante sichtbar wird. */
+.hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 210px;
+  margin-bottom: 18px;
+  padding: 0 0 0 28px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 55% 90% at 78% 0%, rgba(196, 110, 58, 0.22), transparent 70%),
+    radial-gradient(ellipse 40% 70% at 95% 100%, rgba(90, 70, 150, 0.18), transparent 70%),
+    linear-gradient(100deg, #161a24 0%, #14171e 55%, #14171e 100%);
+}
+.hero-text { position: relative; z-index: 1; padding: 22px 0; }
+.hero-kicker {
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #c4804a;
+  font-weight: 600;
+}
+.hero h1 { font-size: 24px; color: #e8eaf0; margin: 2px 0 14px; }
+.hero-wert { font-size: 32px; font-weight: 700; color: var(--gruen); line-height: 1.1; }
+.hero-wert span { font-size: 16px; color: var(--muted); font-weight: 400; }
+.hero-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.hero-auto {
+  display: block;
+  height: 230px;
+  width: auto;
+  max-width: 60%;
+  object-fit: contain;
+  margin: -10px 8px -10px 0;
+  -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 72%, transparent 100%);
+          mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 72%, transparent 100%);
+}
+@media (max-width: 640px) {
+  .hero { flex-direction: column; align-items: stretch; padding: 0 16px; }
+  .hero-text { padding: 18px 0 0; }
+  .hero-auto { height: auto; width: 100%; max-width: 100%; margin: 0; }
+}
 .statgrid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
 .stat {
   flex: 1 1 150px;
@@ -76,6 +122,14 @@ h2 { font-size: 15px; color: var(--blau-hell); margin: 22px 0 10px; }
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
+}
+.echart { height: 320px; padding: 6px 8px 8px; }
+.echart-leer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 13px;
 }
 .chart .titel {
   font-size: 12px;

@@ -108,7 +108,7 @@ def main():
 
     print()
     print("Testdaten erfolgreich angelegt!")
-    print("Starte jetzt start.bat")
+    print("Web-App starten bzw. Container neu starten, dann im Browser oeffnen.")
 
 
 if __name__ == "__main__":

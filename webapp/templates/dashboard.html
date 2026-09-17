@@ -1,7 +1,15 @@
 {% extends "base.html" %}
 {% block titel %}Dashboard{% endblock %}
 {% block inhalt %}
-<h1>Übersicht</h1>
+<section class="hero">
+  <div class="hero-text">
+    <div class="hero-kicker">Kia EV3</div>
+    <h1>Übersicht</h1>
+    <div class="hero-wert">{{ "%.2f"|format(kz.ersparnis_gesamt)|replace(".", ",") }}<span> €</span></div>
+    <div class="hero-label">Gesamt-Ersparnis gegenüber einem Benziner</div>
+  </div>
+  <img class="hero-auto" src="/static/Auto.jpg" alt="Kia EV3">
+</section>
 
 <div class="statgrid">
   <div class="stat"><span class="wert" style="color:#4a90c4">{{ "{:,.0f}".format(kz.gesamt_km).replace(",", ".") }}</span><span class="einheit">km</span><div class="label">Gesamtstrecke</div></div>
@@ -25,8 +33,11 @@
       ('thg', 'THG-Quote Erträge')] %}
   <div class="chart">
     <div class="titel">{{ titel }}</div>
-    {{ charts[key] | safe }}
+    <div class="echart" data-echart="opt-{{ key }}"></div>
+    <script type="application/json" id="opt-{{ key }}">{{ charts[key] | tojson }}</script>
   </div>
   {% endfor %}
 </div>
+<script src="/static/echarts.min.js"></script>
+<script src="/static/charts.js"></script>
 {% endblock %}

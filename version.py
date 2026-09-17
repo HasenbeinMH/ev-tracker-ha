@@ -14,10 +14,25 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "1.5.0",
+        "datum": "2026-09-17",
+        "titel": "Neues Dashboard",
+        "aenderungen": [
+            "Kopfzeile im Dashboard mit Fahrzeugbild und der Gesamt-Ersparnis",
+            "Charts auf Apache ECharts umgestellt: Farbverlaeufe, ruhigere Achsen, "
+            "kompakte Legende und ein Tooltip mit allen Werten eines Monats",
+            "Kraftstoffkosten-Vergleich als liegende Balken",
+            "Benzinpreis-Chart beginnt nicht mehr bei 0 – Schwankungen sind wieder erkennbar",
+            "Stromtarif-Verlauf reicht bis heute, da der letzte Tarif weiter gilt",
+            "Datums- und Zahlenangaben in den Charts durchgaengig im deutschen Format",
+            "Die Desktop-App (PyQt6) wurde entfernt; die Web-App loest sie vollstaendig ab",
+        ],
+    },
     {
         "version": "1.4.0",
         "datum": "2026-09-14",
