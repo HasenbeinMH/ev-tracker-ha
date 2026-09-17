@@ -14,10 +14,18 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "1.5.1"
+VERSION = "1.5.2"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "1.5.2",
+        "datum": "2026-09-17",
+        "titel": "Schieberegler frueher sichtbar",
+        "aenderungen": [
+            "Der Zeitraum-Regler erscheint schon ab drei Monaten statt erst ab sechs",
+        ],
+    },
     {
         "version": "1.5.1",
         "datum": "2026-09-17",

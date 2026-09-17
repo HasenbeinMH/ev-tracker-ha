@@ -92,8 +92,8 @@ def _achse_kategorie(werte, formatter="fn:monat", **extra):
 
 
 def _zoom(anzahl, kategorie=True):
-    """Schieberegler zum Eingrenzen des Zeitraums – erst ab 6 Werten sinnvoll."""
-    if anzahl < 6:
+    """Schieberegler zum Eingrenzen des Zeitraums – ab 3 Werten gibt es etwas einzugrenzen."""
+    if anzahl < 3:
         return None
     regler = {
         "type": "slider",
