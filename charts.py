@@ -91,6 +91,54 @@ def _achse_kategorie(werte, formatter="fn:monat", **extra):
     return achse
 
 
+def _zoom(anzahl, kategorie=True):
+    """Schieberegler zum Eingrenzen des Zeitraums – erst ab 6 Werten sinnvoll."""
+    if anzahl < 6:
+        return None
+    regler = {
+        "type": "slider",
+        "height": 16,
+        "bottom": 6,
+        "borderColor": COLORS["border"],
+        "backgroundColor": "rgba(0,0,0,0)",
+        "fillerColor": _rgba(COLORS["blue"], 0.10),
+        "handleStyle": {"color": COLORS["border"], "borderColor": COLORS["subtext"]},
+        "moveHandleStyle": {"color": COLORS["border"]},
+        "dataBackground": {"lineStyle": {"color": COLORS["border"]},
+                           "areaStyle": {"color": _rgba(COLORS["subtext"], 0.15)}},
+        "selectedDataBackground": {"lineStyle": {"color": COLORS["subtext"]},
+                                   "areaStyle": {"color": _rgba(COLORS["subtext"], 0.25)}},
+        "textStyle": {"color": COLORS["subtext"], "fontSize": 10},
+        "brushSelect": False,
+    }
+    if kategorie:
+        regler["labelFormatter"] = "fn:zoomMonat"
+    else:
+        regler["labelFormatter"] = "fn:zoomDatum"
+    return [regler]
+
+
+def _werkzeuge(umschalten=True):
+    """Kleine Werkzeugleiste oben rechts: Darstellung wechseln, Ansicht zuruecksetzen."""
+    werkzeug = {
+        "show": True,
+        "right": 6,
+        "top": 2,
+        "itemSize": 13,
+        "itemGap": 10,
+        "iconStyle": {"borderColor": COLORS["subtext"]},
+        "emphasis": {"iconStyle": {"borderColor": COLORS["text"]}},
+        "feature": {"restore": {"title": "Zurücksetzen"}},
+    }
+    if umschalten:
+        werkzeug["feature"] = {
+            "magicType": {"type": ["bar", "line"],
+                          "title": {"bar": "Als Balken", "line": "Als Linie"}},
+            "restore": {"title": "Zurücksetzen"},
+        }
+    return werkzeug
+
+
 def _basis(**extra):
     opt = {
         "backgroundColor": "transparent",
@@ -146,6 +194,18 @@ def _balken(name, farbe, werte, formatter, **extra):
     return serie
 
 
+def _bedienung(opt, anzahl, umschalten=True, kategorie=True):
+    """Werkzeugleiste und – ab genug Werten – den Zeitraum-Schieberegler ergaenzen."""
+    regler = _zoom(anzahl, kategorie)
+    if regler:
+        opt["dataZoom"] = regler
+        opt["grid"]["bottom"] = 32
+    # Ohne Umschalter und ohne Regler gaebe es nichts zurueckzusetzen
+    if umschalten or regler:
+        opt["toolbox"] = _werkzeuge(umschalten)
+    return opt
+
+
 def _leer(msg):
     return {"leer": msg}
 
@@ -197,7 +257,7 @@ def chart_monatliche_ersparnis(fahrten_daten, benzinpreise_daten, lade_daten,
                                      "shadowStyle": {"color": "rgba(255,255,255,0.03)"}}
     opt["yAxis"][0]["alignTicks"] = True
     opt["yAxis"][1]["alignTicks"] = True
-    return opt
+    return _bedienung(opt, len(monate))
 
 
 def chart_kosten_vergleich(benzin_kosten, strom_kosten):
@@ -252,7 +312,7 @@ def chart_co2_ersparnis(fahrten_daten, benziner_l=7.0, co2_faktor=2.37):
                                      "shadowStyle": {"color": "rgba(255,255,255,0.03)"}}
     opt["yAxis"][0]["alignTicks"] = True
     opt["yAxis"][1]["alignTicks"] = True
-    return opt
+    return _bedienung(opt, len(monate))
 
 
 def chart_verbrauch_100km(lade_daten, fahrten_daten, ev_ref=15.0):
@@ -283,12 +343,13 @@ def chart_verbrauch_100km(lade_daten, fahrten_daten, ev_ref=15.0):
                   "borderRadius": 3},
         "data": [{"yAxis": ev_ref}],
     }
-    return _basis(
-        grid={"left": 8, "right": 16, "top": 20, "bottom": 8, "containLabel": True},
+    opt = _basis(
+        grid={"left": 8, "right": 26, "top": 26, "bottom": 8, "containLabel": True},
         xAxis=_achse_kategorie(monate, boundaryGap=False),
         yAxis=_achse_wert(min=0),
         series=[serie],
     )
+    return _bedienung(opt, len(monate))
 
 
 def chart_benzinpreise(daten):
@@ -298,13 +359,14 @@ def chart_benzinpreise(daten):
                    "fn:euroLiter", flaeche=True)
     # Flaeche bis zum unteren Achsenende statt bis 0 – sonst wirken Schwankungen platt
     serie["areaStyle"]["origin"] = "start"
-    return _basis(
-        grid={"left": 8, "right": 16, "top": 20, "bottom": 8, "containLabel": True},
+    opt = _basis(
+        grid={"left": 8, "right": 26, "top": 26, "bottom": 8, "containLabel": True},
         xAxis=_achse_kategorie([d["monat"] for d in daten], boundaryGap=False),
         yAxis=_achse_wert(scale=True, axisLabel={"color": COLORS["subtext"],
                                                  "fontSize": 10, "formatter": "fn:zahl2"}),
         series=[serie],
     )
+    return _bedienung(opt, len(daten))
 
 
 def chart_stromtarif(daten):
@@ -324,7 +386,7 @@ def chart_stromtarif(daten):
                       "fontSize": 10, "formatter": "fn:labelCt"}
     serie["areaStyle"] = _flaeche("teal")
     serie["areaStyle"]["origin"] = "start"
-    return _basis(
+    opt = _basis(
         grid={"left": 8, "right": 24, "top": 28, "bottom": 8, "containLabel": True},
         xAxis={
             "type": "time",
@@ -339,6 +401,8 @@ def chart_stromtarif(daten):
                                                  "fontSize": 10, "formatter": "fn:zahl1"}),
         series=[serie],
     )
+    # Treppenlinie: Umschalten auf Balken ergaebe keinen Sinn, nur Zeitraum-Regler
+    return _bedienung(opt, len(punkte), umschalten=False, kategorie=False)
 
 
 def chart_anbieter_verteilung(lade_daten):
@@ -393,4 +457,4 @@ def chart_thg(thg_daten):
     )
     opt["tooltip"]["axisPointer"] = {"type": "shadow",
                                      "shadowStyle": {"color": "rgba(255,255,255,0.03)"}}
-    return opt
+    return _bedienung(opt, len(thg_daten))

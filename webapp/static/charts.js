@@ -29,6 +29,9 @@
     monat: (v) => { const s = String(v); return s.slice(5, 7) + "/" + s.slice(0, 4); },
     datumMonat: (v) => { const d = alsDatum(v); return zweistellig(d.getMonth() + 1) + "/" + d.getFullYear(); },
     datum: (v) => { const d = alsDatum(v); return zweistellig(d.getDate()) + "." + zweistellig(d.getMonth() + 1) + "." + d.getFullYear(); },
+    // Schieberegler: bei Kategorien kommt der Wert als zweites Argument
+    zoomMonat: (v, s) => FORMAT.monat(s || v),
+    zoomDatum: (v, s) => FORMAT.datum(s || v),
     labelEuro0: (p) => f0.format(p.value) + " €",
     labelCt: (p) => f1.format(Array.isArray(p.value) ? p.value[1] : p.value),
     labelRef: (p) => f1.format(p.value) + " kWh Ref.",
