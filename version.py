@@ -14,19 +14,28 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "1.5.0"
+VERSION = "1.5.1"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "1.5.1",
+        "datum": "2026-09-17",
+        "titel": "Bedienelemente und Feinschliff",
+        "aenderungen": [
+            "Schieberegler unter den Charts zum Eingrenzen des Zeitraums",
+            "Umschalter Balken/Linie und Zuruecksetzen oben rechts im Chart",
+            "Kennzahl-Kacheln mit Symbol in der jeweiligen Kennzahlfarbe",
+            "Kopfzeile nur noch halb so hoch",
+            "Gesamt-Ersparnis steht nur noch in der Kopfzeile, nicht mehr als Kachel",
+        ],
+    },
     {
         "version": "1.5.0",
         "datum": "2026-09-17",
         "titel": "Neues Dashboard",
         "aenderungen": [
             "Kopfzeile im Dashboard mit Fahrzeugbild und der Gesamt-Ersparnis",
-            "Kennzahl-Kacheln mit Symbol in der jeweiligen Kennzahlfarbe",
-            "Schieberegler unter den Charts zum Eingrenzen des Zeitraums",
-            "Umschalter Balken/Linie und Zuruecksetzen oben rechts im Chart",
             "Charts auf Apache ECharts umgestellt: Farbverlaeufe, ruhigere Achsen, "
             "kompakte Legende und ein Tooltip mit allen Werten eines Monats",
             "Kraftstoffkosten-Vergleich als liegende Balken",
