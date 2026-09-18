@@ -104,17 +104,82 @@ h2 { font-size: 15px; color: var(--blau-hell); margin: 22px 0 10px; }
   .hero-text { padding: 14px 0 0; }
   .hero-auto { height: auto; width: 100%; max-width: 100%; margin: 0; }
 }
+/* Zeitraumauswahl im Dashboard */
+.zeitraum-leiste {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin: -6px 0 14px;
+}
+.zeitraum-leiste label { font-size: 12px; color: var(--blau-hell); font-weight: 600; }
+.zeitraum-leiste select {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  min-width: 190px;
+}
+.zeitraum-leiste select:focus { outline: none; border-color: var(--blau); }
+.zeitraum-zurueck { font-size: 12px; color: var(--muted); text-decoration: none; }
+.zeitraum-zurueck:hover { color: var(--text); }
+/* Statistikseite */
+.vorlagen { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; font-size: 12px; }
+.vorlage {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  padding: 4px 12px;
+  color: var(--blau-hell);
+  text-decoration: none;
+}
+.vorlage:hover { background: #232734; color: var(--text); }
+.vorlage.aktiv { border-color: var(--blau); color: var(--text); }
+.vergleich-wahl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 16px; }
+.vergleich-wahl select {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  min-width: 170px;
+}
+.secondary-link { font-size: 12px; color: var(--muted); text-decoration: none; margin-left: 4px; }
+.secondary-link:hover { color: var(--text); }
+.punkt { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.punkt-a { background: #4a90c4; }
+.punkt-b { background: #c47a3a; }
+table.vergleich th, table.vergleich td.zahl { text-align: right; white-space: nowrap; }
+table.vergleich th:first-child { text-align: left; }
+table.vergleich .klein { font-size: 10px; font-weight: 400; }
+td.besser { color: var(--gruen); }
+td.schlechter { color: #c47a3a; }
+.kennzahl-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.kennzahl-tabs .tab {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+.kennzahl-tabs .tab:hover { color: var(--text); background: #232734; }
+.kennzahl-tabs .tab.aktiv { color: var(--text); border-color: var(--blau); background: #1f2635; }
 .statgrid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
 .stat {
   flex: 1 1 150px;
-  display: flex;
-  align-items: center;
-  gap: 11px;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px 14px;
 }
+/* Kachel mit Symbol (Dashboard). Farbe kommt aus --farbe; Kacheln ohne Symbol
+   auf anderen Seiten bleiben unveraendert. */
+.stat.mit-icon { display: flex; align-items: center; gap: 11px; }
+.stat.mit-icon .wert { color: var(--farbe); }
 /* Icon-Vorrat selbst nie anzeigen – eingebunden wird er ueber <use> */
 .ikonen { display: none; }
 .stat-icon {
@@ -138,7 +203,7 @@ h2 { font-size: 15px; color: var(--blau-hell); margin: 22px 0 10px; }
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.stat .wert { font-size: 20px; font-weight: 700; color: var(--farbe); }
+.stat .wert { font-size: 20px; font-weight: 700; }
 .stat .einheit { font-size: 11px; color: var(--muted); margin-left: 3px; }
 .stat .label { font-size: 10px; color: #4b5263; margin-top: 3px; }
 .chartgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

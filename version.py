@@ -14,10 +14,42 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "1.5.2"
+VERSION = "1.7.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "1.7.0",
+        "datum": "2026-09-18",
+        "titel": "Zeitraumauswahl und Statistikseite",
+        "aenderungen": [
+            "Zeitraumauswahl im Dashboard fuer alle Kennzahlen und Charts: gesamt, Jahre, "
+            "Quartale des laufenden und letzten Jahres, Sommer (Apr–Sep) und Winter (Okt–Mär)",
+            "Die gewaehlte Ansicht wird im Browser gemerkt",
+            "KFZ-Steuer in Teilzeitraeumen anteilig nach Monaten",
+            "Neue Seite Statistik: zwei Zeitraeume nebeneinander mit Differenz und Wertung, "
+            "Schnellauswahl (Jahr gegen Vorjahr, Sommer gegen Winter …) und Monatsverlauf",
+            "Stromtarif-Verlauf zeigt im Zeitraum den zu Beginn gueltigen Tarif",
+            "Batteriestand-Sensor in den Einstellungen waehlbar",
+            "Betraege im Dashboard mit Tausenderpunkt",
+        ],
+    },
+    {
+        "version": "1.6.0",
+        "datum": "2026-09-18",
+        "titel": "Verbrauch aus dem Akkustand, Strommix",
+        "aenderungen": [
+            "Neues Ringdiagramm: Anteil der geladenen kWh aus PV, Netzbezug und oeffentlichem Laden",
+            "Verbrauch aus dem Akkustand: Fahrtabschnitte zwischen zwei Ladungen, "
+            "Akku-Abfall × 58,3 kWh ÷ gefahrene km – ohne Ladeverluste",
+            "Verbrauchs-Chart zeigt beide Werte: laut Ladung und laut Akku",
+            "Seite Fahrten: Liste der Fahrtabschnitte, Vergleich mit dem Verbrauch aus den "
+            "Ladungen und Hinweis, wenn Ladevorgaenge zu fehlen scheinen",
+            "Naechtlicher Abruf rechnet die letzten 45 Tage neu; die ganze Historie per Knopf",
+            "Referenzlinie im Verbrauchs-Chart ist immer sichtbar",
+            "Kennzahl-Kacheln auf anderen Seiten wieder richtig untereinander dargestellt",
+        ],
+    },
     {
         "version": "1.5.2",
         "datum": "2026-09-17",

@@ -5,11 +5,30 @@
   <div class="hero-text">
     <div class="hero-kicker">Kia EV3</div>
     <h1>Übersicht</h1>
-    <div class="hero-wert">{{ "%.2f"|format(kz.ersparnis_gesamt)|replace(".", ",") }}<span> €</span></div>
-    <div class="hero-label">Gesamt-Ersparnis gegenüber einem Benziner</div>
+    <div class="hero-wert">{{ kz.ersparnis_gesamt | de(2) }}<span> €</span></div>
+    <div class="hero-label">Gesamt-Ersparnis gegenüber einem Benziner{% if zeitraum.von %} · {{ zeitraum.titel }}{% endif %}</div>
   </div>
   <img class="hero-auto" src="/static/Auto.jpg" alt="Kia EV3">
 </section>
+
+{# Zeitraum fuer alle Kennzahlen und Charts; wird per Cookie gemerkt #}
+<form class="zeitraum-leiste" method="get" action="/">
+  <label for="zeitraum-wahl">Zeitraum</label>
+  <select id="zeitraum-wahl" name="zeitraum" onchange="this.form.submit()">
+    {% for gruppe, eintraege in zeitraum_optionen %}
+      {% if gruppe %}<optgroup label="{{ gruppe }}">{% endif %}
+      {% for schluessel, text in eintraege %}
+        <option value="{{ schluessel }}" {% if schluessel == zeitraum.schluessel %}selected{% endif %}>{{ text }}</option>
+      {% endfor %}
+      {% if gruppe %}</optgroup>{% endif %}
+    {% endfor %}
+  </select>
+  <noscript><button type="submit" class="secondary">Anzeigen</button></noscript>
+  {% if zeitraum.von %}
+  <a class="zeitraum-zurueck" href="/?zeitraum=alles">✕ Gesamter Zeitraum</a>
+  <span class="hint" style="margin:0">KFZ-Steuer anteilig für {{ kz.monate }} Monat{{ "e" if kz.monate != 1 }}</span>
+  {% endif %}
+</form>
 
 {# Icon-Vorrat fuer die Kennzahl-Kacheln; wird ueber <use href="#ic-..."> eingebunden #}
 <svg class="ikonen" aria-hidden="true">
@@ -22,17 +41,17 @@
 </svg>
 
 {% set kacheln = [
-    ('ic-strecke',     '#4a90c4', "{:,.0f}".format(kz.gesamt_km).replace(",", "."), 'km', 'Gesamtstrecke'),
-    ('ic-energie',     '#7a6aaa', "{:,.1f}".format(kz.gesamt_kwh).replace(",", "X").replace(".", ",").replace("X", "."), 'kWh', 'Geladene Energie'),
-    ('ic-zapfsaeule',  '#5aaa78', "%.2f"|format(kz.ersparnis_kraft)|replace(".", ","), '€', 'Kraftstoff-Ersparnis'),
-    ('ic-muenzen',     '#c4963a', "%.2f"|format(kz.kfz_steuer)|replace(".", ","), '€', 'Steuer-Ersparnis'),
-    ('ic-blatt',       '#5aaa78', "%.2f"|format(kz.thg_gesamt)|replace(".", ","), '€', 'THG-Ertrag'),
-    ('ic-wolke',       '#3a9aaa', "{:,.0f}".format(kz.co2_gespart).replace(",", "."), 'kg', 'CO2 gespart')] %}
+    ('ic-strecke',     '#4a90c4', kz.gesamt_km | de(0), 'km', 'Gesamtstrecke'),
+    ('ic-energie',     '#7a6aaa', kz.gesamt_kwh | de(1), 'kWh', 'Geladene Energie'),
+    ('ic-zapfsaeule',  '#5aaa78', kz.ersparnis_kraft | de(2), '€', 'Kraftstoff-Ersparnis'),
+    ('ic-muenzen',     '#c4963a', kz.kfz_steuer | de(2), '€', 'Steuer-Ersparnis'),
+    ('ic-blatt',       '#5aaa78', kz.thg_gesamt | de(2), '€', 'THG-Ertrag'),
+    ('ic-wolke',       '#3a9aaa', kz.co2_gespart | de(0), 'kg', 'CO2 gespart')] %}
 {# Die Gesamt-Ersparnis steht nur noch in der Kopfzeile, nicht mehr als Kachel #}
 
 <div class="statgrid">
   {% for icon, farbe, wert, einheit, label in kacheln %}
-  <div class="stat" style="--farbe: {{ farbe }}">
+  <div class="stat mit-icon" style="--farbe: {{ farbe }}">
     <span class="stat-icon"><svg viewBox="0 0 24 24"><use href="#{{ icon }}"></use></svg></span>
     <div>
       <span class="wert">{{ wert }}</span><span class="einheit">{{ einheit }}</span>
@@ -51,6 +70,7 @@
       ('benzin', 'Benzinpreisentwicklung'),
       ('strom', 'Stromtarifverlauf'),
       ('anbieter', 'Ladekosten nach Anbieter'),
+      ('strommix', 'Geladene kWh nach Stromquelle'),
       ('thg', 'THG-Quote Erträge')] %}
   <div class="chart">
     <div class="titel">{{ titel }}</div>

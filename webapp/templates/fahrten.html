@@ -82,6 +82,84 @@
 </div>
 {% endif %}
 
+{% macro zeit(s) %}{{ s[8:10] }}.{{ s[5:7] }}. {{ s[11:16] }}{% endmacro %}
+<h2 id="akku">Verbrauch aus dem Akkustand (kWh/100 km)</h2>
+<p class="hint">
+  Je Fahrtabschnitt zwischen zwei Ladungen: Akku-Abfall × Akkukapazität ÷ gefahrene km.
+  Das ist der Verbrauch <b>ohne Ladeverluste</b> – daher niedriger als der Wert aus den Ladungen.
+  Wird jede Nacht für die letzten 45 Tage aus Home Assistant aktualisiert.
+</p>
+{% if akku_meldung %}
+<div class="card" style="padding:10px 14px">{{ akku_meldung }}</div>
+{% endif %}
+{% if abschnitte %}
+<div class="statgrid">
+  <div class="stat">
+    <div>
+      <span class="wert" style="color:#3a9aaa">{{ "%.1f"|format(akku_schnitt)|replace(".", ",") if akku_schnitt else "–" }}</span>
+      <span class="einheit">kWh/100km</span>
+      <div class="label">Ø laut Akku (nach km gewichtet)</div>
+    </div>
+  </div>
+  {% if verbrauch.schnitt %}
+  <div class="stat">
+    <div>
+      <span class="wert" style="color:#7a6aaa">{{ "%.1f"|format(verbrauch.schnitt)|replace(".", ",") }}</span>
+      <span class="einheit">kWh/100km</span>
+      <div class="label">Ø laut Ladung (inkl. Ladeverluste)</div>
+    </div>
+  </div>
+  {% endif %}
+  {% if akku_differenz is not none and akku_differenz > 0 %}
+  <div class="stat">
+    <div>
+      <span class="wert" style="color:#c4963a">{{ "%.0f"|format(akku_differenz) }}</span>
+      <span class="einheit">%</span>
+      <div class="label">weniger laut Akku – etwa die Ladeverluste ({{ akku_gemeinsam }} gemeinsame Monate)</div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% if akku_differenz is not none and akku_differenz <= 0 %}
+<div class="card" style="padding:10px 14px">
+  <span class="gelb">Laut Akku wurde mehr Energie verbraucht als geladen</span>
+  ({{ "%.0f"|format(-akku_differenz) }} % in {{ akku_gemeinsam }} gemeinsamen Monaten).
+  Das spricht für fehlende Ladevorgänge – etwa auswärts geladen, ohne Beleg erfasst.
+</div>
+{% endif %}
+<div class="tabelle-scroll"><table>
+  <tr><th>Von</th><th>Bis</th><th>km</th><th>Akku</th><th>kWh</th><th>Verbrauch</th></tr>
+  {% for a in abschnitte %}
+  {% set zu_kurz = a.km < akku_min_km %}
+  <tr{% if zu_kurz %} class="muted"{% endif %}>
+    <td>{{ zeit(a.start) }}</td>
+    <td>{{ zeit(a.ende) }}{% if a.laufend %} <span class="gelb">(läuft)</span>{% endif %}</td>
+    <td>{{ "{:,.0f}".format(a.km).replace(",", ".") }}</td>
+    <td>{{ "%.0f"|format(a.soc_start) }} → {{ "%.0f"|format(a.soc_ende) }} %</td>
+    <td>{{ "%.1f"|format(a.kwh)|replace(".", ",") }}</td>
+    <td>{% if a.km > 0 %}{{ "%.1f"|format(a.kwh / a.km * 100)|replace(".", ",") }} kWh/100km{% else %}–{% endif %}
+      {% if zu_kurz %}<span class="muted">· zu kurz, zählt nicht</span>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table></div>
+<p class="hint">
+  Die letzten {{ abschnitte|length }} Abschnitte. Abschnitte unter {{ "%.0f"|format(akku_min_km) }} km
+  fließen nicht in die Monatswerte ein – dort ist die Ungenauigkeit des Akkustands (±1 %) zu groß.
+</p>
+{% else %}
+<div class="card">
+  <p style="margin:0">
+    <span class="gelb">Noch keine Fahrtabschnitte berechnet.</span>
+    Dafür müssen in den <a href="/einstellungen" style="color:#7a9ec4">Einstellungen</a>
+    die Sensoren für Batteriestand und Kilometerstand eingetragen sein.
+  </p>
+</div>
+{% endif %}
+<form method="post" action="/fahrten/akku" style="margin:10px 0 0">
+  <input type="hidden" name="zeitraum" value="alles">
+  <button type="submit" class="secondary">🔄 Gesamte Historie aus Home Assistant neu berechnen</button>
+</form>
+
 <h2>Monatsübersicht</h2>
 <div class="tabelle-scroll"><table>
   <tr><th>Monat</th><th>km</th><th>Benzin-Äquivalent</th><th>CO2-Ersparnis</th><th></th></tr>

@@ -83,6 +83,22 @@ def init_db():
             )
         """)
 
+        # Fahrtabschnitte zwischen zwei Ladungen, berechnet aus dem Akkustand
+        # (siehe akkuverbrauch.py). start/ende als lokale ISO-Zeit "YYYY-MM-DDTHH:MM".
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS akku_abschnitt (
+                start TEXT PRIMARY KEY,
+                ende TEXT NOT NULL,
+                soc_start REAL NOT NULL,
+                soc_ende REAL NOT NULL,
+                km_start REAL NOT NULL,
+                km_ende REAL NOT NULL,
+                kwh REAL NOT NULL,
+                km REAL NOT NULL,
+                laufend INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+
         c.execute("""CREATE INDEX IF NOT EXISTS idx_ladevorgang_datum
                      ON ladevorgang(datum)""")
 
@@ -312,6 +328,31 @@ def get_ladevorgaenge_zeitraum(von: str, bis: str):
             "SELECT * FROM ladevorgang WHERE datum >= ? AND datum <= ? ORDER BY datum",
             (von, bis)).fetchall()
     return [dict(r) for r in rows]
+
+
+def ersetze_akku_abschnitte(ab: str | None, abschnitte: list):
+    """Ersetzt alle Abschnitte ab Startzeit `ab` (None = alle) durch die neuen."""
+    with closing(get_connection()) as conn:
+        if ab is None:
+            conn.execute("DELETE FROM akku_abschnitt")
+        else:
+            conn.execute("DELETE FROM akku_abschnitt WHERE start >= ?", (ab,))
+        conn.executemany(
+            """INSERT OR REPLACE INTO akku_abschnitt
+               (start, ende, soc_start, soc_ende, km_start, km_ende, kwh, km, laufend)
+               VALUES (:start, :ende, :soc_start, :soc_ende, :km_start, :km_ende,
+                       :kwh, :km, :laufend)""",
+            abschnitte)
+        conn.commit()
+
+
+def get_akku_abschnitte(limit: int | None = None):
+    """Fahrtabschnitte aus dem Akkustand, neueste zuerst."""
+    sql = "SELECT * FROM akku_abschnitt ORDER BY start DESC"
+    if limit:
+        sql += f" LIMIT {int(limit)}"
+    with closing(get_connection()) as conn:
+        return [dict(r) for r in conn.execute(sql).fetchall()]
 
 
 def get_thg_zeitraum(von: str, bis: str):

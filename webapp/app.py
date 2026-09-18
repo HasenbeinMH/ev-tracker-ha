@@ -20,11 +20,13 @@ from starlette.background import BackgroundTask
 from fastapi.templating import Jinja2Templates
 
 import database as db
+import akkuverbrauch
 import berechnung
 import berichte
 import ladeerkennung
 import mailer
 import charts
+import zeitraum as zeitraum_mod
 from version import VERSION, CHANGELOG
 from ha_client import HAClient, InfluxClient
 from pdf_parser import parse_rechnung_pdf, parse_rechnung_text
@@ -48,6 +50,8 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 templates.env.globals["MONATE"] = MONATE
 templates.env.globals["VERSION"] = VERSION
+# Deutsche Zahlen mit Tausenderpunkt: {{ wert | de(2) }} -> "1.519,88"
+templates.env.filters["de"] = lambda wert, stellen=0: berichte.fmt(wert, stellen)
 
 
 def render(request, template, **ctx):
@@ -71,31 +75,61 @@ def parse_de(text) -> float | None:
 # ─────────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
-def dashboard(request: Request):
-    fahrten = db.get_fahrten_alle_als_liste()
-    lade = db.get_ladevorgaenge(limit=10000)
-    benzin = db.get_benzinpreise()
-    stromtarife = db.get_stromtarife()
-    thg = db.get_thg_eintraege()
-    cfg = db.get_config()
-    kz = berechnung.ersparnis_uebersicht()
+def dashboard(request: Request, zeitraum: str | None = None):
+    # Auswahl per ?zeitraum=…; ohne Parameter gilt die zuletzt gewaehlte (Cookie)
+    z = zeitraum_mod.aufloesen(zeitraum or request.cookies.get("zeitraum"))
+    daten = zeitraum_mod.laden()
+    f = zeitraum_mod.filtern(z, daten)
+    cfg = daten["cfg"]
+    kz = zeitraum_mod.kennzahlen(z, daten)
 
     charts_html = {
         "monatlich": charts.chart_monatliche_ersparnis(
-            fahrten, benzin, lade, benziner_l=cfg["benziner_verbrauch"]),
+            f["fahrten"], f["benzin"], f["lade"], benziner_l=cfg["benziner_verbrauch"]),
         "kosten": charts.chart_kosten_vergleich(
             kz["benzin_kosten"], kz["strom_kosten"]),
         "co2": charts.chart_co2_ersparnis(
-            fahrten, benziner_l=cfg["benziner_verbrauch"],
+            f["fahrten"], benziner_l=cfg["benziner_verbrauch"],
             co2_faktor=cfg["co2_faktor_benzin"]),
         "verbrauch": charts.chart_verbrauch_100km(
-            lade, fahrten, ev_ref=cfg["ev_verbrauch"]),
-        "benzin": charts.chart_benzinpreise(benzin),
-        "strom": charts.chart_stromtarif(stromtarife),
-        "anbieter": charts.chart_anbieter_verteilung(lade),
-        "thg": charts.chart_thg(thg),
+            f["lade"], f["fahrten"], ev_ref=cfg["ev_verbrauch"], akku_monate=f["akku"]),
+        "strommix": charts.chart_strommix(f["lade"]),
+        "benzin": charts.chart_benzinpreise(f["benzin"]),
+        "strom": charts.chart_stromtarif(daten["stromtarife"], von=z["von"], bis=z["bis"]),
+        "anbieter": charts.chart_anbieter_verteilung(f["lade"]),
+        "thg": charts.chart_thg(f["thg"]),
     }
-    return render(request, "dashboard.html", kz=kz, charts=charts_html, aktiv="dashboard")
+    antwort = render(request, "dashboard.html", kz=kz, charts=charts_html,
+                     zeitraum=z, zeitraum_optionen=zeitraum_mod.optionen(daten),
+                     aktiv="dashboard")
+    if zeitraum is not None:
+        antwort.set_cookie("zeitraum", z["schluessel"], max_age=365 * 24 * 3600,
+                           samesite="lax")
+    return antwort
+
+
+# ─────────────────────────────────────────────────────────────
+#  Statistik: zwei Zeitraeume vergleichen
+# ─────────────────────────────────────────────────────────────
+
+@app.get("/statistik", response_class=HTMLResponse)
+def statistik(request: Request, a: str | None = None, b: str | None = None):
+    heute = datetime.now()
+    za = zeitraum_mod.aufloesen(a or str(heute.year))
+    zb = zeitraum_mod.aufloesen(b or str(heute.year - 1))
+    daten = zeitraum_mod.laden()
+    ka = zeitraum_mod.kennzahlen(za, daten)
+    kb = zeitraum_mod.kennzahlen(zb, daten)
+    wa = zeitraum_mod.monatswerte(za, daten)
+    wb = zeitraum_mod.monatswerte(zb, daten)
+    verlauf = {m: charts.chart_vergleich(wa, wb, za["titel"], zb["titel"], m)
+               for m in charts.VERGLEICH_METRIKEN}
+    return render(request, "statistik.html", aktiv="statistik",
+                  za=za, zb=zb, ka=ka, kb=kb,
+                  zeilen=zeitraum_mod.vergleich_zeilen(ka, kb),
+                  optionen=zeitraum_mod.optionen(daten),
+                  vorlagen=zeitraum_mod.vorlagen(),
+                  metriken=charts.VERGLEICH_METRIKEN, verlauf=verlauf)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -120,8 +154,41 @@ def fahrten(request: Request):
         liter = berechnung.benzin_liter(d["km"], cfg["benziner_verbrauch"])
         rows.append({**d, "liter": liter,
                      "co2": berechnung.co2_kg(liter, cfg["co2_faktor_benzin"])})
+    verbrauch = berechnung.verbrauch_statistik()
+    akku_monate = akkuverbrauch.pro_monat()
+    akku_km = sum(m["km"] for m in akku_monate)
+    akku_schnitt = (sum(m["kwh"] for m in akku_monate) / akku_km * 100) if akku_km else None
+
+    # Vergleich Akku ↔ Ladung nur ueber Monate, fuer die beides vorliegt
+    ladung_m = {m["monat"]: m for m in verbrauch["monate"]}
+    gemeinsam = [a for a in akku_monate if a["monat"] in ladung_m]
+    differenz = None
+    if gemeinsam:
+        l_km = sum(ladung_m[a["monat"]]["km"] for a in gemeinsam)
+        l_kwh = sum(ladung_m[a["monat"]]["kwh"] for a in gemeinsam)
+        a_km = sum(a["km"] for a in gemeinsam)
+        a_kwh = sum(a["kwh"] for a in gemeinsam)
+        if l_km and a_km and l_kwh:
+            differenz = (1 - (a_kwh / a_km) / (l_kwh / l_km)) * 100
+
     return render(request, "fahrten.html", rows=rows, aktiv="fahrten",
-                  verbrauch=berechnung.verbrauch_statistik())
+                  verbrauch=verbrauch,
+                  abschnitte=db.get_akku_abschnitte(limit=40),
+                  akku_schnitt=akku_schnitt, akku_differenz=differenz,
+                  akku_gemeinsam=len(gemeinsam), akku_min_km=akkuverbrauch.MIN_KM,
+                  akku_meldung=request.query_params.get("akku"))
+
+
+@app.post("/fahrten/akku")
+def fahrten_akku_berechnen(zeitraum: str = Form("alles")):
+    """Fahrtabschnitte aus dem Akkustand neu berechnen (ganze Historie oder 45 Tage)."""
+    try:
+        meldung = akkuverbrauch.aktualisieren(
+            tage=None if zeitraum == "alles" else akkuverbrauch.TAGE_NACHTLAUF)
+    except Exception as e:
+        meldung = f"Fehler beim Abruf: {e}"
+    from urllib.parse import quote
+    return RedirectResponse(f"/fahrten?akku={quote(meldung)}#akku", status_code=303)
 
 
 @app.post("/fahrten")
@@ -908,6 +975,15 @@ def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> lis
         _log_import([f"{schluessel}: übernommen {zeile}"])
         protokoll.append(f"{schluessel}: {zeile}")
 
+    # Verbrauch aus dem Akkustand fortschreiben (nur ueber die HA-API verfuegbar)
+    if client is not None:
+        try:
+            meldung = akkuverbrauch.aktualisieren()
+        except Exception as e:
+            meldung = f"Fehler ({e})"
+        _log_import([f"Akkuverbrauch: {meldung}"])
+        protokoll.append(f"Akkuverbrauch: {meldung}")
+
     _log_import([f"Abruf beendet – {len(monate)} Monat(e), {fehler} Fehler"])
     return protokoll
 
@@ -1192,6 +1268,8 @@ SENSOR_FELDER = [
     ("ha_wallbox_energy", "fn_wallbox_energy", "Netz ins Auto geladen (kWh)"),
     ("ha_tankerkoenig",   "fn_tankerkoenig",   "Benzinpreis Sensor 1 (€/L)"),
     ("ha_tankerkoenig_2", "fn_tankerkoenig_2", "Benzinpreis Sensor 2 (€/L)"),
+    # Nur ueber die HA-API: Ladeerkennung und Verbrauch aus dem Akkustand
+    ("ha_ev_battery",     "",                  "Batteriestand Auto (%)"),
 ]
 
 

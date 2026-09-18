@@ -54,6 +54,7 @@
   <a href="#start">Schnellstart</a>
   <a href="#konzept">Grundkonzept</a>
   <a href="#dashboard">Dashboard</a>
+  <a href="#statistik">Statistik</a>
   <a href="#fahrten">Fahrten</a>
   <a href="#laden">Laden</a>
   <a href="#benzin">Benzin</a>
@@ -97,17 +98,34 @@
 <div class="hb-warn"><b>Monatsraster:</b> Kilometer und Benzinpreise werden <b>pro Monat</b> geführt – ein Wert je Monat, keine Einzelfahrten. Ladevorgänge dagegen haben ein <b>Tagesdatum</b>. Automatisch importierte Ladungen werden deshalb auf den <b>Monatsersten</b> gebucht.</div>
 
 <h2 id="dashboard">Dashboard <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
-<p class="hint">Überschrift: <b>„Übersicht"</b> · Reine Anzeige, keine Eingaben.</p>
+<p class="hint">Überschrift: <b>„Übersicht"</b> · Einzige Eingabe ist die Zeitraumauswahl.</p>
 <table>
   <tr><th style="width:25%">Karte</th><th>Berechnung</th></tr>
-  <tr><td>Gesamtstrecke</td><td>Summe aller Monats-km.</td></tr>
-  <tr><td>Geladene Energie</td><td>Summe aller kWh aus allen Ladevorgängen.</td></tr>
+  <tr><td>Gesamt-Ersparnis (Kopfzeile)</td><td>Kraftstoff + Steuer + THG (ohne CO2 – das ist kein Geldwert).</td></tr>
+  <tr><td>Gesamtstrecke</td><td>Summe der Monats-km im Zeitraum.</td></tr>
+  <tr><td>Geladene Energie</td><td>Summe der kWh aller Ladevorgänge im Zeitraum.</td></tr>
   <tr><td>Kraftstoff-Ersparnis</td><td>Hochgerechnete Benzinkosten − tatsächliche Stromkosten.</td></tr>
-  <tr><td>Steuer-Ersparnis</td><td>Die hinterlegte KFZ-Steuer des Benziners.</td></tr>
-  <tr><td>THG-Ertrag</td><td>Summe aller THG-Auszahlungen.</td></tr>
+  <tr><td>Steuer-Ersparnis</td><td>KFZ-Steuer des Benziners – im Gesamtzeitraum einmal voll, sonst anteilig.</td></tr>
+  <tr><td>THG-Ertrag</td><td>Summe der THG-Auszahlungen im Zeitraum.</td></tr>
   <tr><td>CO2 gespart</td><td>Benzin-Äquivalent in Litern × CO2-Faktor.</td></tr>
-  <tr><td>Gesamt-Ersparnis</td><td>Kraftstoff + Steuer + THG (ohne CO2 – das ist kein Geldwert).</td></tr>
 </table>
+<h3 id="zeitraum">Zeitraum wählen</h3>
+<p>Das Auswahlfeld unter der Kopfzeile schränkt <b>alle Kennzahlen und Diagramme</b> auf einen Zeitraum ein: gesamter Zeitraum, ein Kalenderjahr, ein Quartal des laufenden oder letzten Jahres, oder ein Sommer- bzw. Winterhalbjahr. Die Wahl wird im Browser gemerkt und gilt beim nächsten Aufruf weiter; „✕ Gesamter Zeitraum“ setzt zurück. Die Schieberegler in den einzelnen Diagrammen grenzen innerhalb des gewählten Zeitraums weiter ein.</p>
+<table>
+  <tr><th style="width:25%">Zeitraum</th><th>Monate</th></tr>
+  <tr><td>Jahr</td><td>Januar bis Dezember, im laufenden Jahr bis zum aktuellen Monat.</td></tr>
+  <tr><td>Quartal</td><td>Q1 Jan–Mär, Q2 Apr–Jun, Q3 Jul–Sep, Q4 Okt–Dez.</td></tr>
+  <tr><td>Sommer</td><td>April bis September.</td></tr>
+  <tr><td>Winter</td><td>Oktober bis März des Folgejahres – „Winter 2025/26“ ist Okt 2025 bis Mär 2026.</td></tr>
+</table>
+<div class="hb-formel"><span class="lbl">KFZ-Steuer im Teilzeitraum</span>Steuer-Ersparnis = KFZ-Steuer × Monate im Zeitraum ÷ 12</div>
+<div class="hb-info"><b>Warum anteilig?</b> Sonst bekäme jedes Quartal die Steuer eines ganzen Jahres gutgeschrieben. Im Gesamtzeitraum zählt die Steuer wie bisher einmal voll. Der Stromtarif-Verlauf zeigt ab Zeitraumbeginn den dann gültigen Tarif, auch wenn er früher eingetragen wurde; Tarifwechsel innerhalb des Zeitraums erscheinen als Stufe.</div>
+
+<h2 id="statistik">Statistik <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<p>Vergleicht zwei Zeiträume nebeneinander – etwa ein Jahr mit dem Vorjahr oder <b>Sommer gegen Winter</b>. Die Schnellauswahl oben bietet die häufigsten Paare; mit „⇄ tauschen“ wechseln die Seiten.</p>
+<p><b>Tabelle:</b> alle Kennzahlen beider Zeiträume, dazu die Differenz (erster minus zweiter Zeitraum) absolut und in Prozent. Grün heißt besser, orange schlechter – etwa weniger Verbrauch oder mehr Ersparnis. Anteile (PV, Netz, öffentlich) werden in Prozentpunkten verglichen.</p>
+<div class="hb-warn"><b>Summen hängen von der Länge ab:</b> Ein Jahr hat mehr km und höhere Kosten als ein Quartal. Für faire Vergleiche unterschiedlich langer Zeiträume taugen Verbrauch, Kosten je 100 km und Ø Strompreis.</div>
+<p><b>Verlauf Monat für Monat:</b> Diagramm mit wählbarer Kennzahl. Der erste Monat des einen Zeitraums steht neben dem ersten des anderen; bei Sommer gegen Winter also April neben Oktober („Apr · Okt“).</p>
 
 <h2 id="fahrten">Fahrten <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„🚗 Gefahrene Kilometer (monatlich)"</b></p>
@@ -126,6 +144,16 @@
 <div class="hb-formel"><span class="lbl">Verbrauch je Monat</span>Verbrauch = kWh (Monat) ÷ km (Monat) × 100</div>
 <div class="hb-formel"><span class="lbl">Durchschnitt – gewichtet</span>Ø = Σ kWh (alle Monate) ÷ Σ km (alle Monate) × 100</div>
 <div class="hb-info"><b>Gewichtet, nicht Mittel der Monatswerte:</b> Ein Monat mit 2.000 km zählt stärker als einer mit 200 km. Ein kurzer Wintermonat verzerrt den Schnitt sonst stark.</div>
+<h3 id="akkuverbrauch">Verbrauch aus dem Akkustand</h3>
+<p>Ein zweiter, unabhängiger Blick auf den Verbrauch: Der stündliche Batteriestand aus Home Assistant wird in <b>Fahrtabschnitte zwischen zwei Ladungen</b> zerlegt. Ein Abschnitt beginnt am Höchststand nach einer Ladung und endet am Tiefststand vor der nächsten; die km kommen aus dem Kilometerstand zu diesen Zeitpunkten.</p>
+<div class="hb-formel"><span class="lbl">Energie je Abschnitt</span>kWh = (Akku Start − Akku Ende) [%] ÷ 100 × Akkukapazität [kWh]</div>
+<div class="hb-formel"><span class="lbl">Verbrauch je Abschnitt</span>Verbrauch = kWh ÷ (km Ende − km Start) × 100</div>
+<div class="hb-bsp"><b>Beispiel</b> – Akku von 80 % auf 42 %, Kilometerstand von 12.310 auf 12.455, 58,3-kWh-Batterie:
+  <span class="rechnung">(80 − 42) ÷ 100 × 58,3 = 22,15 kWh</span>
+  <span class="rechnung">22,15 ÷ 145 × 100 = <span class="erg">15,3 kWh/100 km</span></span></div>
+<div class="hb-info"><b>Ohne Ladeverluste:</b> Gezählt wird, was aus dem Akku kam – nicht, was an der Wallbox oder Säule floss. Der Wert liegt daher unter dem Verbrauch aus den Ladungen; die Differenz entspricht etwa den Ladeverlusten. Standverbrauch zwischen den Fahrten (Vorklimatisieren, 12-V-Batterie) ist enthalten.</div>
+<div class="hb-warn"><b>Genauigkeit:</b> HA liefert den Akkustand als Stundenmittel – je Abschnitt ist das etwa ±1 % (±0,6 kWh) ungenau. Abschnitte unter 5 km zählen deshalb nicht in die Monatswerte. Liegt der Akku-Verbrauch <b>über</b> dem aus den Ladungen, fehlen vermutlich Ladevorgänge (auswärts geladen, kein Beleg erfasst).</div>
+<p>Aktualisierung: jede Nacht für die letzten 45 Tage. Die gesamte Historie lässt sich auf der Seite Fahrten per Knopf neu berechnen. Benötigt die Sensoren <b>Batteriestand</b> und <b>Kilometerstand</b> in den Einstellungen; die Akkukapazität (Standard 58,3 kWh) ist ebenfalls dort einstellbar.</p>
 
 <h2 id="laden">Laden <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„🔌 Ladevorgänge"</b> · Einzelvorgänge mit Tagesdatum.</p>
@@ -255,6 +283,8 @@
   <tr><td>Kosten je 100 km</td><td><code>Stromkosten ÷ km × 100</code></td></tr>
   <tr><td>Monatliche Ersparnis</td><td><code>Benzinkosten (Monat) − Ladekosten (Monat)</code></td></tr>
   <tr><td>Erkannte Lademenge</td><td><code>Batterieanstieg [%] ÷ 100 × Akkukapazität</code></td></tr>
+  <tr><td>Verbrauch laut Akku</td><td><code>Akku-Abfall [%] ÷ 100 × Akkukapazität ÷ km × 100</code></td></tr>
+  <tr><td>Anteil Stromquelle</td><td><code>kWh der Quelle ÷ Σ geladene kWh</code></td></tr>
 </table>
 
 <h2 id="kennzahlen">Kennzahlen im Detail <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
@@ -276,17 +306,18 @@
 <div class="hb-warn"><b>Ladeverluste inklusive:</b> Gerechnet wird mit der geladenen Energie ab Säule, nicht ab Batterie – der Wert liegt typischerweise 5–15 % über der Bordcomputer-Anzeige. Da importierte Ladungen auf den Monatsersten gebucht werden, können einzelne Monate zudem verzerrt wirken; über mehrere Monate gleicht sich das aus.</div>
 
 <h2 id="diagramme">Diagramme <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
-<p class="hint">Reihenfolge wie im Dashboard. Kachelüberschrift und Titel im Diagramm weichen teils ab – beide sind genannt.</p>
+<p class="hint">Reihenfolge wie im Dashboard. Unter den Verlaufs-Charts lässt sich der Zeitraum mit dem Schieberegler eingrenzen (ab drei Monaten); oben rechts wechselt ein Symbol zwischen Balken und Linie, ein weiteres setzt die Ansicht zurück.</p>
 <table>
-  <tr><th style="width:25%">Kachel</th><th style="width:23%">Titel im Diagramm</th><th>Inhalt</th></tr>
-  <tr><td>Monatliche Kosten &amp; Ersparnis</td><td>Monatliche Kosten &amp; Ersparnis</td><td>Balken Benziner und Strom je Monat, Linie (rechte Achse) die Differenz. <b>Nur Monate mit km und Benzinpreis.</b></td></tr>
-  <tr><td>Kraftstoffkosten Vergleich</td><td>Kraftstoffkosten gesamt</td><td>Zwei Balken über den Gesamtzeitraum: Benziner hochgerechnet gegen E-Auto tatsächlich.</td></tr>
-  <tr><td>CO2-Ersparnis</td><td>CO2-Ersparnis vs. Benziner (kg)</td><td>Balken je Monat plus kumulierte Linie.</td></tr>
-  <tr><td>Verbrauch kWh/100km</td><td>Verbrauch kWh/100km</td><td>Monatswerte mit gepunkteter Referenzlinie. <b>Nur Monate mit km und Ladung.</b></td></tr>
-  <tr><td>Benzinpreisentwicklung</td><td>Benzinpreise €/L</td><td>Verlauf der erfassten Monatspreise.</td></tr>
-  <tr><td>Stromtarifverlauf</td><td>Stromtarif ct/kWh</td><td>Treppenkurve – ein Tarif gilt bis zum nächsten Eintrag.</td></tr>
-  <tr><td>Ladekosten nach Anbieter</td><td>Ladekosten nach Anbieter</td><td>Ringdiagramm der Kosten in €, nicht der kWh.</td></tr>
-  <tr><td>THG-Quote Erträge</td><td>THG-Quote Erträge €</td><td>Balken je Auszahlung.</td></tr>
+  <tr><th style="width:28%">Diagramm</th><th>Inhalt</th></tr>
+  <tr><td>Monatliche Kosten &amp; Ersparnis</td><td>Balken Benziner und Strom je Monat, Linie (rechte Achse) die Differenz. <b>Nur Monate mit km und Benzinpreis.</b></td></tr>
+  <tr><td>Kraftstoffkosten Vergleich</td><td>Zwei liegende Balken über den Gesamtzeitraum: Benziner hochgerechnet gegen E-Auto tatsächlich.</td></tr>
+  <tr><td>CO2-Ersparnis</td><td>Balken je Monat plus kumulierte Linie.</td></tr>
+  <tr><td>Verbrauch kWh/100km</td><td>Zwei Linien: <b>laut Ladung</b> (geladene kWh ÷ km, inkl. Ladeverluste) und <b>laut Akku</b> (aus dem Batteriestand, siehe <a href="#akkuverbrauch">Verbrauch aus dem Akkustand</a>). Gestrichelt die Referenz aus den Einstellungen.</td></tr>
+  <tr><td>Benzinpreisentwicklung</td><td>Verlauf der erfassten Monatspreise.</td></tr>
+  <tr><td>Stromtarifverlauf</td><td>Treppenkurve – ein Tarif gilt bis zum nächsten Eintrag, der letzte bis heute.</td></tr>
+  <tr><td>Ladekosten nach Anbieter</td><td>Ringdiagramm der Kosten in €, nicht der kWh.</td></tr>
+  <tr><td>Geladene kWh nach Stromquelle</td><td>Ringdiagramm der geladenen <b>kWh</b>: PV-Strom (Anbieter „Privat – PV“), Netzbezug zuhause („Privat – Netzbezug“) und öffentlich (alle übrigen Anbieter).</td></tr>
+  <tr><td>THG-Quote Erträge</td><td>Balken je Auszahlung.</td></tr>
 </table>
 <div class="hb-info"><b>Statt eines Diagramms nur ein Hinweistext?</b> Dann fehlen die nötigen Daten – meist der Benzinpreis oder die Ladungen des betreffenden Monats.</div>
 

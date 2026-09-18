@@ -9,6 +9,8 @@ gleichnamige Formatierfunktion ersetzt (JSON kann keine Funktionen transportiere
 Kurven werden bewusst nicht geglaettet – bei Monatswerten wuerden Zwischenwerte
 vorgetaeuscht, die es nicht gibt.
 """
+import calendar
+import math
 from datetime import date
 
 # Gedaempfte, professionelle Farbpalette (passend zu webapp/static/style.css)
@@ -315,23 +317,32 @@ def chart_co2_ersparnis(fahrten_daten, benziner_l=7.0, co2_faktor=2.37):
     return _bedienung(opt, len(monate))
 
 
-def chart_verbrauch_100km(lade_daten, fahrten_daten, ev_ref=15.0):
-    if not lade_daten or not fahrten_daten:
-        return _leer("Lade- und Fahrtdaten erforderlich")
-
+def chart_verbrauch_100km(lade_daten, fahrten_daten, ev_ref=15.0, akku_monate=None):
+    """Zwei Sichten auf den Verbrauch:
+    - laut Ladung: geladene kWh ÷ km – enthaelt die Ladeverluste
+    - laut Akku:   Akku-Abfall ÷ km aus akkuverbrauch.pro_monat() – ohne Ladeverluste
+    """
     kwh_m = {}
-    for l in lade_daten:
+    for l in lade_daten or []:
         m = l["datum"][:7]
         kwh_m[m] = kwh_m.get(m, 0) + l["menge_kwh"]
+    km_m = {d["datum"]: d["km"] for d in fahrten_daten or []}
+    ladung = {m: round(kwh_m[m] / km_m[m] * 100, 2)
+              for m in set(kwh_m) & set(km_m) if km_m[m] > 0}
+    akku = {a["monat"]: a["verbrauch"] for a in akku_monate or []}
 
-    km_m = {d["datum"]: d["km"] for d in fahrten_daten}
-    monate = sorted(set(kwh_m) & set(km_m))
+    monate = sorted(set(ladung) | set(akku))
     if not monate:
-        return _leer("Keine übereinstimmenden Monate")
+        return _leer("Lade- und Fahrtdaten oder Akkustand erforderlich")
 
-    verbrauch = [round(kwh_m[m] / km_m[m] * 100, 2) if km_m[m] > 0 else 0 for m in monate]
-
-    serie = _linie("Verbrauch", "purple", verbrauch, "fn:kwh100", flaeche=True)
+    serien = []
+    if ladung:
+        serien.append(_linie("laut Ladung", "purple", [ladung.get(m) for m in monate],
+                             "fn:kwh100", flaeche=not akku))
+    if akku:
+        serien.append(_linie("laut Akku", "teal", [akku.get(m) for m in monate],
+                             "fn:kwh100", flaeche=not ladung))
+    serie = serien[0]
     serie["markLine"] = {
         "silent": True,
         "symbol": "none",
@@ -343,13 +354,111 @@ def chart_verbrauch_100km(lade_daten, fahrten_daten, ev_ref=15.0):
                   "borderRadius": 3},
         "data": [{"yAxis": ev_ref}],
     }
+    zwei = len(serien) == 2
+    # Achse immer bis ueber die Referenzlinie – sonst verschwindet sie bei niedrigen Werten
+    hoechster = max([v for v in list(ladung.values()) + list(akku.values())] + [ev_ref])
     opt = _basis(
-        grid={"left": 8, "right": 26, "top": 26, "bottom": 8, "containLabel": True},
+        grid={"left": 8, "right": 26, "top": 40 if zwei else 26, "bottom": 8,
+              "containLabel": True},
         xAxis=_achse_kategorie(monate, boundaryGap=False),
-        yAxis=_achse_wert(min=0),
-        series=[serie],
+        yAxis=_achse_wert(min=0, max=math.ceil(hoechster * 1.08 / 5) * 5),
+        series=serien,
     )
+    opt["legend"]["show"] = zwei
     return _bedienung(opt, len(monate))
+
+
+_MONATSKUERZEL = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
+                  "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
+
+# Kennzahlen des Verlaufsvergleichs: schluessel -> (Beschriftung, Formatierer, Balken?)
+VERGLEICH_METRIKEN = {
+    "km":             ("Kilometer", "fn:km0", True),
+    "verbrauch":      ("Verbrauch laut Ladung", "fn:kwh100", False),
+    "verbrauch_akku": ("Verbrauch laut Akku", "fn:kwh100", False),
+    "kwh":            ("Geladene kWh", "fn:kwh1", True),
+    "strom_kosten":   ("Stromkosten", "fn:euro2", True),
+    "ersparnis":      ("Kraftstoff-Ersparnis", "fn:euro2", True),
+}
+
+
+def chart_vergleich(werte_a, werte_b, titel_a, titel_b, metrik):
+    """Zwei Zeitraeume Monat fuer Monat uebereinander (1. Monat neben 1. Monat …).
+    Bei gleichen Kalendermonaten (z.B. 2025 gegen 2024) steht nur der Monatsname,
+    sonst beide (z.B. Sommer gegen Winter: 'Apr · Okt')."""
+    beschriftung, formatierer, balken = VERGLEICH_METRIKEN[metrik]
+    laenge = max(len(werte_a), len(werte_b))
+    if laenge == 0:
+        return _leer("Keine Monate in den gewählten Zeiträumen")
+
+    def kuerzel(werte, i):
+        return _MONATSKUERZEL[int(werte[i]["monat"][5:7]) - 1] if i < len(werte) else None
+
+    achse = []
+    for i in range(laenge):
+        a, b = kuerzel(werte_a, i), kuerzel(werte_b, i)
+        achse.append(a if a == b or b is None else (b if a is None else f"{a} · {b}"))
+
+    def reihe(werte):
+        return [werte[i].get(metrik) if i < len(werte) else None for i in range(laenge)]
+
+    serien = []
+    for titel, werte, farbe in ((titel_a, werte_a, "blue"), (titel_b, werte_b, "orange")):
+        if balken:
+            serien.append(_balken(titel, farbe, reihe(werte), formatierer))
+        else:
+            s = _linie(titel, farbe, reihe(werte), formatierer)
+            s["connectNulls"] = False
+            serien.append(s)
+
+    opt = _basis(
+        xAxis=_achse_kategorie(achse, formatter=None, boundaryGap=balken),
+        yAxis=_achse_wert(),
+        series=serien,
+    )
+    opt["legend"]["show"] = True
+    opt["grid"]["right"] = 34          # Platz fuer lange Doppel-Beschriftungen am Rand
+    if balken:
+        opt["tooltip"]["axisPointer"] = {"type": "shadow",
+                                         "shadowStyle": {"color": "rgba(255,255,255,0.03)"}}
+    return opt
+
+
+def chart_strommix(lade_daten):
+    """Anteil der geladenen kWh nach Quelle: PV, Netzbezug zuhause, oeffentlich."""
+    from berechnung import stromquelle
+    summen = {"PV-Strom": 0.0, "Netzbezug": 0.0, "Öffentlich": 0.0}
+    for l in lade_daten or []:
+        summen[stromquelle(l["anbieter"])] += l["menge_kwh"] or 0
+    if sum(summen.values()) <= 0:
+        return _leer("Keine Ladedaten")
+
+    farben = {"PV-Strom": "#c4963a", "Netzbezug": COLORS["blue"],
+              "Öffentlich": COLORS["purple"]}
+    daten = [{"name": q, "value": round(kwh, 1), "itemStyle": {"color": farben[q]}}
+             for q, kwh in summen.items() if kwh > 0]
+    opt = _basis(
+        tooltip={
+            "trigger": "item",
+            "backgroundColor": COLORS["bg"],
+            "borderColor": COLORS["border"],
+            "textStyle": {"color": COLORS["text"], "fontSize": 12},
+            "formatter": "fn:tooltipAnteilKwh",
+        },
+        series=[{
+            "type": "pie",
+            "radius": ["48%", "74%"],
+            "center": ["50%", "56%"],
+            "data": daten,
+            "itemStyle": {"borderColor": COLORS["card"], "borderWidth": 3,
+                          "borderRadius": 5},
+            "label": {"color": COLORS["text"], "fontSize": 11,
+                      "formatter": "fn:labelAnteil"},
+            "labelLine": {"lineStyle": {"color": COLORS["border"]}},
+        }],
+    )
+    opt["legend"]["show"] = True
+    return opt
 
 
 def chart_benzinpreise(daten):
@@ -369,15 +478,28 @@ def chart_benzinpreise(daten):
     return _bedienung(opt, len(daten))
 
 
-def chart_stromtarif(daten):
+def chart_stromtarif(daten, von=None, bis=None):
+    """Treppenkurve der Tarife. von/bis ('YYYY-MM') schneiden auf einen Zeitraum zu:
+    Der zu Beginn gueltige Tarif wird ab Zeitraumbeginn gezeigt, auch wenn er
+    frueher eingetragen wurde."""
     if not daten:
         return _leer("Keine Stromtarifeinträge")
     daten_sorted = sorted(daten, key=lambda x: x["gueltig_ab"])
-    punkte = [[d["gueltig_ab"], d["preis_kwh"]] for d in daten_sorted]
-    # Der letzte Tarif gilt bis heute – Linie bis heute weiterfuehren (ohne Punkt)
     heute = date.today().isoformat()
-    if punkte[-1][0] < heute:
-        punkte.append({"value": [heute, punkte[-1][1]],
+    ende = heute
+    if von:
+        start = f"{von}-01"
+        ende = min(heute, f"{bis}-{calendar.monthrange(int(bis[:4]), int(bis[5:7]))[1]:02d}")
+        davor = [d for d in daten_sorted if d["gueltig_ab"] <= start]
+        drin = [d for d in daten_sorted if start < d["gueltig_ab"] <= ende]
+        daten_sorted = ([{"gueltig_ab": start, "preis_kwh": davor[-1]["preis_kwh"]}]
+                        if davor else []) + drin
+        if not daten_sorted:
+            return _leer("Im Zeitraum galt noch kein Stromtarif")
+    punkte = [[d["gueltig_ab"], d["preis_kwh"]] for d in daten_sorted]
+    # Der letzte Tarif gilt bis heute bzw. Zeitraumende – Linie weiterfuehren (ohne Punkt)
+    if punkte[-1][0] < ende:
+        punkte.append({"value": [ende, punkte[-1][1]],
                        "symbol": "none", "label": {"show": False}})
 
     serie = _linie("Stromtarif", "teal", punkte, "fn:ctKwh", step="end")

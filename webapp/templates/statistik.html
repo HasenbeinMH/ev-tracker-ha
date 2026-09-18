@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block titel %}Statistik{% endblock %}
+{% block inhalt %}
+{% macro auswahl(name, gewaehlt) %}
+<select name="{{ name }}" onchange="this.form.submit()">
+  {% for gruppe, eintraege in optionen %}
+    {% if gruppe %}<optgroup label="{{ gruppe }}">{% endif %}
+    {% for schluessel, text in eintraege %}
+      <option value="{{ schluessel }}" {% if schluessel == gewaehlt %}selected{% endif %}>{{ text }}</option>
+    {% endfor %}
+    {% if gruppe %}</optgroup>{% endif %}
+  {% endfor %}
+</select>
+{% endmacro %}
+
+<h1>📈 Statistik – Zeiträume vergleichen</h1>
+
+<div class="vorlagen">
+  <span class="muted">Schnellauswahl:</span>
+  {% for text, a, b in vorlagen %}
+  <a class="vorlage{% if a == za.schluessel and b == zb.schluessel %} aktiv{% endif %}"
+     href="/statistik?a={{ a }}&b={{ b }}">{{ text }}</a>
+  {% endfor %}
+</div>
+
+<form class="vergleich-wahl" method="get" action="/statistik">
+  <span class="punkt punkt-a"></span>{{ auswahl("a", za.schluessel) }}
+  <span class="muted">gegen</span>
+  <span class="punkt punkt-b"></span>{{ auswahl("b", zb.schluessel) }}
+  <a class="secondary-link" href="/statistik?a={{ zb.schluessel }}&b={{ za.schluessel }}"
+     title="Zeiträume tauschen">⇄ tauschen</a>
+  <noscript><button type="submit" class="secondary">Vergleichen</button></noscript>
+</form>
+
+<div class="tabelle-scroll"><table class="vergleich">
+  <tr>
+    <th>Kennzahl</th>
+    <th class="zahl"><span class="punkt punkt-a"></span>{{ za.titel }}<div class="muted klein">{{ ka.monate }} Monat{{ "e" if ka.monate != 1 }}</div></th>
+    <th class="zahl"><span class="punkt punkt-b"></span>{{ zb.titel }}<div class="muted klein">{{ kb.monate }} Monat{{ "e" if kb.monate != 1 }}</div></th>
+    <th class="zahl">Differenz</th>
+    <th class="zahl"></th>
+  </tr>
+  {% for z in zeilen %}
+  <tr>
+    <td>{{ z.text }}</td>
+    <td class="zahl">{{ z.a }}</td>
+    <td class="zahl">{{ z.b }}</td>
+    <td class="zahl {{ z.wertung }}">{{ z.diff }}</td>
+    <td class="zahl {{ z.wertung }}">{{ z.prozent }}</td>
+  </tr>
+  {% endfor %}
+</table></div>
+<p class="hint">
+  Differenz = <span class="punkt punkt-a"></span>{{ za.titel }} minus <span class="punkt punkt-b"></span>{{ zb.titel }}.
+  <span class="gruen">Grün</span> heißt besser, <span style="color:#c47a3a">orange</span> schlechter;
+  ohne Farbe gibt es kein Besser oder Schlechter (z.B. gefahrene km).
+  Summen wie km oder Kosten hängen von der Länge des Zeitraums ab – aussagekräftiger sind
+  Verbrauch, Kosten je 100 km und Strompreis. Die KFZ-Steuer ist nach Monaten anteilig gerechnet.
+</p>
+
+<h2>Verlauf Monat für Monat</h2>
+<div class="kennzahl-tabs">
+  {% for schluessel, metrik in metriken.items() %}
+  <button type="button" class="tab{% if loop.first %} aktiv{% endif %}"
+          onclick="kennzahlWaehlen(this, 'verlauf-{{ schluessel }}')">{{ metrik[0] }}</button>
+  {% endfor %}
+</div>
+<div class="chart">
+  <div class="echart" id="verlauf-chart" data-echart="verlauf-km" data-umschaltbar></div>
+</div>
+{% for schluessel in metriken %}
+<script type="application/json" id="verlauf-{{ schluessel }}">{{ verlauf[schluessel] | tojson }}</script>
+{% endfor %}
+<p class="hint">
+  Der erste Monat des einen Zeitraums steht neben dem ersten des anderen. Bei gleichen
+  Kalendermonaten steht nur der Monatsname, sonst beide – etwa „Apr · Okt“ beim
+  Vergleich Sommer gegen Winter.
+</p>
+
+<script src="/static/echarts.min.js"></script>
+<script src="/static/charts.js"></script>
+<script>
+function kennzahlWaehlen(knopf, quelleId) {
+  document.querySelectorAll(".kennzahl-tabs .tab").forEach(t => t.classList.remove("aktiv"));
+  knopf.classList.add("aktiv");
+  chartWechseln(document.getElementById("verlauf-chart"), quelleId);
+}
+</script>
+{% endblock %}

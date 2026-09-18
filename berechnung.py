@@ -6,6 +6,15 @@ import database as db
 
 BENZINPREIS_FALLBACK = 1.80  # €/L wenn keine Monatspreise erfasst sind
 
+# Stromquelle je Ladevorgang, abgeleitet aus dem Anbieter (Namen aus database.py).
+# Alle uebrigen Anbieter gelten als oeffentliches Laden.
+STROMQUELLEN = {"Privat – PV": "PV-Strom", "Privat – Netzbezug": "Netzbezug"}
+OEFFENTLICH = "Öffentlich"
+
+
+def stromquelle(anbieter: str) -> str:
+    return STROMQUELLEN.get(anbieter, OEFFENTLICH)
+
 
 def benzin_liter(km: float, benziner_verbrauch: float) -> float:
     """Liter Benzin, die ein Vergleichs-Benziner für km gebraucht hätte."""

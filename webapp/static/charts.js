@@ -21,11 +21,13 @@
     zahl1: (v) => f1.format(v),
     zahl2: (v) => f2.format(v),
     euro0: (v) => f0.format(v) + " €",
-    euro2: (v) => f2.format(v) + " €",
+    euro2: (v) => (v == null ? "–" : f2.format(v) + " €"),
     euroLiter: (v) => f2.format(v) + " €/L",
     ctKwh: (v) => f2.format(v) + " ct/kWh",
     kg1: (v) => f1.format(v) + " kg",
-    kwh100: (v) => f1.format(v) + " kWh/100 km",
+    kwh100: (v) => (v == null ? "–" : f1.format(v) + " kWh/100 km"),
+    kwh1: (v) => (v == null ? "–" : f1.format(v) + " kWh"),
+    km0: (v) => (v == null ? "–" : f0.format(v) + " km"),
     monat: (v) => { const s = String(v); return s.slice(5, 7) + "/" + s.slice(0, 4); },
     datumMonat: (v) => { const d = alsDatum(v); return zweistellig(d.getMonth() + 1) + "/" + d.getFullYear(); },
     datum: (v) => { const d = alsDatum(v); return zweistellig(d.getDate()) + "." + zweistellig(d.getMonth() + 1) + "." + d.getFullYear(); },
@@ -36,6 +38,7 @@
     labelCt: (p) => f1.format(Array.isArray(p.value) ? p.value[1] : p.value),
     labelRef: (p) => f1.format(p.value) + " kWh Ref.",
     labelAnteil: (p) => p.name + "\n" + f1.format(p.percent) + " %",
+    tooltipAnteilKwh: (p) => p.marker + p.name + ": <b>" + f1.format(p.value) + " kWh</b> (" + f1.format(p.percent) + " %)",
     tooltipAnteil: (p) => p.marker + p.name + ": <b>" + f2.format(p.value) + " €</b> (" + f1.format(p.percent) + " %)",
   };
 
@@ -55,18 +58,37 @@
 
   const instanzen = [];
 
+  function zeigen(chart, option) {
+    if (option.leer) {
+      // Hinweistext statt Chart – als Titel, damit der Chart umschaltbar bleibt
+      chart.setOption({ title: { text: option.leer, left: "center", top: "middle",
+                                 textStyle: { color: "#6b7280", fontSize: 13, fontWeight: 400 } } },
+                      true);
+      return;
+    }
+    chart.setOption(aufloesen(option), true);
+  }
+
   document.querySelectorAll("[data-echart]").forEach((el) => {
     const quelle = document.getElementById(el.dataset.echart);
     const option = JSON.parse(quelle.textContent);
-    if (option.leer) {
+    // Feste Charts ohne Daten: nur Text. Umschaltbare brauchen immer eine Instanz.
+    if (option.leer && !el.hasAttribute("data-umschaltbar")) {
       el.classList.add("echart-leer");
       el.textContent = option.leer;
       return;
     }
     const chart = echarts.init(el, null, { renderer: "canvas" });
-    chart.setOption(aufloesen(option));
+    zeigen(chart, option);
     instanzen.push(chart);
   });
+
+  // Einen Chart auf andere Optionen umschalten (Statistikseite: Kennzahl wechseln).
+  // `quelleId` ist die id eines <script type="application/json"> mit den neuen Optionen.
+  window.chartWechseln = function (el, quelleId) {
+    const chart = echarts.getInstanceByDom(el);
+    if (chart) zeigen(chart, JSON.parse(document.getElementById(quelleId).textContent));
+  };
 
   let timer;
   window.addEventListener("resize", () => {
