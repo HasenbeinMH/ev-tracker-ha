@@ -464,6 +464,43 @@ def delete_lade_anbieter(id):
         conn.commit()
 
 
+# --- Messdaten zuruecksetzen ---
+# Was die Backup-Seite loeschen kann: Schluessel (Name im Formular) -> (Tabelle,
+# Beschriftung). Einstellungen, Stromtarife und Lade-Anbieter stehen bewusst
+# nicht drin – die gelten weiter, auch wenn ein anderes Auto erfasst wird.
+MESSDATEN_BEREICHE = {
+    "fahrten": ("fahrten_monat",  "Gefahrene Kilometer (monatlich)"),
+    "laden":   ("ladevorgang",    "Ladevorgänge"),
+    "benzin":  ("benzinpreis",    "Benzinpreise"),
+    "akku":    ("akku_abschnitt", "Fahrtabschnitte aus dem Akkustand"),
+    "thg":     ("thg_quote",      "THG-Einträge"),
+}
+
+
+def zaehle_messdaten() -> dict:
+    """Datensaetze je loeschbarem Bereich: {schluessel: anzahl}."""
+    with closing(get_connection()) as conn:
+        return {s: conn.execute(f"SELECT COUNT(*) FROM {tabelle}").fetchone()[0]
+                for s, (tabelle, _) in MESSDATEN_BEREICHE.items()}
+
+
+def loesche_messdaten(bereiche: list) -> dict:
+    """Leert die genannten Bereiche. Rueckgabe: {schluessel: geloeschte Anzahl}.
+    Unbekannte Schluessel werden ignoriert – die Tabellennamen kommen nie aus
+    der Anfrage, sondern immer aus MESSDATEN_BEREICHE."""
+    gewaehlt = [b for b in bereiche if b in MESSDATEN_BEREICHE]
+    if not gewaehlt:
+        return {}
+    vorher = zaehle_messdaten()
+    with closing(get_connection()) as conn:
+        for b in gewaehlt:
+            conn.execute(f"DELETE FROM {MESSDATEN_BEREICHE[b][0]}")
+        conn.commit()
+        conn.isolation_level = None   # VACUUM laeuft nicht in einer Transaktion
+        conn.execute("VACUUM")
+    return {b: vorher[b] for b in gewaehlt}
+
+
 # --- HA Konfiguration ---
 HA_ENTITY_DEFAULTS = {
     "ha_url":                    "http://homeassistant.local:8123",
@@ -485,6 +522,7 @@ HA_ENTITY_DEFAULTS = {
     "fn_wallbox_energy":         "",
     "fn_tankerkoenig":           "",
     "fn_tankerkoenig_2":         "",
+    "fn_ev_battery":             "",
     # InfluxDB Verbindung
     "influx_url":                "http://localhost",
     "influx_port":               "8086",
@@ -494,6 +532,7 @@ HA_ENTITY_DEFAULTS = {
     "influx_measurement_km":     "km",
     "influx_measurement_kwh":    "kWh",
     "influx_measurement_eur_l":  "EUR/L",
+    "influx_measurement_prozent": "%",
     # Datenquelle: "ha" oder "influxdb"
     "datasource":                "ha",
 }

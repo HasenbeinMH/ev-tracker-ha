@@ -77,6 +77,48 @@
   Vergleich Sommer gegen Winter.
 </p>
 
+<h2>Verbrauch aus dem Akkustand je Monat</h2>
+{% if akku_zeilen %}
+<div class="tabelle-scroll"><table class="vergleich akku-monate">
+  <tr>
+    <th rowspan="2">Monat</th>
+    <th colspan="3" class="zahl"><span class="punkt punkt-a"></span>{{ za.titel }}</th>
+    <th colspan="3" class="zahl"><span class="punkt punkt-b"></span>{{ zb.titel }}</th>
+  </tr>
+  <tr>
+    {% for _ in [1, 2] %}
+    <th class="zahl klein">km</th>
+    <th class="zahl klein">kWh</th>
+    <th class="zahl klein">kWh/100 km</th>
+    {% endfor %}
+  </tr>
+  {% for z in akku_zeilen %}
+  <tr{% if z.summe %} class="summenzeile"{% endif %}>
+    <td>{{ z.monat }}</td>
+    {% for s in [z.a, z.b] %}
+    <td class="zahl">{{ "%.0f"|format(s.km) if s.km else "–" }}</td>
+    <td class="zahl">{{ "%.1f"|format(s.kwh)|replace(".", ",") if s.kwh else "–" }}</td>
+    <td class="zahl">{{ "%.1f"|format(s.verbrauch)|replace(".", ",") if s.verbrauch else "–" }}</td>
+    {% endfor %}
+  </tr>
+  {% endfor %}
+</table></div>
+<p class="hint">
+  Akku-Abfall × Akkukapazität ÷ gefahrene km – der Verbrauch <b>ohne Ladeverluste</b>,
+  daher niedriger als „Verbrauch laut Ladung“. Die km sind hier nur die der gewerteten
+  Fahrtabschnitte, nicht die monatlich erfassten Gesamtkilometer: Abschnitte unter
+  {{ "%.0f"|format(akku_min_km) }} km und solche ohne Akku-Abfall bleiben draußen, weil
+  das Stundenmittel aus Home Assistant sie zu ungenau macht. Die Summenzeile ist über
+  Σ kWh ÷ Σ km gewichtet. Die Abschnitte einzeln stehen unter
+  <a href="/fahrten#akku">Fahrten</a>.
+</p>
+{% else %}
+<div class="card">
+  <span class="gelb">Noch keine Fahrtabschnitte aus dem Akkustand berechnet.</span>
+  Sie entstehen beim nächtlichen Abruf oder per Knopf unter <a href="/fahrten#akku">Fahrten</a>.
+</div>
+{% endif %}
+
 <script src="/static/echarts.min.js"></script>
 <script src="/static/charts.js"></script>
 <script>

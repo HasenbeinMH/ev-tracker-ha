@@ -297,7 +297,7 @@ def monatswerte(z: dict, daten: dict) -> list:
     km_m = {x["datum"][:7]: x["km"] for x in f["fahrten"]}
     preis_m = {b["monat"][:7]: b["preis_liter"] for b in daten["benzin"]}
     avg = berechnung.durchschnitt_benzinpreis(daten["benzin"])
-    akku_m = {a["monat"]: a["verbrauch"] for a in f["akku"]}
+    akku_m = {a["monat"]: a for a in f["akku"]}
     kwh_m, kosten_m = {}, {}
     for l in f["lade"]:
         m = l["datum"][:7]
@@ -310,6 +310,10 @@ def monatswerte(z: dict, daten: dict) -> list:
         kwh = kwh_m.get(m, 0.0)
         kosten = kosten_m.get(m, 0.0)
         benzin = berechnung.benzin_liter(km, cfg["benziner_verbrauch"]) * preis_m.get(m, avg)
+        # Der Akku-Teil hat eigene km: nur die gewerteten Fahrtabschnitte, nicht
+        # die monatlich erfassten Gesamtkilometer. Nur so passen km, kWh und
+        # Verbrauch in einer Zeile zusammen.
+        a = akku_m.get(m)
         werte.append({
             "monat": m,
             "km": round(km, 1),
@@ -317,6 +321,54 @@ def monatswerte(z: dict, daten: dict) -> list:
             "strom_kosten": round(kosten, 2),
             "ersparnis": round(benzin - kosten, 2),
             "verbrauch": round(kwh / km * 100, 2) if km and kwh else None,
-            "verbrauch_akku": akku_m.get(m),
+            "km_akku": a["km"] if a else None,
+            "kwh_akku": a["kwh"] if a else None,
+            "verbrauch_akku": a["verbrauch"] if a else None,
         })
     return werte
+
+
+def akku_monatszeilen(wa: list, wb: list) -> list:
+    """Akku-Verbrauch Monat fuer Monat, beide Zeitraeume nebeneinander.
+
+    Gepaart wie im Verlaufsdiagramm: erster Monat von A neben erstem von B.
+    Die letzte Zeile ist die Summe – der Verbrauch darin ist ueber Σ kWh ÷ Σ km
+    gewichtet, nicht der Mittelwert der Monatswerte.
+
+    Leer, wenn in keinem der beiden Zeitraeume Akku-Daten liegen – eine Tabelle
+    aus lauter Gedankenstrichen sagt weniger als ein Hinweis, woher sie kaemen.
+    """
+    from charts import MONATSKUERZEL
+
+    if not any(w["kwh_akku"] for w in wa + wb):
+        return []
+
+    def kuerzel(werte, i):
+        if i >= len(werte):
+            return None
+        m = werte[i]["monat"]
+        return f"{MONATSKUERZEL[int(m[5:7]) - 1]} {m[2:4]}"
+
+    def zelle(werte, i):
+        if i >= len(werte):
+            return {"km": None, "kwh": None, "verbrauch": None}
+        w = werte[i]
+        return {"km": w["km_akku"], "kwh": w["kwh_akku"], "verbrauch": w["verbrauch_akku"]}
+
+    def summe(werte):
+        km = sum(w["km_akku"] or 0 for w in werte)
+        kwh = sum(w["kwh_akku"] or 0 for w in werte)
+        return {"km": round(km, 1) if km else None,
+                "kwh": round(kwh, 2) if kwh else None,
+                "verbrauch": round(kwh / km * 100, 2) if km else None}
+
+    zeilen = []
+    for i in range(max(len(wa), len(wb))):
+        ka, kb = kuerzel(wa, i), kuerzel(wb, i)
+        zeilen.append({
+            "monat": ka if ka == kb or kb is None else (kb if ka is None else f"{ka} · {kb}"),
+            "a": zelle(wa, i), "b": zelle(wb, i), "summe": False,
+        })
+    if zeilen:
+        zeilen.append({"monat": "Summe", "a": summe(wa), "b": summe(wb), "summe": True})
+    return zeilen

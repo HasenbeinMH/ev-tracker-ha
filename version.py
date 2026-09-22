@@ -14,10 +14,56 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "1.7.0"
+VERSION = "1.8.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "1.8.0",
+        "datum": "2026-09-22",
+        "titel": "Ladeschwelle angeglichen, Monatswerte in der Statistik",
+        "aenderungen": [
+            "Der Verbrauch aus dem Akkustand trennt Fahrtabschnitte jetzt erst ab dem "
+            "eingestellten „Mindestanstieg Ladung“ (Standard 5 Prozentpunkte) statt ab fest "
+            "verdrahteten 0,5 – dieselbe Schwelle wie die Ladeerkennung",
+            "Gemessen wird der Anstieg ab dem Tiefststand statt von Stunde zu Stunde: "
+            "eine ueber Nacht schleichende AC-Ladung zaehlt als eine Ladung, und das Rauschen "
+            "des Stundenmittels zerlegt einen Abschnitt nicht mehr in Ein-Prozent-Schnipsel",
+            "Neue Tabelle auf der Statistikseite: Verbrauch aus dem Akkustand je Monat mit "
+            "km, kWh und kWh/100 km fuer beide Zeitraeume und gewichteter Summenzeile",
+            "Hinweis auf der Seite Berichte, dass „Ladung ab % Anstieg“ auch die "
+            "Fahrtabschnitte steuert",
+            "Das Stylesheet wird mit der Versionsnummer geladen – nach einem Update zeigt "
+            "der Browser nicht mehr die alte Datei aus dem Cache",
+        ],
+    },
+    {
+        "version": "1.7.2",
+        "datum": "2026-09-22",
+        "titel": "Messdaten zuruecksetzen",
+        "aenderungen": [
+            "Neu auf der Backup-Seite: „Messdaten zuruecksetzen“ – fuer den Fahrzeugwechsel "
+            "oder um Testdaten zu entfernen",
+            "Je Bereich waehlbar: gefahrene Kilometer, Ladevorgaenge, Benzinpreise, "
+            "Akku-Abschnitte, THG-Eintraege; leere Bereiche sind gesperrt",
+            "Der Knopf loescht nicht sofort, sondern klappt eine Rueckfrage mit der genauen "
+            "Anzahl je Bereich auf – erst „Ja, endgueltig loeschen“ fuehrt es aus",
+            "Einstellungen, Stromtarife, Lade-Anbieter und HA-Konfiguration bleiben erhalten; "
+            "die Datenbank wird vorher als vor_reset_….db gesichert",
+        ],
+    },
+    {
+        "version": "1.7.1",
+        "datum": "2026-09-18",
+        "titel": "Batteriestand auch aus InfluxDB",
+        "aenderungen": [
+            "Friendly Name fuer den Batteriestand in den Einstellungen, dazu das "
+            "InfluxDB-Measurement fuer Prozentwerte (Standard „%“)",
+            "Verbrauch aus dem Akkustand und Ladeerkennung lesen bei Datenquelle InfluxDB "
+            "den Verlauf von dort; sonst oder als Rueckfall aus der HA-API",
+            "Meldung nach dem Neuberechnen nennt die genutzte Quelle",
+        ],
+    },
     {
         "version": "1.7.0",
         "datum": "2026-09-18",

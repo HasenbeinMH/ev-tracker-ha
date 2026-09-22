@@ -15,7 +15,7 @@ import urllib.parse
 import base64
 import calendar
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import defaultdict
 
 
@@ -568,6 +568,41 @@ class InfluxClient:
                     result["results"][0]["series"][0]["values"]]
         except Exception:
             return []
+
+    @classmethod
+    def aus_einstellungen(cls, cfg: dict) -> "InfluxClient":
+        """Client aus den gespeicherten HA-/InfluxDB-Einstellungen."""
+        return cls(
+            url=cfg.get("influx_url", "http://localhost"),
+            port=int(cfg.get("influx_port", "8086") or 8086),
+            database=cfg.get("influx_database", "home_assistant"),
+            user=cfg.get("influx_user", ""),
+            password=cfg.get("influx_password", ""),
+            meas_km=cfg.get("influx_measurement_km", "km"),
+            meas_kwh=cfg.get("influx_measurement_kwh", "kWh"),
+            meas_eur_l=cfg.get("influx_measurement_eur_l", "EUR/L"),
+        )
+
+    def get_stundenwerte(self, friendly_name: str, measurement: str,
+                         start: datetime, ende: datetime,
+                         aggregat: str = "mean") -> list[tuple]:
+        """Stundenwerte als [('YYYY-MM-DDTHH:MM' in Ortszeit, wert), ...], aufsteigend.
+        aggregat: "mean" fuer Messwerte (Akkustand), "last" fuer Zaehler (km)."""
+        def utc(t: datetime) -> str:
+            return t.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        q = (f'SELECT {aggregat}("value") FROM "{_esc_ident(measurement)}" '
+             f'WHERE "friendly_name" = \'{_esc_str(friendly_name)}\' '
+             f"AND time >= '{utc(start)}' AND time <= '{utc(ende)}' "
+             f"GROUP BY time(1h) fill(none)")
+        werte = []
+        for zeit, wert in self._extract_values(self._query(q)):
+            try:
+                lokal = datetime.fromisoformat(str(zeit).replace("Z", "+00:00")).astimezone()
+                werte.append((lokal.strftime("%Y-%m-%dT%H:%M"), float(wert)))
+            except (TypeError, ValueError):
+                continue
+        werte.sort(key=lambda x: x[0])
+        return werte
 
     def _get_month_range_query(self, year: int, month: int) -> tuple[str, str]:
         """Gibt ISO-Zeitstrings für Monatsbeginn und -ende zurück."""

@@ -126,6 +126,8 @@
 <p><b>Tabelle:</b> alle Kennzahlen beider Zeiträume, dazu die Differenz (erster minus zweiter Zeitraum) absolut und in Prozent. Grün heißt besser, orange schlechter – etwa weniger Verbrauch oder mehr Ersparnis. Anteile (PV, Netz, öffentlich) werden in Prozentpunkten verglichen.</p>
 <div class="hb-warn"><b>Summen hängen von der Länge ab:</b> Ein Jahr hat mehr km und höhere Kosten als ein Quartal. Für faire Vergleiche unterschiedlich langer Zeiträume taugen Verbrauch, Kosten je 100 km und Ø Strompreis.</div>
 <p><b>Verlauf Monat für Monat:</b> Diagramm mit wählbarer Kennzahl. Der erste Monat des einen Zeitraums steht neben dem ersten des anderen; bei Sommer gegen Winter also April neben Oktober („Apr · Okt“).</p>
+<p><b>Verbrauch aus dem Akkustand je Monat:</b> Dieselbe Paarung als Tabelle mit den Zahlen dahinter – je Monat und Zeitraum die gewerteten km, die kWh aus dem Akku und der Verbrauch. Die Summenzeile ist über Σ kWh ÷ Σ km gewichtet und entspricht der Zeile „Verbrauch laut Akku“ in der Tabelle oben.</p>
+<div class="hb-warn"><b>Andere km als im Diagramm:</b> In dieser Tabelle zählen nur die km der gewerteten Fahrtabschnitte, nicht die monatlich erfassten Gesamtkilometer – sonst passten km, kWh und Verbrauch in einer Zeile nicht zusammen. Welche Abschnitte draußen bleiben, steht unter <a href="#akkuverbrauch">Verbrauch aus dem Akkustand</a>.</div>
 
 <h2 id="fahrten">Fahrten <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„🚗 Gefahrene Kilometer (monatlich)"</b></p>
@@ -145,7 +147,8 @@
 <div class="hb-formel"><span class="lbl">Durchschnitt – gewichtet</span>Ø = Σ kWh (alle Monate) ÷ Σ km (alle Monate) × 100</div>
 <div class="hb-info"><b>Gewichtet, nicht Mittel der Monatswerte:</b> Ein Monat mit 2.000 km zählt stärker als einer mit 200 km. Ein kurzer Wintermonat verzerrt den Schnitt sonst stark.</div>
 <h3 id="akkuverbrauch">Verbrauch aus dem Akkustand</h3>
-<p>Ein zweiter, unabhängiger Blick auf den Verbrauch: Der stündliche Batteriestand aus Home Assistant wird in <b>Fahrtabschnitte zwischen zwei Ladungen</b> zerlegt. Ein Abschnitt beginnt am Höchststand nach einer Ladung und endet am Tiefststand vor der nächsten; die km kommen aus dem Kilometerstand zu diesen Zeitpunkten.</p>
+<p>Ein zweiter, unabhängiger Blick auf den Verbrauch: Der stündliche Batteriestand aus Home Assistant wird in <b>Fahrtabschnitte zwischen zwei Ladungen</b> zerlegt. Ein Abschnitt beginnt am Höchststand nach einer Ladung und endet am Tiefststand vor der nächsten; die km kommen aus dem Kilometerstand zu diesen Zeitpunkten. Monatsweise stehen die Zahlen auf der Seite <a href="#statistik">Statistik</a>.</p>
+<div class="hb-info"><b>Was als Ladung zählt:</b> Ein Anstieg um <b>Mindestanstieg Ladung</b> (Einstellungen, Standard 5 Prozentpunkte) – gemessen ab dem Tiefststand, nicht von Stunde zu Stunde. Eine über Nacht schleichende AC-Ladung zählt so als eine einzige Ladung, und das Rauschen des Stundenmittels zerlegt einen Abschnitt nicht mehr in Ein-Prozent-Schnipsel. Kleinere Zwischenladungen trennen den Abschnitt nicht, gehen dafür aber auch nicht in seine kWh ein – der Verbrauch fällt dann etwas zu niedrig aus.</div>
 <div class="hb-formel"><span class="lbl">Energie je Abschnitt</span>kWh = (Akku Start − Akku Ende) [%] ÷ 100 × Akkukapazität [kWh]</div>
 <div class="hb-formel"><span class="lbl">Verbrauch je Abschnitt</span>Verbrauch = kWh ÷ (km Ende − km Start) × 100</div>
 <div class="hb-bsp"><b>Beispiel</b> – Akku von 80 % auf 42 %, Kilometerstand von 12.310 auf 12.455, 58,3-kWh-Batterie:
@@ -249,6 +252,14 @@
   <li><b>„Datenbank herunterladen"</b> liefert eine konsistente Kopie, auch während die App schreibt.</li>
 </ul>
 <div class="hb-warn"><b>Wiederherstellen ersetzt die laufende Datenbank.</b> Die bisherige wird vorher automatisch als <code>vor_restore_….db</code> gesichert. Die hochgeladene Datei wird geprüft – nur echte EV-Tracker-Datenbanken werden akzeptiert.</div>
+<p class="hint"><b>Messdaten zurücksetzen</b> – für den Fahrzeugwechsel oder zum Entfernen von Testdaten:</p>
+<ul>
+  <li>Je Bereich einzeln wählbar: gefahrene Kilometer, Ladevorgänge, Benzinpreise, Akku-Abschnitte, THG-Einträge. Leere Bereiche lassen sich nicht anhaken.</li>
+  <li>Der Knopf löscht noch nichts – er klappt eine <b>Rückfrage</b> auf, die jeden Bereich mit der genauen Anzahl auflistet. Erst <b>„Ja, endgültig löschen"</b> führt es aus.</li>
+  <li>Einstellungen, Stromtarife, Lade-Anbieter und die HA-Konfiguration bleiben immer erhalten.</li>
+  <li>Vorher wird die Datenbank als <code>vor_reset_….db</code> im Datenordner gesichert.</li>
+</ul>
+<div class="hb-warn">Der <b>nächtliche Abruf</b> schreibt Kilometer, Benzinpreise und Akku-Abschnitte aus Home Assistant neu. Nach dem Zurücksetzen zuerst die Sensoren in den Einstellungen auf das neue Fahrzeug umstellen – sonst sind die alten Werte am nächsten Morgen wieder da.</div>
 
 <h2 id="einstellungen">Einstellungen <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <table>

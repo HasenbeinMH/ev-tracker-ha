@@ -49,6 +49,39 @@
   </div>
 </div>
 
+<h2>Messdaten zurücksetzen</h2>
+<div class="card">
+  <p class="hint" style="margin-top:0">
+    Löscht die erfassten Messwerte – etwa beim Fahrzeugwechsel oder um Testdaten loszuwerden.
+    <b>Einstellungen, Stromtarife, Lade-Anbieter und die Home-Assistant-Konfiguration bleiben
+    erhalten.</b> Die aktuelle Datenbank wird vorher automatisch als
+    <code>vor_reset_….db</code> im Datenordner gesichert.
+  </p>
+  <div id="reset-bereiche">…</div>
+  <p class="hint" style="margin-bottom:0">
+    ⚠ Der nächtliche Abruf schreibt Kilometer, Benzinpreise und Akku-Abschnitte aus Home
+    Assistant neu. Stell die Sensoren unter <a href="/einstellungen">Einstellungen</a> vorher
+    auf das neue Fahrzeug um – sonst stehen die alten Werte am nächsten Morgen wieder da.
+  </p>
+  <div class="inline" style="margin-top:12px">
+    <button type="button" class="danger" style="padding:8px 16px; font-size:13px"
+            onclick="resetFragen()">🗑 Messdaten zurücksetzen</button>
+    <span id="reset-meldung" style="align-self:center; font-size:12px"></span>
+  </div>
+
+  <div id="reset-rueckfrage" class="card" hidden
+       style="margin:14px 0 0; border-color:#aa5a5a; background:rgba(170,90,90,.08)">
+    <p style="margin:0 0 6px"><b>⚠ Wirklich löschen?</b> Endgültig entfernt werden:</p>
+    <ul id="reset-vorschau" style="margin:0 0 10px 18px; font-size:13px"></ul>
+    <div class="inline">
+      <button type="button" class="danger" style="padding:8px 16px; font-size:13px"
+              onclick="resetAusfuehren(this)">Ja, endgültig löschen</button>
+      <button type="button" class="secondary" style="padding:8px 16px; font-size:13px"
+              onclick="resetAbbrechen()">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
 <script>
 async function ladeStatus() {
   const r = await fetch("/api/backup/status");
@@ -109,7 +142,62 @@ async function restore() {
   setTimeout(() => ladeStatus(), 1500);
 }
 
+// --- Messdaten zuruecksetzen: erst auswaehlen, dann bestaetigen ---
+async function ladeReset() {
+  const r = await fetch("/api/reset/vorschau");
+  const d = await r.json();
+  document.getElementById("reset-bereiche").innerHTML = d.bereiche.map(b => `
+    <label style="display:flex; gap:8px; align-items:center; padding:3px 0; font-size:13px">
+      <input type="checkbox" value="${b.key}" data-titel="${b.titel}" data-anzahl="${b.anzahl}"
+             ${b.anzahl ? "checked" : "disabled"}>
+      <span>${b.titel}</span>
+      <span class="muted">${b.anzahl ? b.anzahl + " Einträge" : "leer"}</span>
+    </label>`).join("");
+}
+
+function resetGewaehlt() {
+  return [...document.querySelectorAll("#reset-bereiche input:checked")];
+}
+
+// Schritt 1: nur die Rueckfrage aufklappen – hier wird noch nichts geloescht
+function resetFragen() {
+  const gewaehlt = resetGewaehlt();
+  const m = document.getElementById("reset-meldung");
+  if (!gewaehlt.length) { m.textContent = "Nichts ausgewählt"; m.className = "gelb"; return; }
+  m.textContent = ""; m.className = "";
+  document.getElementById("reset-vorschau").innerHTML = gewaehlt.map(c =>
+    `<li>${c.dataset.titel} – <b>${c.dataset.anzahl}</b> Einträge</li>`).join("");
+  document.getElementById("reset-rueckfrage").hidden = false;
+}
+
+function resetAbbrechen() {
+  document.getElementById("reset-rueckfrage").hidden = true;
+  const m = document.getElementById("reset-meldung");
+  m.textContent = "Abgebrochen – es wurde nichts gelöscht."; m.className = "muted";
+}
+
+// Schritt 2: jetzt wirklich
+async function resetAusfuehren(btn) {
+  const gewaehlt = resetGewaehlt();
+  const m = document.getElementById("reset-meldung");
+  btn.disabled = true;
+  m.textContent = "Lösche …"; m.className = "muted";
+  const fd = new FormData();
+  fd.append("bereiche", gewaehlt.map(c => c.value).join(","));
+  fd.append("bestaetigt", "ja");
+  const r = await fetch("/api/reset", { method: "POST", body: fd });
+  const d = await r.json();
+  btn.disabled = false;
+  document.getElementById("reset-rueckfrage").hidden = true;
+  if (d.error) { m.textContent = "✗ " + d.error; m.className = "rot"; return; }
+  m.textContent = "✓ " + d.meldung + " · Sicherung: " + d.sicherung;
+  m.className = "gruen";
+  ladeReset();
+  ladeStatus();
+}
+
 ladeStatus();
 ladeLog();
+ladeReset();
 </script>
 {% endblock %}

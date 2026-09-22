@@ -129,7 +129,9 @@ def statistik(request: Request, a: str | None = None, b: str | None = None):
                   zeilen=zeitraum_mod.vergleich_zeilen(ka, kb),
                   optionen=zeitraum_mod.optionen(daten),
                   vorlagen=zeitraum_mod.vorlagen(),
-                  metriken=charts.VERGLEICH_METRIKEN, verlauf=verlauf)
+                  metriken=charts.VERGLEICH_METRIKEN, verlauf=verlauf,
+                  akku_zeilen=zeitraum_mod.akku_monatszeilen(wa, wb),
+                  akku_min_km=akkuverbrauch.MIN_KM)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -362,16 +364,7 @@ def _monat_liste(von_y, von_m, bis_y, bis_m):
 
 
 def _make_influx_client(cfg):
-    return InfluxClient(
-        url=cfg.get("influx_url", "http://localhost"),
-        port=int(cfg.get("influx_port", "8086")),
-        database=cfg.get("influx_database", "home_assistant"),
-        user=cfg.get("influx_user", ""),
-        password=cfg.get("influx_password", ""),
-        meas_km=cfg.get("influx_measurement_km", "km"),
-        meas_kwh=cfg.get("influx_measurement_kwh", "kWh"),
-        meas_eur_l=cfg.get("influx_measurement_eur_l", "EUR/L"),
-    )
+    return InfluxClient.aus_einstellungen(cfg)
 
 
 def _fetch_monat(client, ic, cfg, use_influx, year, month):
@@ -975,8 +968,8 @@ def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> lis
         _log_import([f"{schluessel}: übernommen {zeile}"])
         protokoll.append(f"{schluessel}: {zeile}")
 
-    # Verbrauch aus dem Akkustand fortschreiben (nur ueber die HA-API verfuegbar)
-    if client is not None:
+    # Verbrauch aus dem Akkustand fortschreiben (InfluxDB oder HA-API, wie eingestellt)
+    if client is not None or ic is not None:
         try:
             meldung = akkuverbrauch.aktualisieren()
         except Exception as e:
@@ -1117,6 +1110,32 @@ LOG_DATEI = os.path.join(DATA_DIR, "backup.log")
 TRIGGER_DATEI = os.path.join(DATA_DIR, ".backup_now")
 
 
+def _sicherungskopie(praefix: str) -> str:
+    """Legt eine konsistente Kopie der Datenbank als <praefix>_<zeit>.db im
+    Datenordner an und gibt den Dateinamen zurueck ("" wenn keine DB da ist).
+    Bei gleichem Zeitstempel wird durchnummeriert, damit zwei Aufrufe in
+    derselben Sekunde nicht die erste Kopie ueberschreiben."""
+    import sqlite3
+    if not os.path.exists(db.DB_PATH):
+        return ""
+    stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    ziel = os.path.join(DATA_DIR, f"{praefix}_{stamp}.db")
+    nr = 2
+    while os.path.exists(ziel):
+        ziel = os.path.join(DATA_DIR, f"{praefix}_{stamp}_{nr}.db")
+        nr += 1
+
+    quelle = sqlite3.connect(db.DB_PATH)
+    kopie = sqlite3.connect(ziel)
+    try:
+        with kopie:
+            quelle.backup(kopie)
+    finally:
+        kopie.close()
+        quelle.close()
+    return os.path.basename(ziel)
+
+
 @app.get("/backup", response_class=HTMLResponse)
 def backup_seite(request: Request):
     return render(request, "backup.html", aktiv="backup", db_pfad=db.DB_PATH)
@@ -1211,22 +1230,41 @@ async def backup_restore(datei: UploadFile = File(...), bestaetigt: str = Form("
         return JSONResponse({"error": f"Datei nicht lesbar: {e}"}, status_code=400)
 
     # Sicherheitskopie der aktuellen Datenbank
-    stamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
-    sicherung = os.path.join(DATA_DIR, f"vor_restore_{stamp}.db")
-    if os.path.exists(db.DB_PATH):
-        quelle = sqlite3.connect(db.DB_PATH)
-        kopie = sqlite3.connect(sicherung)
-        try:
-            with kopie:
-                quelle.backup(kopie)
-        finally:
-            kopie.close()
-            quelle.close()
+    sicherung = _sicherungskopie("vor_restore")
 
     os.replace(tmp, db.DB_PATH)
     db.init_db()
-    return {"ok": True, "sicherung": os.path.basename(sicherung),
+    return {"ok": True, "sicherung": sicherung,
             "meldung": "Datenbank wiederhergestellt."}
+
+
+@app.get("/api/reset/vorschau")
+def reset_vorschau():
+    """Was ein Zuruecksetzen loeschen wuerde – Grundlage fuer die Rueckfrage."""
+    anzahl = db.zaehle_messdaten()
+    return {"bereiche": [{"key": k, "titel": titel, "anzahl": anzahl.get(k, 0)}
+                         for k, (_, titel) in db.MESSDATEN_BEREICHE.items()]}
+
+
+@app.post("/api/reset")
+def reset_messdaten(bereiche: str = Form(""), bestaetigt: str = Form("")):
+    """Leert die gewaehlten Messdaten-Tabellen (Fahrzeugwechsel, Testdaten raus).
+
+    Einstellungen, Stromtarife, Lade-Anbieter und die HA-Konfiguration bleiben.
+    Vorher wird die Datenbank als vor_reset_….db im Datenordner gesichert.
+    """
+    if bestaetigt != "ja":
+        return JSONResponse({"error": "Nicht bestaetigt."}, status_code=400)
+    gewaehlt = [b for b in bereiche.split(",") if b in db.MESSDATEN_BEREICHE]
+    if not gewaehlt:
+        return JSONResponse({"error": "Kein Bereich gewaehlt."}, status_code=400)
+
+    sicherung = _sicherungskopie("vor_reset")
+    geloescht = db.loesche_messdaten(gewaehlt)
+    text = ", ".join(f"{db.MESSDATEN_BEREICHE[b][1]}: {n}"
+                     for b, n in geloescht.items())
+    return {"ok": True, "sicherung": sicherung,
+            "geloescht": geloescht, "meldung": f"Zurückgesetzt – {text}"}
 
 
 @app.get("/api/backup")
@@ -1268,8 +1306,8 @@ SENSOR_FELDER = [
     ("ha_wallbox_energy", "fn_wallbox_energy", "Netz ins Auto geladen (kWh)"),
     ("ha_tankerkoenig",   "fn_tankerkoenig",   "Benzinpreis Sensor 1 (€/L)"),
     ("ha_tankerkoenig_2", "fn_tankerkoenig_2", "Benzinpreis Sensor 2 (€/L)"),
-    # Nur ueber die HA-API: Ladeerkennung und Verbrauch aus dem Akkustand
-    ("ha_ev_battery",     "",                  "Batteriestand Auto (%)"),
+    # Fuer Ladeerkennung und Verbrauch aus dem Akkustand
+    ("ha_ev_battery",     "fn_ev_battery",     "Batteriestand Auto (%)"),
 ]
 
 
@@ -1321,7 +1359,7 @@ async def einstellungen_ha(request: Request):
             "influx_url", "influx_port", "influx_database",
             "influx_user", "influx_password",
             "influx_measurement_km", "influx_measurement_kwh",
-            "influx_measurement_eur_l"]
+            "influx_measurement_eur_l", "influx_measurement_prozent"]
     keys += [k for k, _, _ in ((h, f, l) for h, f, l in SENSOR_FELDER)]
     keys += [f for _, f, _ in SENSOR_FELDER if f]
     settings = {}

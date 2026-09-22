@@ -27,27 +27,24 @@ def _client():
 
 def batterie_verlauf(jahr: int, monat: int) -> list:
     """Stündlicher Verlauf des Batteriestands als [(zeitstempel, prozent), ...].
-    Nutzt die Langzeitstatistik, fällt auf die History-API zurück."""
-    client, cfg = _client()
-    entity = (cfg.get("ha_ev_battery") or "").strip()
-    if client is None or not entity:
-        return []
-
+    Nutzt die eingestellte Quelle (InfluxDB oder HA-Langzeitstatistik, siehe
+    akkuverbrauch.verlaeufe) und fällt zuletzt auf die History-API zurück."""
     letzter = calendar.monthrange(jahr, monat)[1]
     start = datetime(jahr, monat, 1)
     ende = datetime(jahr, monat, letzter, 23, 59, 59)
 
-    verlauf = []
+    import akkuverbrauch
     try:
-        stats = client._get_statistics([entity], start, ende, period="hour")
-        for r in stats.get(entity, []):
-            wert = r.get("mean")
-            if wert is None:
-                wert = r.get("state")
-            if wert is not None:
-                verlauf.append((str(r.get("start", ""))[:16], float(wert)))
+        verlauf = akkuverbrauch.verlaeufe(start, ende, mit_km=False)["soc"]
     except Exception:
         verlauf = []
+    if verlauf:
+        return verlauf
+
+    client, cfg = _client()
+    entity = (cfg.get("ha_ev_battery") or "").strip()
+    if client is None or not entity:
+        return []
 
     if not verlauf:
         try:

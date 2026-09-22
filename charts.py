@@ -368,7 +368,7 @@ def chart_verbrauch_100km(lade_daten, fahrten_daten, ev_ref=15.0, akku_monate=No
     return _bedienung(opt, len(monate))
 
 
-_MONATSKUERZEL = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
+MONATSKUERZEL = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
                   "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
 
 # Kennzahlen des Verlaufsvergleichs: schluessel -> (Beschriftung, Formatierer, Balken?)
@@ -392,7 +392,7 @@ def chart_vergleich(werte_a, werte_b, titel_a, titel_b, metrik):
         return _leer("Keine Monate in den gewählten Zeiträumen")
 
     def kuerzel(werte, i):
-        return _MONATSKUERZEL[int(werte[i]["monat"][5:7]) - 1] if i < len(werte) else None
+        return MONATSKUERZEL[int(werte[i]["monat"][5:7]) - 1] if i < len(werte) else None
 
     achse = []
     for i in range(laenge):
