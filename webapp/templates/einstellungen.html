@@ -45,11 +45,11 @@
   </div>
 </div>
 
+{% if not add_on_modus %}
 <h2>Einstellungen sichern / laden</h2>
 <div class="card">
   <p class="hint" style="margin-top:0">
-    Sichert alle Parameter, Sensor-Zuordnungen und Anbieter als JSON-Datei –
-    praktisch zum Übertragen zwischen Desktop-App und Web-Version.
+    Sichert alle Parameter, Sensor-Zuordnungen und Anbieter als JSON-Datei.
   </p>
   <div class="inline">
     <a class="btn" href="api/settings/export?secrets=1">⬇ Exportieren (mit Zugangsdaten)</a>
@@ -66,6 +66,7 @@
     sicher aufbewahren, nicht weitergeben.
   </p>
 </div>
+{% endif %}
 
 <h2>Lade-Anbieter</h2>
 <div class="card">

@@ -65,9 +65,3 @@ Alle Daten liegen in `ev_tracker.db` (SQLite), im Container unter `/data`.
 
 Berechnung: `km / 100 × 7,0 L × Benzinpreis`
 Standard-Referenzverbrauch: **15 kWh/100 km** (in den Einstellungen pro Fahrzeug anpassbar)
-
-## Hinweis zur Desktop-App
-
-Bis Version 1.4 gab es zusätzlich eine Desktop-App (PyQt6, `main.py` und `ui/`).
-Sie wurde mit Version 1.5.0 entfernt; die Web-App hat sie vollständig abgelöst.
-Der alte Stand liegt weiterhin in der Git-Historie.

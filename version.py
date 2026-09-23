@@ -14,10 +14,20 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.0.1"
+VERSION = "2.0.2"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.0.2",
+        "datum": "2026-09-23",
+        "titel": "Redirect-Fehler unter Ingress behoben",
+        "aenderungen": [
+            "Alle POST-Formulare mit mehrsegmentigem Pfad (z.B. /einstellungen/parameter, "
+            "/steuer/thg/delete) leiteten unter Home-Assistant-Ingress auf eine doppelte, "
+            "nicht existierende URL weiter (\"Not Found\") – jetzt korrekt aufgeloest",
+        ],
+    },
     {
         "version": "2.0.1",
         "datum": "2026-09-23",

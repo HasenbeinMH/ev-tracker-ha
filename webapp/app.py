@@ -269,7 +269,7 @@ def fahrten_akku_berechnen(zeitraum: str = Form("alles")):
     except Exception as e:
         meldung = f"Fehler beim Abruf: {e}"
     from urllib.parse import quote
-    return RedirectResponse(f"fahrten?akku={quote(meldung)}#akku", status_code=303)
+    return RedirectResponse(f"../fahrten?akku={quote(meldung)}#akku", status_code=303)
 
 
 @app.post("/fahrten")
@@ -283,7 +283,7 @@ def fahrten_add(monat: str = Form(...), km: str = Form(...)):
 @app.post("/fahrten/delete")
 def fahrten_delete(monat: str = Form(...)):
     db.delete_fahrt_monat(monat)
-    return RedirectResponse("fahrten", status_code=303)
+    return RedirectResponse("../fahrten", status_code=303)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -348,7 +348,7 @@ def laden_update(id: int = Form(...), datum: str = Form(...), kwh: str = Form(..
 @app.post("/laden/delete")
 def laden_delete(id: int = Form(...)):
     db.delete_ladevorgang(id)
-    return RedirectResponse("laden", status_code=303)
+    return RedirectResponse("../laden", status_code=303)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -371,7 +371,7 @@ def benzin_add(monat: str = Form(...), preis: str = Form(...)):
 @app.post("/benzin/delete")
 def benzin_delete(monat: str = Form(...)):
     db.delete_benzinpreis(monat)
-    return RedirectResponse("benzin", status_code=303)
+    return RedirectResponse("../benzin", status_code=303)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -397,7 +397,7 @@ def stromtarif_add(gueltig_ab: str = Form(...), preis: str = Form(...),
 @app.post("/stromtarif/delete")
 def stromtarif_delete(id: int = Form(...)):
     db.delete_stromtarif(id)
-    return RedirectResponse("stromtarif", status_code=303)
+    return RedirectResponse("../stromtarif", status_code=303)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -450,7 +450,7 @@ async def ladetarife_update(request: Request):
 @app.post("/ladetarife/delete")
 def ladetarife_delete(id: int = Form(...)):
     db.delete_ladetarif(id)
-    return RedirectResponse("ladetarife", status_code=303)
+    return RedirectResponse("../ladetarife", status_code=303)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -470,7 +470,7 @@ def steuer_kfz(betrag: str = Form(...)):
     v = parse_de(betrag)
     if v is not None and v >= 0:
         db.set_einstellung("kfz_steuer_benziner", v)
-    return RedirectResponse("steuer", status_code=303)
+    return RedirectResponse("../steuer", status_code=303)
 
 
 @app.post("/steuer/thg")
@@ -479,13 +479,13 @@ def steuer_thg_add(datum: str = Form(...), betrag: str = Form(...),
     v = parse_de(betrag)
     if v is not None and v > 0:
         db.add_thg(datum, v, anbieter or "Sonstige", notiz)
-    return RedirectResponse("steuer", status_code=303)
+    return RedirectResponse("../steuer", status_code=303)
 
 
 @app.post("/steuer/thg/delete")
 def steuer_thg_delete(id: int = Form(...)):
     db.delete_thg(id)
-    return RedirectResponse("steuer", status_code=303)
+    return RedirectResponse("../../steuer", status_code=303)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -532,7 +532,7 @@ async def instandhaltung_update(request: Request):
 @app.post("/instandhaltung/delete")
 def instandhaltung_delete(id: int = Form(...)):
     db.delete_instandhaltung(id)
-    return RedirectResponse("instandhaltung", status_code=303)
+    return RedirectResponse("../instandhaltung", status_code=303)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -584,7 +584,7 @@ async def versicherung_update(request: Request):
 @app.post("/versicherung/delete")
 def versicherung_delete(id: int = Form(...)):
     db.delete_versicherung(id)
-    return RedirectResponse("versicherung", status_code=303)
+    return RedirectResponse("../versicherung", status_code=303)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1084,7 +1084,7 @@ async def einstellungen_mail(request: Request):
                      "bericht_warten", "auto_import"]:
         werte[schalter] = "1" if form.get(schalter) else "0"
     db.set_einstellungen(werte)
-    return RedirectResponse("berichte", status_code=303)
+    return RedirectResponse("../berichte", status_code=303)
 
 
 # ── Zeitplan: prueft stuendlich, ob ein Bericht faellig ist ──────────────────
@@ -1560,6 +1560,7 @@ def einstellungen(request: Request):
                   fahrzeug_name=db.get_einstellung_str("fahrzeug_name") or "",
                   kfz=db.get_einstellung("kfz_steuer_benziner") or 0.0,
                   ha=ha_settings,
+                  add_on_modus=IST_ADDON,
                   supervisor_aktiv=IST_ADDON
                                    and not (ha_settings.get("ha_url") and ha_settings.get("ha_token")),
                   anbieter=db.get_lade_anbieter(),
@@ -1583,20 +1584,20 @@ def einstellungen_parameter(benziner_verbrauch: str = Form(...),
         if v is not None:
             db.set_einstellung(key, v)
     db.set_einstellung("fahrzeug_name", fahrzeug_name.strip())
-    return RedirectResponse("einstellungen", status_code=303)
+    return RedirectResponse("../einstellungen", status_code=303)
 
 
 @app.post("/einstellungen/anbieter")
 def anbieter_add(name: str = Form(...), gruenstrom: str = Form("")):
     if name.strip():
         db.add_lade_anbieter(name.strip(), 1 if gruenstrom else 0)
-    return RedirectResponse("einstellungen", status_code=303)
+    return RedirectResponse("../einstellungen", status_code=303)
 
 
 @app.post("/einstellungen/anbieter/delete")
 def anbieter_delete(id: int = Form(...)):
     db.delete_lade_anbieter(id)
-    return RedirectResponse("einstellungen", status_code=303)
+    return RedirectResponse("../../einstellungen", status_code=303)
 
 
 @app.post("/einstellungen/ha")
@@ -1619,4 +1620,4 @@ async def einstellungen_ha(request: Request):
     if settings.get("influx_password") == "":
         settings.pop("influx_password")
     db.save_ha_settings(settings)
-    return RedirectResponse("einstellungen", status_code=303)
+    return RedirectResponse("../einstellungen", status_code=303)
