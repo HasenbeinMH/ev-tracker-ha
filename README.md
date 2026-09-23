@@ -1,7 +1,9 @@
-# ⚡ EV Tracker – Kia EV3
+# ⚡ EV Tracker
 
-Web-App zur Erfassung und Auswertung der Kosteneinsparungen gegenüber einem Benziner.
-Läuft als Docker-Container; Bedienung im Browser.
+Web-App zur Erfassung und Auswertung der Kosteneinsparungen eines Elektroautos
+gegenüber einem Benziner. Fahrzeugname und -bild sind in den Einstellungen frei wählbar –
+nicht auf ein bestimmtes Modell festgelegt. Läuft als Docker-Container oder als
+Home-Assistant-Add-on; Bedienung im Browser.
 
 Installation, Konfiguration und Betrieb: **[webapp/README.md](webapp/README.md)**
 
@@ -62,7 +64,7 @@ Alle Daten liegen in `ev_tracker.db` (SQLite), im Container unter `/data`.
 ## Benzin-Äquivalent
 
 Berechnung: `km / 100 × 7,0 L × Benzinpreis`
-Kia EV3 Referenzverbrauch: **15 kWh/100 km**
+Standard-Referenzverbrauch: **15 kWh/100 km** (in den Einstellungen pro Fahrzeug anpassbar)
 
 ## Hinweis zur Desktop-App
 

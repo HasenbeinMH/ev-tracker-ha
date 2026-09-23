@@ -94,6 +94,61 @@ def _ha_verbindung(cfg: dict) -> dict | None:
 
 
 # ─────────────────────────────────────────────────────────────
+#  Fahrzeugbild (Dashboard-Kopf) – austauschbar, da andere Nutzer andere Autos fahren
+# ─────────────────────────────────────────────────────────────
+
+AUTO_BILD_ERLAUBT = {".jpg", ".jpeg", ".png", ".webp"}
+
+
+def _auto_bild_pfad() -> str | None:
+    """Pfad zum vom Nutzer hochgeladenen Fahrzeugbild, falls vorhanden."""
+    datei = db.get_einstellung_str("auto_bild_datei")
+    if not datei:
+        return None
+    voll = os.path.join(DATA_DIR, datei)
+    return voll if os.path.exists(voll) else None
+
+
+@app.get("/api/auto-bild")
+def auto_bild():
+    """Liefert das eigene Fahrzeugbild, sonst das mitgelieferte Standardbild."""
+    voll = _auto_bild_pfad()
+    if voll:
+        return FileResponse(voll)
+    return FileResponse(os.path.join(STATIC_DIR, "Auto.jpg"))
+
+
+@app.post("/api/auto-bild")
+async def auto_bild_hochladen(bild: UploadFile = File(...)):
+    ext = os.path.splitext(bild.filename or "")[1].lower()
+    if ext not in AUTO_BILD_ERLAUBT:
+        return JSONResponse(
+            {"error": "Nur JPG, PNG oder WebP erlaubt."}, status_code=400)
+    inhalt = await bild.read()
+    if len(inhalt) > 8 * 1024 * 1024:
+        return JSONResponse({"error": "Datei zu groß (max. 8 MB)."}, status_code=400)
+
+    alt = _auto_bild_pfad()
+    if alt:
+        os.remove(alt)
+    dateiname = f"auto_bild{ext}"
+    with open(os.path.join(DATA_DIR, dateiname), "wb") as f:
+        f.write(inhalt)
+    db.set_einstellung("auto_bild_datei", dateiname)
+    return {"ok": True}
+
+
+@app.post("/api/auto-bild/reset")
+def auto_bild_zuruecksetzen():
+    """Loescht das eigene Bild wieder – Dashboard zeigt danach das Standardbild."""
+    voll = _auto_bild_pfad()
+    if voll:
+        os.remove(voll)
+    db.set_einstellung("auto_bild_datei", "")
+    return {"ok": True}
+
+
+# ─────────────────────────────────────────────────────────────
 #  Dashboard
 # ─────────────────────────────────────────────────────────────
 
@@ -124,6 +179,7 @@ def dashboard(request: Request, zeitraum: str | None = None):
     }
     antwort = render(request, "dashboard.html", kz=kz, charts=charts_html,
                      zeitraum=z, zeitraum_optionen=zeitraum_mod.optionen(daten),
+                     fahrzeug_name=db.get_einstellung_str("fahrzeug_name") or "Mein Elektroauto",
                      aktiv="dashboard")
     if zeitraum is not None:
         antwort.set_cookie("zeitraum", z["schluessel"], max_age=365 * 24 * 3600,
@@ -487,6 +543,7 @@ def instandhaltung_delete(id: int = Form(...)):
 def versicherung(request: Request):
     return render(request, "versicherung.html", d=unterhalt.versicherung_daten(),
                   deckungen=unterhalt.DECKUNGEN, zusatz=unterhalt.ZUSATZ,
+                  fahrzeug_name=db.get_einstellung_str("fahrzeug_name") or "",
                   aktiv="versicherung", heute=datetime.now().strftime("%Y-%m-%d"))
 
 
@@ -1500,6 +1557,7 @@ def einstellungen(request: Request):
     ha_settings = db.get_ha_settings()
     return render(request, "einstellungen.html",
                   cfg=db.get_config(),
+                  fahrzeug_name=db.get_einstellung_str("fahrzeug_name") or "",
                   kfz=db.get_einstellung("kfz_steuer_benziner") or 0.0,
                   ha=ha_settings,
                   supervisor_aktiv=IST_ADDON
@@ -1514,7 +1572,8 @@ def einstellungen_parameter(benziner_verbrauch: str = Form(...),
                             ev_verbrauch: str = Form(...),
                             pv_preis: str = Form(...),
                             co2_benzin: str = Form(...),
-                            kfz_steuer: str = Form(...)):
+                            kfz_steuer: str = Form(...),
+                            fahrzeug_name: str = Form("")):
     for key, raw in [("benziner_verbrauch", benziner_verbrauch),
                      ("ev_verbrauch_default", ev_verbrauch),
                      ("pv_preis_ct", pv_preis),
@@ -1523,6 +1582,7 @@ def einstellungen_parameter(benziner_verbrauch: str = Form(...),
         v = parse_de(raw)
         if v is not None:
             db.set_einstellung(key, v)
+    db.set_einstellung("fahrzeug_name", fahrzeug_name.strip())
     return RedirectResponse("einstellungen", status_code=303)
 
 

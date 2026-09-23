@@ -6,6 +6,9 @@
 <h2>Berechnungsparameter</h2>
 <div class="card">
   <form class="inline" method="post" action="einstellungen/parameter">
+    <label class="feld">Fahrzeugname
+      <input name="fahrzeug_name" value="{{ fahrzeug_name }}" placeholder="z.B. Mein Elektroauto" style="width:160px">
+    </label>
     <label class="feld">Benziner L/100km
       <input name="benziner_verbrauch" value="{{ '%.1f'|format(cfg.benziner_verbrauch)|replace('.', ',') }}" style="width:80px">
     </label>
@@ -23,6 +26,23 @@
     </label>
     <button type="submit">💾 Speichern</button>
   </form>
+</div>
+
+<h2>Fahrzeugbild</h2>
+<div class="card">
+  <p class="hint" style="margin-top:0">
+    Bild im Kopf des Dashboards, neben dem Fahrzeugnamen von oben. JPG, PNG oder WebP, max. 8 MB.
+  </p>
+  <div class="inline">
+    <img id="auto-vorschau" src="api/auto-bild" alt="Aktuelles Fahrzeugbild"
+         style="height:60px; border-radius:8px; object-fit:cover">
+    <label class="feld">Neues Bild
+      <input type="file" id="auto-bild-datei" accept=".jpg,.jpeg,.png,.webp">
+    </label>
+    <button type="button" class="secondary" onclick="autoBildHochladen()">⬆ Hochladen</button>
+    <button type="button" class="secondary" onclick="autoBildZuruecksetzen()">↺ Standardbild</button>
+    <span id="auto-bild-meldung" style="align-self:center; font-size:12px"></span>
+  </div>
 </div>
 
 <h2>Einstellungen sichern / laden</h2>
@@ -247,6 +267,27 @@ async function testeVerbindung(art, btn) {
     span.className = "rot";
   }
   btn.disabled = false;
+}
+
+async function autoBildHochladen() {
+  const datei = document.getElementById("auto-bild-datei").files[0];
+  const m = document.getElementById("auto-bild-meldung");
+  if (!datei) { m.textContent = "Bitte zuerst eine Datei wählen."; m.className = "gelb"; return; }
+  const fd = new FormData();
+  fd.append("bild", datei);
+  m.textContent = "Lade hoch …"; m.className = "muted";
+  const resp = await fetch("api/auto-bild", { method: "POST", body: fd });
+  const data = await resp.json();
+  if (data.error) { m.textContent = "✗ " + data.error; m.className = "rot"; return; }
+  m.textContent = "✓ Gespeichert"; m.className = "gruen";
+  document.getElementById("auto-vorschau").src = "api/auto-bild?" + Date.now();
+}
+
+async function autoBildZuruecksetzen() {
+  const m = document.getElementById("auto-bild-meldung");
+  await fetch("api/auto-bild/reset", { method: "POST" });
+  m.textContent = "✓ Standardbild wiederhergestellt"; m.className = "gruen";
+  document.getElementById("auto-vorschau").src = "api/auto-bild?" + Date.now();
 }
 </script>
 {% endblock %}

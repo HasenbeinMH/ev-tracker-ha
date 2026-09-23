@@ -17,6 +17,3 @@ webapp/data/
 Thumbs.db
 desktop.ini
 *.tmp.*
-
-# Lokale Kopie fuer den Transfer aufs HA-Testsystem (Samba/SSH)
-ev_tracker_addon_kopie/

@@ -29,9 +29,9 @@
   <form class="inline" method="post" action="versicherung" id="vs-form">
     <input type="hidden" name="id" id="v-id">
     <label class="feld">Fahrzeug
-      <input name="fahrzeug" id="v-fahrzeug" list="v-fahrzeuge" placeholder="z.B. Kia EV3" required style="width:120px">
+      <input name="fahrzeug" id="v-fahrzeug" list="v-fahrzeuge" placeholder="Fahrzeugname" required style="width:120px">
       <datalist id="v-fahrzeuge">
-        {% for f in d.fahrzeuge or ["Kia EV3", "Kia Ceed"] %}<option>{{ f }}</option>{% endfor %}
+        {% for f in d.fahrzeuge or ([fahrzeug_name] if fahrzeug_name else []) %}<option>{{ f }}</option>{% endfor %}
       </datalist>
     </label>
     <label class="feld">Gesellschaft

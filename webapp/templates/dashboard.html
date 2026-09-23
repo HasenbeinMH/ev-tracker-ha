@@ -3,12 +3,12 @@
 {% block inhalt %}
 <section class="hero">
   <div class="hero-text">
-    <div class="hero-kicker">Kia EV3</div>
+    <div class="hero-kicker">{{ fahrzeug_name }}</div>
     <h1>Übersicht</h1>
     <div class="hero-wert">{{ kz.ersparnis_gesamt | de(2) }}<span> €</span></div>
     <div class="hero-label">Gesamt-Ersparnis gegenüber einem Benziner{% if zeitraum.von %} · {{ zeitraum.titel }}{% endif %}</div>
   </div>
-  <img class="hero-auto" src="static/Auto.jpg" alt="Kia EV3">
+  <img class="hero-auto" src="api/auto-bild" alt="Fahrzeugbild">
 </section>
 
 {# Zeitraum fuer alle Kennzahlen und Charts; wird per Cookie gemerkt #}
