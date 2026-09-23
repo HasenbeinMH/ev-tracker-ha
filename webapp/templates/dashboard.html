@@ -10,6 +10,50 @@
   </div>
   <img class="hero-auto" src="api/auto-bild" alt="Fahrzeugbild">
 </section>
+<script>
+// Akzentfarbe (Farbverlauf + Fahrzeugname) aus dem Fahrzeugbild ableiten,
+// damit sie zur Lackfarbe passt. Ohne JS/Fehler bleibt das Standard-Orange aus style.css.
+(function () {
+  const img = document.querySelector(".hero-auto");
+  const hero = document.querySelector(".hero");
+  if (!img || !hero) return;
+
+  function farbeSetzen() {
+    try {
+      const n = 48, c = document.createElement("canvas");
+      c.width = c.height = n;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, n, n);
+      const px = ctx.getImageData(0, 0, n, n).data;
+      let r = 0, g = 0, b = 0, w = 0, deckend = 0, hell = 0;
+      for (let i = 0; i < px.length; i += 4) {
+        if (px[i + 3] < 200) continue;
+        const R = px[i], G = px[i + 1], B = px[i + 2];
+        const max = Math.max(R, G, B), min = Math.min(R, G, B);
+        const v = max / 255, s = max ? (max - min) / max : 0;
+        deckend++; hell += v;
+        // Nur kraeftige Farbtoene zaehlen: keine Reifen, Scheiben, weissen Hintergruende
+        if (s > 0.35 && v > 0.25 && v < 0.97) { r += R * s; g += G * s; b += B * s; w += s; }
+      }
+      if (!deckend) return;
+      let rgb;
+      if (w / deckend < 0.03) {
+        // Weiss, Silber, Grau, Schwarz: neutraler, leicht kuehler Ton
+        rgb = hell / deckend > 0.55 ? [170, 182, 204] : [120, 132, 165];
+      } else {
+        rgb = [r / w, g / w, b / w];
+        // Aufhellen, damit dunkle Lacke auf dem dunklen Hintergrund lesbar bleiben
+        const f = Math.max(1, 190 / Math.max(...rgb));
+        rgb = rgb.map(x => Math.min(255, x * f));
+      }
+      hero.style.setProperty("--hero-rgb", rgb.map(Math.round).join(", "));
+    } catch (e) { /* Standardfarbe behalten */ }
+  }
+
+  if (img.complete && img.naturalWidth) farbeSetzen();
+  else img.addEventListener("load", farbeSetzen);
+})();
+</script>
 
 {# Zeitraum fuer alle Kennzahlen und Charts; wird per Cookie gemerkt #}
 <form class="zeitraum-leiste" method="get" action=".">

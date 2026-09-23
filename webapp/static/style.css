@@ -92,6 +92,8 @@ h2 { font-size: 15px; color: var(--blau-hell); margin: 22px 0 10px; }
 /* Dashboard-Kopfzeile mit Autobild. Das Bild hat einen dunklen Hintergrund (#14171e);
    die Maske blendet seine Raender aus, damit keine Bildkante sichtbar wird. */
 .hero {
+  /* Akzentfarbe des Autos (r, g, b) – wird im Dashboard per JS aus dem Fahrzeugbild ermittelt */
+  --hero-rgb: 196, 110, 58;
   position: relative;
   display: flex;
   align-items: center;
@@ -104,7 +106,7 @@ h2 { font-size: 15px; color: var(--blau-hell); margin: 22px 0 10px; }
   border-radius: 10px;
   overflow: hidden;
   background:
-    radial-gradient(ellipse 55% 90% at 78% 0%, rgba(196, 110, 58, 0.22), transparent 70%),
+    radial-gradient(ellipse 55% 90% at 78% 0%, rgba(var(--hero-rgb), 0.22), transparent 70%),
     radial-gradient(ellipse 40% 70% at 95% 100%, rgba(90, 70, 150, 0.18), transparent 70%),
     linear-gradient(100deg, #161a24 0%, #14171e 55%, #14171e 100%);
 }
@@ -113,7 +115,7 @@ h2 { font-size: 15px; color: var(--blau-hell); margin: 22px 0 10px; }
   font-size: 10px;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: #c4804a;
+  color: rgb(var(--hero-rgb));
   font-weight: 600;
 }
 .hero h1 { font-size: 18px; color: #e8eaf0; margin: 1px 0 7px; }

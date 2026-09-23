@@ -3,6 +3,10 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.0.6] - 2026-09-23
+### Farbverlauf im Dashboard passt sich dem Fahrzeugbild an
+- Farbverlauf und Fahrzeugname oben im Dashboard waren fest orange (passend zum Standardbild) – die Akzentfarbe wird jetzt aus dem hochgeladenen Fahrzeugbild ermittelt, bei Weiss/Silber/Schwarz ein neutraler Ton
+
 ## [2.0.5] - 2026-09-23
 ### Hinweistext zur Supervisor-Verbindung entfernt
 - Der gruene Hinweis „Laeuft als Home-Assistant-Add-on ...“ auf der Einstellungen-Seite ist weg – die HA-URL/Token-Felder blenden sich weiterhin automatisch aus, wenn der Supervisor ohne manuelle Zugangsdaten verbindet
