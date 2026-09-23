@@ -35,7 +35,7 @@ Ladesäulen) werden dagegen direkt in der App erfasst.
 1. **Einstellungen → Add-ons → Add-on-Store** → oben rechts ⋮ → **Repositories**
 2. URL einfügen: `https://github.com/HasenbeinMH/ev-tracker-ha`
 3. **Hinzufügen**, Store neu laden
-4. Unter „EV Tracker Add-ons" erscheint **EV Tracker** → installieren, starten
+4. Unter „EV Tracker" erscheint **EV Tracker** → installieren, starten
 5. Läuft komplett per Ingress (eigener Menüpunkt in der Seitenleiste) – kein offener Port,
    kein manuelles Access-Token nötig
 
