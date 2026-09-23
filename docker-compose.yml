@@ -1,3 +1,6 @@
+# STANDALONE-DOCKER-BETRIEB (Portainer o.ae.) – eigener Port, eigenes Docker-Volume,
+# Backup per Host-Cronjob (backup.sh). Fuer den Home-Assistant-Add-on-Betrieb stattdessen
+# config.yaml + Dockerfile im Repo-Root verwenden (siehe dort fuer die Unterschiede).
 services:
   ev-tracker:
     build:

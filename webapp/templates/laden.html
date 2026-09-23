@@ -6,9 +6,14 @@
 <p class="hint">Aktueller Stromtarif: {{ "%.2f"|format(tarif.preis_kwh)|replace(".", ",") }} ct/kWh
   ({{ tarif.tarif_name or "kein Name" }}) · PV: {{ "%.1f"|format(pv_ct)|replace(".", ",") }} ct/kWh</p>
 {% endif %}
+{% if abo %}
+<p class="hint">Deine Ladetarife: {% for a, t in abo.items() %}{{ a }}{{ " " ~ t.name if t.name }}
+  {{ "%.0f"|format(t.ac) if t.ac == t.dc else ("%.0f"|format(t.ac) ~ "/" ~ "%.0f"|format(t.dc)) }} ct{{ " · " if not loop.last }}{% endfor %}
+  – ct/kWh wird bei Auswahl des Anbieters vorbelegt. <a href="ladetarife">Ladetarife pflegen</a></p>
+{% endif %}
 
 <div class="card">
-  <form class="inline" method="post" action="/laden">
+  <form class="inline" method="post" action="laden">
     <label class="feld">Datum
       <input type="date" name="datum" value="{{ heute }}" required>
     </label>
@@ -22,7 +27,7 @@
       <input name="gesamt" id="inp-gesamt" placeholder="auto" style="width:90px">
     </label>
     <label class="feld">Anbieter
-      <select name="anbieter">
+      <select name="anbieter" id="inp-anbieter">
         {% for a in anbieter %}<option>{{ a.name }}</option>{% endfor %}
       </select>
     </label>
@@ -30,7 +35,10 @@
       <input name="leistung" placeholder="11" style="width:60px">
     </label>
     <label class="feld">Typ
-      <select name="ladetyp"><option>AC</option><option>DC</option></select>
+      <select name="ladetyp" id="inp-typ"><option>AC</option><option>DC</option></select>
+    </label>
+    <label class="feld" title="Blockiergebühr – ist im Gesamtpreis enthalten">Blockier €
+      <input name="blockier" id="inp-blockier" placeholder="0" style="width:70px">
     </label>
     <label class="feld">Notiz
       <input name="notiz" placeholder="optional">
@@ -40,13 +48,14 @@
 </div>
 
 <div class="tabelle-scroll"><table>
-  <tr><th>Datum</th><th>kWh</th><th>ct/kWh</th><th>Gesamt €</th><th>Anbieter</th><th>kW</th><th>Typ</th><th>Notiz</th><th></th></tr>
+  <tr><th>Datum</th><th>kWh</th><th>ct/kWh</th><th>Gesamt €</th><th>Anbieter</th><th>kW</th><th>Typ</th><th>Blockier €</th><th>Notiz</th><th></th></tr>
   {% for d in rows %}
   <tr data-id="{{ d.id }}"
       data-datum="{{ d.datum }}" data-kwh="{{ d.menge_kwh }}"
       data-ct="{{ d.preis_kwh or '' }}" data-gesamt="{{ d.gesamtpreis }}"
       data-anbieter="{{ d.anbieter }}" data-kw="{{ d.ladeleistung_kw or '' }}"
-      data-typ="{{ d.ladetyp }}" data-notiz="{{ d.notiz or '' }}">
+      data-typ="{{ d.ladetyp }}" data-blockier="{{ d.blockiergebuehr or '' }}"
+      data-notiz="{{ d.notiz or '' }}">
     <td>{{ d.datum }}</td>
     <td>{{ "%.2f"|format(d.menge_kwh)|replace(".", ",") }}</td>
     <td>{{ ("%.2f"|format(d.preis_kwh)|replace(".", ",")) if d.preis_kwh else "—" }}</td>
@@ -54,11 +63,12 @@
     <td>{{ d.anbieter }}</td>
     <td>{{ ("%.0f"|format(d.ladeleistung_kw)) if d.ladeleistung_kw else "—" }}</td>
     <td>{{ d.ladetyp }}</td>
+    <td>{{ ("%.2f"|format(d.blockiergebuehr)|replace(".", ",")) if d.blockiergebuehr else "—" }}</td>
     <td class="muted">{{ d.notiz or "" }}</td>
     <td style="white-space:nowrap">
       <button class="secondary" style="padding:4px 9px; font-size:12px"
               onclick="bearbeiten(this)" title="Bearbeiten">✏</button>
-      <form method="post" action="/laden/delete" style="display:inline"
+      <form method="post" action="laden/delete" style="display:inline"
             onsubmit="return confirm('Ladevorgang vom {{ d.datum }} löschen?')">
         <input type="hidden" name="id" value="{{ d.id }}">
         <button class="danger">🗑</button>
@@ -87,11 +97,18 @@ function bearbeiten(btn) {
     `<td><input value="${d.kw}" data-f="leistung" style="width:50px"></td>` +
     `<td><select data-f="ladetyp"><option${d.typ === "AC" ? " selected" : ""}>AC</option>` +
     `<option${d.typ === "DC" ? " selected" : ""}>DC</option></select></td>` +
+    `<td><input value="${d.blockier}" data-f="blockier" style="width:60px"></td>` +
     `<td><input value="${d.notiz}" data-f="notiz" class="breit"></td>` +
     `<td style="white-space:nowrap">` +
     `<button onclick="speichern(this)" style="padding:4px 9px; font-size:12px">💾</button> ` +
     `<button class="secondary" onclick="location.reload()" ` +
     `style="padding:4px 9px; font-size:12px">✕</button></td>`;
+  // Gesamt neu rechnen, sobald kWh, ct oder Blockiergebuehr geaendert werden
+  const feld = (f) => tr.querySelector(`[data-f="${f}"]`);
+  ["kwh", "preis_kwh", "blockier"].forEach(f => feld(f).addEventListener("input", () => {
+    const g = gesamtAus(feld("kwh").value, feld("preis_kwh").value, feld("blockier").value);
+    if (g !== null) feld("gesamt").value = g;
+  }));
 }
 
 async function speichern(btn) {
@@ -99,21 +116,44 @@ async function speichern(btn) {
   const fd = new FormData();
   fd.append("id", tr.dataset.id);
   tr.querySelectorAll("[data-f]").forEach(el => fd.append(el.dataset.f, el.value.trim()));
-  const r = await fetch("/laden/update", { method: "POST", body: fd });
+  const r = await fetch("laden/update", { method: "POST", body: fd });
   const d = await r.json().catch(() => ({}));
   if (d.error) { alert(d.error); return; }
   location.reload();
 }
 
-// Gesamtpreis automatisch berechnen
-function calcGesamt() {
-  const kwh = parseFloat(document.getElementById("inp-kwh").value.replace(",", "."));
-  const ct  = parseFloat(document.getElementById("inp-ct").value.replace(",", "."));
-  if (!isNaN(kwh) && !isNaN(ct)) {
-    document.getElementById("inp-gesamt").value = (kwh * ct / 100).toFixed(2);
-  }
+// Gesamtpreis = kWh × ct / 100 + Blockiergebuehr; null, solange kWh oder ct fehlen
+function gesamtAus(kwhText, ctText, blockierText) {
+  const zahl = (t) => parseFloat(String(t).replace(",", "."));
+  const kwh = zahl(kwhText), ct = zahl(ctText), blockier = zahl(blockierText);
+  if (isNaN(kwh) || isNaN(ct)) return null;
+  return (kwh * ct / 100 + (isNaN(blockier) ? 0 : blockier)).toFixed(2);
 }
-document.getElementById("inp-kwh").addEventListener("input", calcGesamt);
-document.getElementById("inp-ct").addEventListener("input", calcGesamt);
+function calcGesamt() {
+  const g = gesamtAus(document.getElementById("inp-kwh").value,
+                      document.getElementById("inp-ct").value,
+                      document.getElementById("inp-blockier").value);
+  if (g !== null) document.getElementById("inp-gesamt").value = g;
+}
+["inp-kwh", "inp-ct", "inp-blockier"].forEach(id =>
+  document.getElementById(id).addEventListener("input", calcGesamt));
+
+// ct/kWh aus dem aktuellen Ladetarif des Anbieters vorbelegen. Ein von Hand
+// eingetragener Preis wird nicht ueberschrieben.
+const ABO = {{ abo | tojson }};
+let ctVorbelegt = false;
+document.getElementById("inp-ct").addEventListener("input", () => { ctVorbelegt = false; });
+function ctVorbelegen() {
+  const ct = document.getElementById("inp-ct");
+  if (ct.value.trim() && !ctVorbelegt) return;
+  const t = ABO[document.getElementById("inp-anbieter").value];
+  const typ = document.getElementById("inp-typ").value;
+  ct.value = t ? String(typ === "DC" ? t.dc : t.ac).replace(".", ",") : "";
+  ctVorbelegt = !!t;
+  calcGesamt();
+}
+document.getElementById("inp-anbieter").addEventListener("change", ctVorbelegen);
+document.getElementById("inp-typ").addEventListener("change", ctVorbelegen);
+ctVorbelegen();
 </script>
 {% endblock %}

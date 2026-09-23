@@ -5,7 +5,7 @@
 
 <div class="card">
   <h2 style="margin-top:0">KFZ-Steuer Benziner</h2>
-  <form class="inline" method="post" action="/steuer/kfz">
+  <form class="inline" method="post" action="steuer/kfz">
     <label class="feld">€/Jahr
       <input name="betrag" value="{{ '%.2f'|format(kfz)|replace('.', ',') }}" required>
     </label>
@@ -20,7 +20,7 @@
 
 <h2>🌿 THG-Quote Einträge</h2>
 <div class="card">
-  <form class="inline" method="post" action="/steuer/thg">
+  <form class="inline" method="post" action="steuer/thg">
     <label class="feld">Datum
       <input type="date" name="datum" value="{{ heute }}" required>
     </label>
@@ -50,7 +50,7 @@
     <td>{{ d.anbieter }}</td>
     <td class="muted">{{ d.notiz or "" }}</td>
     <td>
-      <form method="post" action="/steuer/thg/delete"
+      <form method="post" action="steuer/thg/delete"
             onsubmit="return confirm('THG-Eintrag vom {{ d.datum }} löschen?')">
         <input type="hidden" name="id" value="{{ d.id }}">
         <button class="danger">🗑</button>

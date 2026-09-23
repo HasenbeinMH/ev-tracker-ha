@@ -56,7 +56,7 @@
 </div>
 
 <h2>Automatischer Versand</h2>
-<form method="post" action="/einstellungen/mail">
+<form method="post" action="einstellungen/mail">
 <div class="card">
   <div class="inline">
     <label style="flex-direction:row; align-items:center; gap:6px; font-size:13px">
@@ -96,7 +96,7 @@
   </div>
   <p class="hint">
     „Ladung ab % Anstieg“ gilt für beides: die Prüfung auf fehlende Ladebelege <i>und</i> die
-    Fahrtabschnitte unter <a href="/fahrten#akku">Verbrauch aus dem Akkustand</a>. Gemessen wird
+    Fahrtabschnitte unter <a href="fahrten#akku">Verbrauch aus dem Akkustand</a>. Gemessen wird
     der Anstieg ab dem Tiefststand, nicht je Stunde. Kleiner als 5 macht die Abschnitte anfällig
     für das Rauschen des Stundenmittels; nach einer Änderung die Historie auf der Seite Fahrten
     neu berechnen.
@@ -147,7 +147,7 @@ async function pruefen(btn) {
   btn.disabled = true;
   box.innerHTML = "<span class='muted'>Prüfe – Batterieverlauf wird aus HA geholt …</span>";
   try {
-    const r = await fetch(`/api/bericht/pruefung?jahr=${jahr}&monat=${monat}`);
+    const r = await fetch(`api/bericht/pruefung?jahr=${jahr}&monat=${monat}`);
     const d = await r.json();
     let html = d.bereit
       ? `<span class="gruen"><strong>✓ ${d.monat} ist abschlussreif</strong></span>`
@@ -164,7 +164,7 @@ async function pruefen(btn) {
           `<tr><td>${f.datum}</td><td>${f.von_prozent} % → ${f.bis_prozent} %</td>` +
           `<td>~${f.kwh} kWh</td></tr>`).join("") + "</table>" +
         "<div style='margin-top:6px'>Diese Ladevorgänge im Reiter " +
-        "<a href='/laden' style='color:#7a9ec4'>Laden</a> nachtragen.</div>";
+        "<a href='laden' style='color:#7a9ec4'>Laden</a> nachtragen.</div>";
     }
     box.innerHTML = html + "</div>";
   } catch (e) {
@@ -187,7 +187,7 @@ function parameter() {
 
 function vorschau() {
   document.getElementById("vorschau-box").style.display = "block";
-  document.getElementById("vorschau-rahmen").src = "/api/bericht/vorschau?" + parameter();
+  document.getElementById("vorschau-rahmen").src = "api/bericht/vorschau?" + parameter();
 }
 
 async function senden(btn) {
@@ -201,7 +201,7 @@ async function senden(btn) {
   fd.append("jahr", document.getElementById("jahr").value);
   fd.append("monat", document.getElementById("monat").value);
   fd.append("empfaenger", document.getElementById("empfaenger").value.trim());
-  const r = await fetch("/api/bericht/senden", { method: "POST", body: fd });
+  const r = await fetch("api/bericht/senden", { method: "POST", body: fd });
   const d = await r.json();
   m.textContent = (d.ok ? "✓ " : "✗ ") + d.meldung;
   m.className = d.ok ? "gruen" : "rot";

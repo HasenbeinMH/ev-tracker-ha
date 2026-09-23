@@ -1,6 +1,7 @@
 import sqlite3
 import os
 from contextlib import closing
+from datetime import datetime
 
 # Pfad per Umgebungsvariable überschreibbar (für Docker: /data/ev_tracker.db)
 DB_PATH = os.environ.get(
@@ -99,6 +100,69 @@ def init_db():
             )
         """)
 
+        # Eigene Ladetarife (Abos) mit Preishistorie: eine Preisaenderung ist ein
+        # neuer Eintrag mit neuem gueltig_ab. Zuordnung zu Ladungen ueber den Anbieter.
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS ladetarif (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                anbieter TEXT NOT NULL,
+                tarif_name TEXT,
+                gueltig_ab TEXT NOT NULL,
+                gueltig_bis TEXT,
+                preis_ac REAL NOT NULL,
+                preis_dc REAL,
+                grundgebuehr REAL NOT NULL DEFAULT 0,
+                blockier_ct_min REAL,
+                blockier_ab_min REAL,
+                blockier_max_eur REAL,
+                fremd_ab_ct REAL,
+                fremd_max_ct REAL,
+                ladekarte_eur REAL,
+                notiz TEXT
+            )
+        """)
+
+        # Instandhaltung: Werkstatt, Reifen, Verschleiss usw. – ein Eintrag je Rechnung
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS instandhaltung (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                datum TEXT NOT NULL,
+                kategorie TEXT NOT NULL,
+                beschreibung TEXT,
+                werkstatt TEXT,
+                km_stand REAL,
+                betrag REAL NOT NULL,
+                notiz TEXT
+            )
+        """)
+
+        # KFZ-Versicherung mit Historie: neues Versicherungsjahr oder Wechsel ist ein
+        # neuer Eintrag mit neuem gueltig_ab. Betraege in €/Jahr; Zusatzbausteine leer
+        # = nicht gebucht, Werkstattbindung ist meist ein Rabatt (negativer Betrag).
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS versicherung (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                fahrzeug TEXT NOT NULL,
+                gesellschaft TEXT NOT NULL,
+                tarif_name TEXT,
+                gueltig_ab TEXT NOT NULL,
+                gueltig_bis TEXT,
+                deckung TEXT NOT NULL,
+                sf_haftpflicht TEXT,
+                sf_kasko TEXT,
+                jahreslaufleistung REAL,
+                sb_teilkasko REAL,
+                sb_vollkasko REAL,
+                grundbeitrag REAL NOT NULL,
+                fahrerschutz REAL,
+                werkstattbindung REAL,
+                auslandsschutz REAL,
+                schutzbrief REAL,
+                sonstige_zusatz REAL,
+                notiz TEXT
+            )
+        """)
+
         c.execute("""CREATE INDEX IF NOT EXISTS idx_ladevorgang_datum
                      ON ladevorgang(datum)""")
 
@@ -116,6 +180,12 @@ def init_db():
             c.execute("ALTER TABLE lade_anbieter ADD COLUMN gruenstrom INTEGER NOT NULL DEFAULT 0")
         except sqlite3.OperationalError:
             pass  # Spalte existiert bereits
+
+        # Migration: Blockiergebuehr je Ladevorgang (ist im gesamtpreis enthalten)
+        try:
+            c.execute("ALTER TABLE ladevorgang ADD COLUMN blockiergebuehr REAL")
+        except sqlite3.OperationalError:
+            pass
 
         # Migration: alten mEDL-Eintrag korrigieren
         c.execute("UPDATE lade_anbieter SET name='medl', gruenstrom=1 WHERE name='mEDL'")
@@ -228,12 +298,16 @@ def get_fahrten_alle_als_liste():
 
 
 # --- Laden ---
-def add_ladevorgang(datum, menge_kwh, preis_kwh, gesamtpreis, anbieter, ladeleistung_kw, ladetyp, notiz=""):
+def add_ladevorgang(datum, menge_kwh, preis_kwh, gesamtpreis, anbieter, ladeleistung_kw, ladetyp,
+                    notiz="", blockiergebuehr=None):
+    """gesamtpreis enthaelt eine Blockiergebuehr bereits; das Feld schluesselt sie nur auf."""
     with closing(get_connection()) as conn:
         conn.execute("""
-            INSERT INTO ladevorgang (datum, menge_kwh, preis_kwh, gesamtpreis, anbieter, ladeleistung_kw, ladetyp, notiz)
-            VALUES (?,?,?,?,?,?,?,?)
-        """, (datum, menge_kwh, preis_kwh, gesamtpreis, anbieter, ladeleistung_kw, ladetyp, notiz))
+            INSERT INTO ladevorgang (datum, menge_kwh, preis_kwh, gesamtpreis, anbieter, ladeleistung_kw,
+                                     ladetyp, notiz, blockiergebuehr)
+            VALUES (?,?,?,?,?,?,?,?,?)
+        """, (datum, menge_kwh, preis_kwh, gesamtpreis, anbieter, ladeleistung_kw, ladetyp, notiz,
+              blockiergebuehr))
         conn.commit()
 
 
@@ -245,16 +319,16 @@ def get_ladevorgang(id):
 
 
 def update_ladevorgang(id, datum, menge_kwh, preis_kwh, gesamtpreis, anbieter,
-                       ladeleistung_kw, ladetyp, notiz=""):
+                       ladeleistung_kw, ladetyp, notiz="", blockiergebuehr=None):
     """Aendert einen bestehenden Ladevorgang."""
     with closing(get_connection()) as conn:
         conn.execute("""
             UPDATE ladevorgang
                SET datum=?, menge_kwh=?, preis_kwh=?, gesamtpreis=?, anbieter=?,
-                   ladeleistung_kw=?, ladetyp=?, notiz=?
+                   ladeleistung_kw=?, ladetyp=?, notiz=?, blockiergebuehr=?
              WHERE id=?
         """, (datum, menge_kwh, preis_kwh, gesamtpreis, anbieter,
-              ladeleistung_kw, ladetyp, notiz, id))
+              ladeleistung_kw, ladetyp, notiz, blockiergebuehr, id))
         conn.commit()
 
 
@@ -389,6 +463,138 @@ def get_aktueller_stromtarif():
 def delete_stromtarif(id):
     with closing(get_connection()) as conn:
         conn.execute("DELETE FROM stromtarif WHERE id=?", (id,))
+        conn.commit()
+
+
+# --- Ladetarife (eigene Abos) ---
+LADETARIF_FELDER = ["anbieter", "tarif_name", "gueltig_ab", "gueltig_bis", "preis_ac", "preis_dc",
+                    "grundgebuehr", "blockier_ct_min", "blockier_ab_min", "blockier_max_eur",
+                    "fremd_ab_ct", "fremd_max_ct", "ladekarte_eur", "notiz"]
+
+
+def add_ladetarif(werte: dict):
+    with closing(get_connection()) as conn:
+        conn.execute(
+            f"INSERT INTO ladetarif ({','.join(LADETARIF_FELDER)}) "
+            f"VALUES ({','.join('?' * len(LADETARIF_FELDER))})",
+            [werte.get(f) for f in LADETARIF_FELDER])
+        conn.commit()
+
+
+def update_ladetarif(id, werte: dict):
+    with closing(get_connection()) as conn:
+        conn.execute(
+            f"UPDATE ladetarif SET {','.join(f + '=?' for f in LADETARIF_FELDER)} WHERE id=?",
+            [werte.get(f) for f in LADETARIF_FELDER] + [id])
+        conn.commit()
+
+
+def get_ladetarife():
+    """Alle Eintraege, aelteste zuerst je Anbieter/Tarif."""
+    with closing(get_connection()) as conn:
+        rows = conn.execute("""SELECT * FROM ladetarif
+                               ORDER BY anbieter, tarif_name, gueltig_ab""").fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_ladetarif_am(anbieter, datum):
+    """Der am Datum gueltige Tarif des Anbieters (juengster gueltig_ab <= datum)."""
+    with closing(get_connection()) as conn:
+        row = conn.execute("""
+            SELECT * FROM ladetarif
+             WHERE anbieter=? AND gueltig_ab <= ?
+               AND (gueltig_bis IS NULL OR gueltig_bis = '' OR gueltig_bis >= ?)
+             ORDER BY gueltig_ab DESC LIMIT 1""", (anbieter, datum, datum)).fetchone()
+    return dict(row) if row else None
+
+
+def get_aktuelle_ladetarife() -> dict:
+    """{anbieter: heute gueltiger Tarif} – fuer die Preisvorbelegung auf /laden."""
+    heute = datetime.now().strftime("%Y-%m-%d")
+    ergebnis = {}
+    for name in {t["anbieter"] for t in get_ladetarife()}:
+        t = get_ladetarif_am(name, heute)
+        if t:
+            ergebnis[name] = t
+    return ergebnis
+
+
+def delete_ladetarif(id):
+    with closing(get_connection()) as conn:
+        conn.execute("DELETE FROM ladetarif WHERE id=?", (id,))
+        conn.commit()
+
+
+# --- Instandhaltung ---
+INSTANDHALTUNG_FELDER = ["datum", "kategorie", "beschreibung", "werkstatt", "km_stand",
+                         "betrag", "notiz"]
+
+
+def add_instandhaltung(werte: dict):
+    with closing(get_connection()) as conn:
+        conn.execute(
+            f"INSERT INTO instandhaltung ({','.join(INSTANDHALTUNG_FELDER)}) "
+            f"VALUES ({','.join('?' * len(INSTANDHALTUNG_FELDER))})",
+            [werte.get(f) for f in INSTANDHALTUNG_FELDER])
+        conn.commit()
+
+
+def update_instandhaltung(id, werte: dict):
+    with closing(get_connection()) as conn:
+        conn.execute(
+            f"UPDATE instandhaltung SET {','.join(f + '=?' for f in INSTANDHALTUNG_FELDER)} "
+            f"WHERE id=?",
+            [werte.get(f) for f in INSTANDHALTUNG_FELDER] + [id])
+        conn.commit()
+
+
+def get_instandhaltung():
+    with closing(get_connection()) as conn:
+        rows = conn.execute("SELECT * FROM instandhaltung ORDER BY datum DESC, id DESC").fetchall()
+    return [dict(r) for r in rows]
+
+
+def delete_instandhaltung(id):
+    with closing(get_connection()) as conn:
+        conn.execute("DELETE FROM instandhaltung WHERE id=?", (id,))
+        conn.commit()
+
+
+# --- Versicherung ---
+VERSICHERUNG_FELDER = ["fahrzeug", "gesellschaft", "tarif_name", "gueltig_ab", "gueltig_bis",
+                       "deckung", "sf_haftpflicht", "sf_kasko", "jahreslaufleistung", "sb_teilkasko", "sb_vollkasko",
+                       "grundbeitrag", "fahrerschutz", "werkstattbindung", "auslandsschutz",
+                       "schutzbrief", "sonstige_zusatz", "notiz"]
+
+
+def add_versicherung(werte: dict):
+    with closing(get_connection()) as conn:
+        conn.execute(
+            f"INSERT INTO versicherung ({','.join(VERSICHERUNG_FELDER)}) "
+            f"VALUES ({','.join('?' * len(VERSICHERUNG_FELDER))})",
+            [werte.get(f) for f in VERSICHERUNG_FELDER])
+        conn.commit()
+
+
+def update_versicherung(id, werte: dict):
+    with closing(get_connection()) as conn:
+        conn.execute(
+            f"UPDATE versicherung SET {','.join(f + '=?' for f in VERSICHERUNG_FELDER)} "
+            f"WHERE id=?",
+            [werte.get(f) for f in VERSICHERUNG_FELDER] + [id])
+        conn.commit()
+
+
+def get_versicherungen():
+    with closing(get_connection()) as conn:
+        rows = conn.execute("""SELECT * FROM versicherung
+                               ORDER BY fahrzeug, gueltig_ab""").fetchall()
+    return [dict(r) for r in rows]
+
+
+def delete_versicherung(id):
+    with closing(get_connection()) as conn:
+        conn.execute("DELETE FROM versicherung WHERE id=?", (id,))
         conn.commit()
 
 

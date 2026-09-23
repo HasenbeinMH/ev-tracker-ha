@@ -14,10 +14,46 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "1.8.0"
+VERSION = "2.0.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.0.0",
+        "datum": "2026-09-23",
+        "titel": "Version 2.0: Instandhaltung, Versicherung und neue Menueleiste",
+        "aenderungen": [
+            "Neue Seite Instandhaltung: Werkstatt, Reifen, Verschleiss und HU je Rechnung "
+            "erfassen, umgerechnet auf € pro 100 km – je Jahr und je Kategorie",
+            "Neue Seite Versicherung: Gesellschaft, Deckung, SF-Klassen, Selbstbeteiligung, "
+            "Jahreslaufleistung und Zusatzbausteine (Fahrerschutz, Werkstattbindung, "
+            "Auslandsschutz, Schutzbrief) mit Verlauf je Fahrzeug",
+            "Instandhaltung und Versicherung sind eigene Werte ohne Benziner-Vergleich und "
+            "fliessen nicht in die Ersparnis auf dem Dashboard ein",
+            "Warnung, wenn die gefahrenen km der letzten zwoelf Monate ueber der vereinbarten "
+            "Jahreslaufleistung liegen",
+            "Die Menueleiste ist zusammengefasst: Dashboard, Auswertung, Fahrten, Laden, "
+            "Kosten, Verwaltung und Hilfe",
+            "Beim Drueberfahren mit der Maus klappen die Unterseiten auf, z. B. unter Laden: "
+            "Ladevorgaenge, Ladetarife, Stromtarif und Rechnungen",
+            "Auf Handy und Tablet oeffnet der erste Tipp das Menue, der zweite die Seite",
+        ],
+    },
+    {
+        "version": "1.9.0",
+        "datum": "2026-09-22",
+        "titel": "Ladetarife und Blockiergebühr",
+        "aenderungen": [
+            "Neue Seite Ladetarife: eigene Abos wie EnBW S/M/L mit ct/kWh AC/DC, "
+            "Grundgebuehr, Blockiergebuehr, Fremdnetz-Preisen und Ladekarte erfassen",
+            "Preisaenderungen als neuer Eintrag mit „gueltig ab“ – die Tabelle zeigt die "
+            "Aenderung zum Vorgaenger, das Diagramm den Preisverlauf neben dem Heimstrompreis",
+            "Tabelle „Was der Tarif wirklich kostet“: effektiver Preis je Monat inklusive "
+            "Grundgebuehr",
+            "Laden: neues Feld Blockiergebuehr (im Gesamtpreis enthalten), ct/kWh wird aus "
+            "dem aktuellen Ladetarif des Anbieters vorbelegt",
+        ],
+    },
     {
         "version": "1.8.0",
         "datum": "2026-09-22",

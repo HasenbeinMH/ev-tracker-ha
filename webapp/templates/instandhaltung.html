@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block titel %}Instandhaltung{% endblock %}
+{% block inhalt %}
+<h1>🔧 Instandhaltung</h1>
+<p class="hint">Werkstatt, Reifen, Verschleiß und HU – ein Eintrag je Rechnung. Umgerechnet auf
+  € pro 100 km mit den km von der Seite <a href="fahrten">Fahrten</a>.</p>
+
+<div class="statgrid">
+  <div class="stat">
+    <span class="wert gruen">{{ (d.je_100km | de(2)) if d.je_100km is not none else "—" }}</span><span class="einheit">€/100 km</span>
+    <div class="label">Instandhaltung E-Auto</div>
+  </div>
+  <div class="stat">
+    <span class="wert">{{ d.km_gesamt | de(0) }}</span><span class="einheit">km</span>
+    <div class="label">Gefahrene Strecke</div>
+  </div>
+  <div class="stat">
+    <span class="wert">{{ d.kosten_gesamt | de(2) }}</span><span class="einheit">€</span>
+    <div class="label">Kosten gesamt</div>
+  </div>
+</div>
+
+<div class="card">
+  <form class="inline" method="post" action="instandhaltung" id="ih-form">
+    <input type="hidden" name="id" id="i-id">
+    <label class="feld">Datum
+      <input type="date" name="datum" id="i-datum" value="{{ heute }}" required>
+    </label>
+    <label class="feld">Kategorie
+      <select name="kategorie" id="i-kategorie">
+        {% for k in kategorien %}<option>{{ k }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="feld">Beschreibung
+      <input name="beschreibung" id="i-beschreibung" placeholder="z.B. Inspektion 30.000 km">
+    </label>
+    <label class="feld">Werkstatt
+      <input name="werkstatt" id="i-werkstatt" placeholder="optional">
+    </label>
+    <label class="feld">km-Stand
+      <input name="km_stand" id="i-km_stand" placeholder="optional" style="width:90px">
+    </label>
+    <label class="feld">Betrag €
+      <input name="betrag" id="i-betrag" placeholder="z.B. 249,90" required style="width:90px">
+    </label>
+    <label class="feld">Notiz
+      <input name="notiz" id="i-notiz" placeholder="optional">
+    </label>
+    <button type="submit" id="i-senden">➕ Hinzufügen</button>
+    <button type="button" class="secondary" id="i-abbrechen" style="display:none"
+            onclick="location.reload()">✕ Abbrechen</button>
+  </form>
+</div>
+
+<h2>Einträge</h2>
+<div class="tabelle-scroll"><table>
+  <tr><th>Datum</th><th>Kategorie</th><th>Beschreibung</th><th>Werkstatt</th><th>km-Stand</th>
+      <th>Betrag</th><th>Notiz</th><th></th></tr>
+  {% for e in d.eintraege %}
+  <tr>
+    <td style="white-space:nowrap">{{ e.datum }}</td>
+    <td>{{ e.kategorie }}</td>
+    <td>{{ e.beschreibung or "" }}</td>
+    <td>{{ e.werkstatt or "" }}</td>
+    <td>{{ (e.km_stand | de(0)) if e.km_stand is not none else "—" }}</td>
+    <td>{{ e.betrag | de(2) }} €</td>
+    <td class="muted">{{ e.notiz or "" }}</td>
+    <td style="white-space:nowrap">
+      <button class="secondary" style="padding:4px 9px; font-size:12px"
+              data-eintrag='{{ e | tojson }}' onclick="bearbeiten(this)" title="Bearbeiten">✏</button>
+      <form method="post" action="instandhaltung/delete" style="display:inline"
+            onsubmit="return confirm('Eintrag vom {{ e.datum }} löschen?')">
+        <input type="hidden" name="id" value="{{ e.id }}">
+        <button class="danger">🗑</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="8" class="muted">Noch keine Instandhaltungskosten erfasst.</td></tr>
+  {% endfor %}
+</table></div>
+
+<div class="chartgrid">
+  <div>
+    <h2>Je Jahr</h2>
+    <div class="tabelle-scroll"><table>
+      <tr><th>Jahr</th><th>Einträge</th><th>Kosten €</th><th>km</th><th>€/100 km</th></tr>
+      {% for j in d.jahre %}
+      <tr>
+        <td>{{ j.jahr }}</td>
+        <td>{{ j.anzahl }}</td>
+        <td>{{ j.kosten | de(2) }}</td>
+        <td>{{ j.km | de(0) }}</td>
+        <td><b>{{ (j.je_100km | de(2)) if j.je_100km is not none else "—" }}</b></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="muted">Keine Daten.</td></tr>
+      {% endfor %}
+    </table></div>
+  </div>
+  <div>
+    <h2>Je Kategorie</h2>
+    <div class="tabelle-scroll"><table>
+      <tr><th>Kategorie</th><th>Kosten €</th><th>Anteil</th><th>€/100 km</th></tr>
+      {% for k in d.kategorien %}
+      <tr>
+        <td>{{ k.kategorie }}</td>
+        <td>{{ k.kosten | de(2) }}</td>
+        <td>{{ k.anteil | de(0) }} %</td>
+        <td>{{ (k.je_100km | de(2)) if k.je_100km is not none else "—" }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="muted">Keine Daten.</td></tr>
+      {% endfor %}
+    </table></div>
+  </div>
+</div>
+
+<p class="hint">€/100 km = Kosten ÷ gefahrene km × 100. Die km stammen aus den Monatswerten
+  auf der Seite Fahrten – enthalten die noch km des Vorgängerautos, fällt der Wert zu niedrig aus.
+  Ein eigener Wert ohne Benziner-Vergleich – er steckt nicht in der Ersparnis auf dem Dashboard.</p>
+
+<script>
+// Bearbeiten: Eintrag ins Formular oben laden, Speichern geht dann an /instandhaltung/update
+function bearbeiten(btn) {
+  const e = JSON.parse(btn.dataset.eintrag);
+  for (const [k, v] of Object.entries(e)) {
+    const el = document.getElementById("i-" + k);
+    if (el) el.value = v === null ? "" : (typeof v === "number" ? String(v).replace(".", ",") : v);
+  }
+  document.getElementById("i-senden").textContent = "💾 Speichern";
+  document.getElementById("i-abbrechen").style.display = "";
+  document.getElementById("ih-form").scrollIntoView({ behavior: "smooth" });
+}
+
+document.getElementById("ih-form").addEventListener("submit", async (ev) => {
+  if (!document.getElementById("i-id").value) return;   // neuer Eintrag: normales Absenden
+  ev.preventDefault();
+  const r = await fetch("instandhaltung/update", { method: "POST", body: new FormData(ev.target) });
+  const d = await r.json().catch(() => ({}));
+  if (d.error) { alert(d.error); return; }
+  location.reload();
+});
+</script>
+{% endblock %}

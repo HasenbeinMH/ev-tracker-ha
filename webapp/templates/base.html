@@ -6,31 +6,74 @@
 <title>EV Tracker – {% block titel %}{% endblock %}</title>
 <!-- ?v=VERSION: erzwingt nach einem Update das Neuladen, sonst zeigt der Browser
      die alte Datei aus dem Cache und neue Regeln greifen erst nach Strg+F5 -->
-<link rel="stylesheet" href="/static/style.css?v={{ VERSION }}">
+<!-- Alle internen Links/Pfade sind bewusst pfad-relativ (kein führendes "/"):
+     unter Home-Assistant-Ingress liegt die App hinter einem wechselnden Präfix
+     (.../api/hassio_ingress/<token>/...); relative Pfade lösen im Browser korrekt
+     dagegen auf, ein führendes "/" würde den Ingress-Präfix überspringen. -->
+<link rel="stylesheet" href="static/style.css?v={{ VERSION }}">
 </head>
 <body>
 <nav>
   <span class="logo">⚡ EV Tracker</span>
-  {% for key, url, label in [
-      ('dashboard', '/', 'Dashboard'),
-      ('statistik', '/statistik', 'Statistik'),
-      ('fahrten', '/fahrten', 'Fahrten'),
-      ('laden', '/laden', 'Laden'),
-      ('benzin', '/benzin', 'Benzin'),
-      ('stromtarif', '/stromtarif', 'Stromtarif'),
-      ('steuer', '/steuer', 'Steuer & THG'),
-      ('import', '/import', 'HA Import'),
-      ('rechnung', '/rechnung', 'Rechnungen'),
-      ('berichte', '/berichte', 'Berichte'),
-      ('backup', '/backup', 'Backup'),
-      ('einstellungen', '/einstellungen', 'Einstellungen'),
-      ('hilfe', '/hilfe', '❓ Hilfe')] %}
-    <a href="{{ url }}" class="{{ 'aktiv' if aktiv == key else '' }}">{{ label }}</a>
+  {# Hauptpunkte mit Unterseiten: Maus drueber klappt das Menue auf.
+     Ein Klick auf den Hauptpunkt oeffnet die erste Unterseite.
+     Alle URLs bewusst pfad-relativ – siehe Hinweis oben zu Home-Assistant-Ingress. #}
+  {% for label, eintraege in [
+      ('Dashboard', [('dashboard', '.', 'Dashboard')]),
+      ('Auswertung', [('statistik', 'statistik', 'Statistik'),
+                      ('berichte', 'berichte', 'Berichte')]),
+      ('Fahrten', [('fahrten', 'fahrten', 'Fahrten'),
+                   ('benzin', 'benzin', 'Benzinpreise')]),
+      ('Laden', [('laden', 'laden', 'Ladevorgänge'),
+                 ('ladetarife', 'ladetarife', 'Ladetarife'),
+                 ('stromtarif', 'stromtarif', 'Stromtarif'),
+                 ('rechnung', 'rechnung', 'Rechnungen')]),
+      ('Kosten', [('steuer', 'steuer', 'Steuer & THG'),
+                  ('instandhaltung', 'instandhaltung', 'Instandhaltung'),
+                  ('versicherung', 'versicherung', 'Versicherung')]),
+      ('Verwaltung', [('import', 'import', 'HA Import'),
+                      ('backup', 'backup', 'Backup'),
+                      ('einstellungen', 'einstellungen', 'Einstellungen')]),
+      ('❓ Hilfe', [('hilfe', 'hilfe', 'Hilfe')])] %}
+    {% set ist_aktiv = aktiv in eintraege | map('first') | list %}
+    {% if eintraege | length == 1 %}
+    <a href="{{ eintraege[0][1] }}" class="{{ 'aktiv' if ist_aktiv else '' }}">{{ label }}</a>
+    {% else %}
+    <div class="navgruppe">
+      <a href="{{ eintraege[0][1] }}" class="{{ 'aktiv' if ist_aktiv else '' }}"
+         aria-haspopup="true">{{ label }} <span class="pfeil">▾</span></a>
+      <div class="untermenue">
+        {% for key, url, text in eintraege %}
+        <a href="{{ url }}" class="{{ 'aktiv' if aktiv == key else '' }}">{{ text }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
   {% endfor %}
-  <a href="/hilfe#changelog" class="version" title="Änderungslog anzeigen">v{{ VERSION }}</a>
+  <a href="hilfe#changelog" class="version" title="Änderungslog anzeigen">v{{ VERSION }}</a>
 </nav>
 <main>
 {% block inhalt %}{% endblock %}
 </main>
+<script>
+// Touch-Geraete kennen kein Drueberfahren: der erste Tipp auf einen Hauptpunkt
+// klappt das Menue auf, der zweite oeffnet die Seite.
+if (matchMedia('(hover: none)').matches) {
+  document.querySelectorAll('.navgruppe > a').forEach(function (a) {
+    a.addEventListener('click', function (e) {
+      var g = a.parentNode;
+      if (!g.classList.contains('offen')) {
+        e.preventDefault();
+        document.querySelectorAll('.navgruppe.offen').forEach(function (o) { o.classList.remove('offen'); });
+        g.classList.add('offen');
+      }
+    });
+  });
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.navgruppe'))
+      document.querySelectorAll('.navgruppe.offen').forEach(function (o) { o.classList.remove('offen'); });
+  });
+}
+</script>
 </body>
 </html>

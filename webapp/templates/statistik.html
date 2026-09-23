@@ -19,15 +19,15 @@
   <span class="muted">Schnellauswahl:</span>
   {% for text, a, b in vorlagen %}
   <a class="vorlage{% if a == za.schluessel and b == zb.schluessel %} aktiv{% endif %}"
-     href="/statistik?a={{ a }}&b={{ b }}">{{ text }}</a>
+     href="statistik?a={{ a }}&b={{ b }}">{{ text }}</a>
   {% endfor %}
 </div>
 
-<form class="vergleich-wahl" method="get" action="/statistik">
+<form class="vergleich-wahl" method="get" action="statistik">
   <span class="punkt punkt-a"></span>{{ auswahl("a", za.schluessel) }}
   <span class="muted">gegen</span>
   <span class="punkt punkt-b"></span>{{ auswahl("b", zb.schluessel) }}
-  <a class="secondary-link" href="/statistik?a={{ zb.schluessel }}&b={{ za.schluessel }}"
+  <a class="secondary-link" href="statistik?a={{ zb.schluessel }}&b={{ za.schluessel }}"
      title="Zeiträume tauschen">⇄ tauschen</a>
   <noscript><button type="submit" class="secondary">Vergleichen</button></noscript>
 </form>
@@ -110,17 +110,17 @@
   {{ "%.0f"|format(akku_min_km) }} km und solche ohne Akku-Abfall bleiben draußen, weil
   das Stundenmittel aus Home Assistant sie zu ungenau macht. Die Summenzeile ist über
   Σ kWh ÷ Σ km gewichtet. Die Abschnitte einzeln stehen unter
-  <a href="/fahrten#akku">Fahrten</a>.
+  <a href="fahrten#akku">Fahrten</a>.
 </p>
 {% else %}
 <div class="card">
   <span class="gelb">Noch keine Fahrtabschnitte aus dem Akkustand berechnet.</span>
-  Sie entstehen beim nächtlichen Abruf oder per Knopf unter <a href="/fahrten#akku">Fahrten</a>.
+  Sie entstehen beim nächtlichen Abruf oder per Knopf unter <a href="fahrten#akku">Fahrten</a>.
 </div>
 {% endif %}
 
-<script src="/static/echarts.min.js"></script>
-<script src="/static/charts.js"></script>
+<script src="static/echarts.min.js"></script>
+<script src="static/charts.js"></script>
 <script>
 function kennzahlWaehlen(knopf, quelleId) {
   document.querySelectorAll(".kennzahl-tabs .tab").forEach(t => t.classList.remove("aktiv"));

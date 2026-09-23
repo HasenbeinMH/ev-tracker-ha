@@ -38,9 +38,13 @@ def _esc_ident(s: str) -> str:
 
 
 class HAClient:
-    def __init__(self, url: str, token: str):
-        self.url   = _normalize_url(url)
-        self.token = token
+    def __init__(self, url: str, token: str, ws_pfad: str = "/api/websocket"):
+        self.url     = _normalize_url(url)
+        self.token   = token
+        # Direkt gegen HA: "/api/websocket". Über den Supervisor-Proxy (Add-on)
+        # liegt der WebSocket-Endpunkt dagegen ohne "/api" unter "/websocket",
+        # waehrend REST-Aufrufe dort weiterhin "/api/..." behalten.
+        self.ws_pfad = ws_pfad
 
     # ─────────────────────────────────────────
     #  HTTP-Basis
@@ -105,7 +109,7 @@ class HAClient:
 
         ws_url = (self.url
                   .replace("https://", "wss://", 1)
-                  .replace("http://",  "ws://",  1)) + "/api/websocket"
+                  .replace("http://",  "ws://",  1)) + self.ws_pfad
         try:
             ws = websocket.create_connection(ws_url, timeout=15)
         except Exception as e:

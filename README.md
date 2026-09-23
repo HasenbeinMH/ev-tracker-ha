@@ -5,6 +5,24 @@ Läuft als Docker-Container; Bedienung im Browser.
 
 Installation, Konfiguration und Betrieb: **[webapp/README.md](webapp/README.md)**
 
+## Zwei Betriebsarten, eine Codebasis
+
+Dieses Repo unterstützt zwei Deployments **derselben** App. Die eigentliche Anwendung
+(`webapp/app.py`, `database.py`, `ha_client.py`, alle Templates usw.) ist bewusst
+**gemeinsamer Code** – Änderungen dort wirken sich immer auf beide Betriebsarten aus,
+das ist gewollt (gleiche Funktionen, nur anders verpackt). Nur diese Dateien sind
+jeweils exklusiv für eine Betriebsart und beeinflussen die andere nicht:
+
+| Datei | Gehört zu |
+|-------|-----------|
+| `Dockerfile`, `config.yaml`, `repository.yaml`, `icon.png`, `logo.png` | **Home-Assistant-Add-on** |
+| `docker-compose.yml`, `webapp/Dockerfile`, `backup.sh`, `backup_db.py` | **Standalone-Docker** (Portainer o.ä.) |
+
+Wo sich das Verhalten der App selbst je nach Betriebsart unterscheidet (Backup-Seite,
+Home-Assistant-Verbindung), steht im Code immer die Variable `IST_ADDON`
+(`webapp/app.py`) – erkennt automatisch, ob `SUPERVISOR_TOKEN` gesetzt ist. Danach
+suchen, wenn unklar ist, wo genau sich beide Wege unterscheiden.
+
 ## Funktionen
 
 | Seite | Beschreibung |

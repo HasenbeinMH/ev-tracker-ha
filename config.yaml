@@ -1,0 +1,20 @@
+# Home-Assistant-Add-on-Betrieb (Dockerfile im selben Ordner). Fuer den
+# eigenstaendigen Docker-Betrieb (Portainer o.ae.) stattdessen docker-compose.yml
+# + webapp/Dockerfile verwenden.
+# version: muss synchron zu version.py VERSION gehalten werden (siehe dort).
+name: EV Tracker
+version: "2.0.0"
+slug: ev_tracker
+description: Ladekosten, Ersparnis und Statistik fürs Elektroauto – als Add-on direkt in Home Assistant.
+url: "https://github.com/HasenbeinMH/ev-tracker-ha"
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:car-electric
+homeassistant_api: true
+map:
+  - data:rw

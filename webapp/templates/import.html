@@ -4,7 +4,7 @@
 <h1>📥 Datenimport – Home Assistant / InfluxDB</h1>
 <p class="hint">
   Datenquelle: <strong>{{ "InfluxDB (mit HA-API-Fallback)" if cfg.datasource == "influxdb" else "Home Assistant API" }}</strong>
-  – änderbar in den <a href="/einstellungen" style="color:#7a9ec4">Einstellungen</a>.
+  – änderbar in den <a href="einstellungen" style="color:#7a9ec4">Einstellungen</a>.
 </p>
 
 <div class="card">
@@ -87,7 +87,7 @@
 async function ladeImportLog() {
   const feld = document.getElementById("import-log");
   try {
-    const r = await fetch("/api/import/log");
+    const r = await fetch("api/import/log");
     const d = await r.json();
     feld.textContent = d.zeilen && d.zeilen.length
       ? d.zeilen.join("\n")
@@ -103,7 +103,7 @@ async function autoImport(btn) {
   btn.disabled = true;
   m.textContent = "Hole Daten aus Home Assistant …"; m.className = "muted";
   try {
-    const r = await fetch("/api/import/auto", { method: "POST" });
+    const r = await fetch("api/import/auto", { method: "POST" });
     const d = await r.json();
     m.textContent = "✓ " + (d.protokoll || []).join(" | ");
     m.className = "gruen";
@@ -125,7 +125,7 @@ document.getElementById("import-form").addEventListener("submit", async (e) => {
   document.getElementById("log").style.display = "none";
   document.getElementById("fehler").style.display = "none";
   document.getElementById("vorschau").style.display = "none";
-  const resp = await fetch("/api/import/start", { method: "POST", body: form });
+  const resp = await fetch("api/import/start", { method: "POST", body: form });
   const data = await resp.json();
   if (data.error) { zeigeFehler(data.error); document.getElementById("btn-fetch").disabled = false; return; }
   jobId = data.job_id;
@@ -135,7 +135,7 @@ document.getElementById("import-form").addEventListener("submit", async (e) => {
 });
 
 async function pollStatus() {
-  const resp = await fetch("/api/import/status/" + jobId);
+  const resp = await fetch("api/import/status/" + jobId);
   const job = await resp.json();
   document.getElementById("progress").value = job.progress;
   document.getElementById("progress-text").textContent =
@@ -170,7 +170,7 @@ document.getElementById("btn-apply").addEventListener("click", async () => {
   document.querySelectorAll("#vorschau-tabelle input").forEach(inp => {
     rowsByMonat[inp.dataset.monat][inp.dataset.key] = inp.value.trim();
   });
-  const resp = await fetch("/api/import/apply", {
+  const resp = await fetch("api/import/apply", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ rows: Object.values(rowsByMonat) }),

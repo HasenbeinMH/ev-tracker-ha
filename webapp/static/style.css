@@ -26,8 +26,10 @@ nav {
   padding: 0 16px;
   background: var(--card);
   border-bottom: 1px solid var(--border);
-  overflow-x: auto;
+  flex-wrap: wrap;
   white-space: nowrap;
+  position: relative;
+  z-index: 50;
 }
 nav .logo { font-weight: 700; color: var(--blau-hell); margin-right: 16px; padding: 12px 0; }
 nav a {
@@ -47,6 +49,35 @@ nav a.version {
   border-bottom: none;
 }
 nav a.version:hover { color: var(--blau-hell); }
+/* Aufklappmenue: Hauptpunkt mit Unterseiten, sichtbar beim Drueberfahren,
+   per Tastatur (focus-within) oder auf Touch-Geraeten per Tipp (.offen) */
+.navgruppe { position: relative; display: flex; }
+.navgruppe .pfeil { font-size: 10px; opacity: .7; margin-left: 2px; }
+.navgruppe .untermenue {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 190px;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-top: 2px solid var(--blau);
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .45);
+  padding: 6px 0;
+}
+.navgruppe:hover .untermenue,
+.navgruppe:focus-within .untermenue,
+.navgruppe.offen .untermenue { display: flex; }
+.navgruppe:hover > a { color: var(--text); }
+.untermenue a {
+  padding: 10px 18px;
+  border-bottom: none;
+  border-left: 2px solid transparent;
+}
+.untermenue a:hover { background: var(--border); }
+.untermenue a.aktiv { border-bottom: none; border-left-color: var(--blau); background: var(--bg); }
 main { max-width: 1280px; margin: 0 auto; padding: 20px 16px 60px; }
 h1 { font-size: 19px; color: var(--blau-hell); margin: 6px 0 16px; }
 h2 { font-size: 15px; color: var(--blau-hell); margin: 22px 0 10px; }

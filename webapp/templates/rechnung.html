@@ -41,7 +41,7 @@
 async function parseRequest(formData) {
   document.getElementById("log").style.display = "none";
   document.getElementById("fehler").style.display = "none";
-  const resp = await fetch("/api/rechnung/parse", { method: "POST", body: formData });
+  const resp = await fetch("api/rechnung/parse", { method: "POST", body: formData });
   const data = await resp.json();
   if (data.error) { zeigeFehler(data.error); return; }
   document.getElementById("anbieter-info").textContent =
@@ -93,7 +93,7 @@ document.getElementById("btn-apply").addEventListener("click", async () => {
     tr.querySelectorAll("[data-key]").forEach(el => r[el.dataset.key] = el.value);
     rows.push(r);
   });
-  const resp = await fetch("/api/rechnung/apply", {
+  const resp = await fetch("api/rechnung/apply", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ rows }),

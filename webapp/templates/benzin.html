@@ -4,7 +4,7 @@
 <h1>⛽ Benzinpreise (Monatsdurchschnitt)</h1>
 
 <div class="card">
-  <form class="inline" method="post" action="/benzin">
+  <form class="inline" method="post" action="benzin">
     <label class="feld">Monat
       <input type="month" name="monat" value="{{ now.strftime('%Y-%m') }}" required>
     </label>
@@ -30,7 +30,7 @@
       {% else %}—{% endif %}
     </td>
     <td>
-      <form method="post" action="/benzin/delete"
+      <form method="post" action="benzin/delete"
             onsubmit="return confirm('Benzinpreis {{ d.monat }} löschen?')">
         <input type="hidden" name="monat" value="{{ d.monat }}">
         <button class="danger">🗑</button>

@@ -5,7 +5,7 @@
 <p class="hint">Trage die im Monat gefahrenen Gesamtkilometer ein.</p>
 
 <div class="card">
-  <form class="inline" method="post" action="/fahrten">
+  <form class="inline" method="post" action="fahrten">
     <label class="feld">Monat
       <input type="month" name="monat" value="{{ now.strftime('%Y-%m') }}" required>
     </label>
@@ -73,10 +73,10 @@
   </p>
   <p class="hint" style="margin-bottom:0">
     {% if rows %}Kilometer sind vorhanden – es fehlen die geladenen kWh.
-    Diese kommen aus dem <a href="/import" style="color:#7a9ec4">HA Import</a>
+    Diese kommen aus dem <a href="import" style="color:#7a9ec4">HA Import</a>
     (Sensoren „PV ins Auto geladen“ und „Netz ins Auto geladen“ müssen in den
-    <a href="/einstellungen" style="color:#7a9ec4">Einstellungen</a> zugeordnet sein)
-    oder werden im Reiter <a href="/laden" style="color:#7a9ec4">Laden</a> von Hand erfasst.
+    <a href="einstellungen" style="color:#7a9ec4">Einstellungen</a> zugeordnet sein)
+    oder werden im Reiter <a href="laden" style="color:#7a9ec4">Laden</a> von Hand erfasst.
     {% else %}Zuerst Kilometer eintragen und Ladevorgänge erfassen.{% endif %}
   </p>
 </div>
@@ -150,12 +150,12 @@
 <div class="card">
   <p style="margin:0">
     <span class="gelb">Noch keine Fahrtabschnitte berechnet.</span>
-    Dafür müssen in den <a href="/einstellungen" style="color:#7a9ec4">Einstellungen</a>
+    Dafür müssen in den <a href="einstellungen" style="color:#7a9ec4">Einstellungen</a>
     die Sensoren für Batteriestand und Kilometerstand eingetragen sein.
   </p>
 </div>
 {% endif %}
-<form method="post" action="/fahrten/akku" style="margin:10px 0 0">
+<form method="post" action="fahrten/akku" style="margin:10px 0 0">
   <input type="hidden" name="zeitraum" value="alles">
   <button type="submit" class="secondary">🔄 Gesamte Historie aus Home Assistant neu berechnen</button>
 </form>
@@ -170,7 +170,7 @@
     <td>{{ "%.1f"|format(d.liter)|replace(".", ",") }} L</td>
     <td class="gruen">{{ "%.1f"|format(d.co2)|replace(".", ",") }} kg</td>
     <td>
-      <form method="post" action="/fahrten/delete"
+      <form method="post" action="fahrten/delete"
             onsubmit="return confirm('Monat {{ d.monat }} löschen?')">
         <input type="hidden" name="monat" value="{{ d.monat }}">
         <button class="danger">🗑</button>

@@ -5,7 +5,7 @@
 
 <h2>Berechnungsparameter</h2>
 <div class="card">
-  <form class="inline" method="post" action="/einstellungen/parameter">
+  <form class="inline" method="post" action="einstellungen/parameter">
     <label class="feld">Benziner L/100km
       <input name="benziner_verbrauch" value="{{ '%.1f'|format(cfg.benziner_verbrauch)|replace('.', ',') }}" style="width:80px">
     </label>
@@ -32,8 +32,8 @@
     praktisch zum Übertragen zwischen Desktop-App und Web-Version.
   </p>
   <div class="inline">
-    <a class="btn" href="/api/settings/export?secrets=1">⬇ Exportieren (mit Zugangsdaten)</a>
-    <a class="btn secondary" href="/api/settings/export?secrets=0"
+    <a class="btn" href="api/settings/export?secrets=1">⬇ Exportieren (mit Zugangsdaten)</a>
+    <a class="btn secondary" href="api/settings/export?secrets=0"
        style="text-decoration:none; display:inline-block">⬇ Ohne Token/Passwort</a>
     <label class="feld">Datei laden
       <input type="file" id="settings-datei" accept=".json">
@@ -49,7 +49,7 @@
 
 <h2>Lade-Anbieter</h2>
 <div class="card">
-  <form class="inline" method="post" action="/einstellungen/anbieter">
+  <form class="inline" method="post" action="einstellungen/anbieter">
     <label class="feld">Neuer Anbieter
       <input name="name" placeholder="z.B. Tesla Supercharger">
     </label>
@@ -69,7 +69,7 @@
       <td class="muted">{{ "System" if a.ist_system else "Eigener" }}</td>
       <td>
         {% if not a.ist_system %}
-        <form method="post" action="/einstellungen/anbieter/delete"
+        <form method="post" action="einstellungen/anbieter/delete"
               onsubmit="return confirm('Anbieter {{ a.name }} löschen?')">
           <input type="hidden" name="id" value="{{ a.id }}">
           <button class="danger">🗑</button>
@@ -82,7 +82,14 @@
 </div>
 
 <h2>Home Assistant & InfluxDB</h2>
-<form method="post" action="/einstellungen/ha">
+{% if supervisor_aktiv %}
+<p class="hint gruen">
+  ✓ Läuft als Home-Assistant-Add-on: die App spricht automatisch über den Supervisor
+  mit dieser HA-Instanz – URL und Token unten sind nur nötig, wenn stattdessen
+  eine <em>andere</em> HA-Instanz oder InfluxDB verwendet werden soll.
+</p>
+{% endif %}
+<form method="post" action="einstellungen/ha">
 <div class="card">
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
     <label class="feld">Datenquelle
@@ -175,7 +182,7 @@ async function sucheSensoren() {
   const q = document.getElementById("sensor-suche").value.trim();
   const box = document.getElementById("sensor-ergebnis");
   box.innerHTML = "<span class='muted'>Suche …</span>";
-  const resp = await fetch("/api/entities?q=" + encodeURIComponent(q));
+  const resp = await fetch("api/entities?q=" + encodeURIComponent(q));
   const d = await resp.json();
   if (d.error) { box.innerHTML = "<span class='rot'>✗ " + d.error + "</span>"; return; }
   if (!d.treffer.length) { box.innerHTML = "<span class='gelb'>Keine Treffer</span>"; return; }
@@ -195,7 +202,7 @@ async function pruefeSensor() {
   const box = document.getElementById("sensor-ergebnis");
   if (!eid) { box.innerHTML = "<span class='gelb'>Bitte Entity-ID eingeben</span>"; return; }
   box.innerHTML = "<span class='muted'>Prüfe " + eid + " – das dauert einen Moment …</span>";
-  const resp = await fetch("/api/diagnose?entity=" + encodeURIComponent(eid));
+  const resp = await fetch("api/diagnose?entity=" + encodeURIComponent(eid));
   const d = await resp.json();
   if (d.error) { box.innerHTML = "<span class='rot'>✗ " + d.error + "</span>"; return; }
   let html = `<div><strong>${d.entity}</strong> ${d.name ? "(" + d.name + ")" : ""} · aktuell: ${d.state} ${d.einheit}</div>`;
@@ -216,7 +223,7 @@ async function importiereSettings() {
   const fd = new FormData();
   fd.append("datei", datei);
   status.textContent = "Lade …"; status.className = "muted";
-  const resp = await fetch("/api/settings/import", { method: "POST", body: fd });
+  const resp = await fetch("api/settings/import", { method: "POST", body: fd });
   const data = await resp.json();
   if (data.error) { status.textContent = "✗ " + data.error; status.className = "rot"; return; }
   status.textContent = `✓ ${data.anzahl} Einstellungen übernommen` +
@@ -231,7 +238,7 @@ async function testeVerbindung(art, btn) {
   span.textContent = "Teste …";
   span.className = "muted";
   try {
-    const resp = await fetch("/api/test/" + art, { method: "POST" });
+    const resp = await fetch("api/test/" + art, { method: "POST" });
     const data = await resp.json();
     span.textContent = (data.ok ? "✓ " : "✗ ") + data.text;
     span.className = data.ok ? "gruen" : "rot";

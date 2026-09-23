@@ -24,6 +24,8 @@ import akkuverbrauch
 import berechnung
 import berichte
 import ladeerkennung
+import ladetarife as ladetarife_mod
+import unterhalt
 import mailer
 import charts
 import zeitraum as zeitraum_mod
@@ -44,6 +46,14 @@ MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni",
 db.init_db()
 db.init_ha_settings()
 db.init_mail_settings()
+
+# Einzige Stelle, die zwischen den beiden Betriebsarten unterscheidet: SUPERVISOR_TOKEN
+# wird nur vom Supervisor in den Add-on-Container injiziert (homeassistant_api: true in
+# config.yaml). Im Standalone-Docker-Betrieb (docker-compose.yml) ist die Variable nie
+# gesetzt. Ueberall im Code, wo sich Add-on und Standalone unterscheiden, wird IST_ADDON
+# verwendet – nie direkt os.environ.get("SUPERVISOR_TOKEN"), damit auf einen Blick klar
+# ist, welcher Code nur eine der beiden Betriebsarten betrifft.
+IST_ADDON = bool(os.environ.get("SUPERVISOR_TOKEN"))
 
 app = FastAPI(title="EV Tracker")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -68,6 +78,19 @@ def parse_de(text) -> float | None:
         return float(t)
     except ValueError:
         return None
+
+
+def _ha_verbindung(cfg: dict) -> dict | None:
+    """Verbindungsdaten fuer HAClient: bevorzugt den Supervisor-Proxy (laeuft die
+    App als HA-Add-on mit homeassistant_api, injiziert der Supervisor SUPERVISOR_TOKEN),
+    sonst die manuell in den Einstellungen hinterlegte URL/Token-Kombination.
+    Gibt None zurueck, wenn keine der beiden Quellen verfuegbar ist."""
+    if cfg.get("ha_url") and cfg.get("ha_token"):
+        return {"url": cfg["ha_url"], "token": cfg["ha_token"]}
+    if IST_ADDON:
+        return {"url": "http://supervisor/core", "token": os.environ["SUPERVISOR_TOKEN"],
+                "ws_pfad": "/websocket"}
+    return None
 
 
 # ─────────────────────────────────────────────────────────────
@@ -190,7 +213,7 @@ def fahrten_akku_berechnen(zeitraum: str = Form("alles")):
     except Exception as e:
         meldung = f"Fehler beim Abruf: {e}"
     from urllib.parse import quote
-    return RedirectResponse(f"/fahrten?akku={quote(meldung)}#akku", status_code=303)
+    return RedirectResponse(f"fahrten?akku={quote(meldung)}#akku", status_code=303)
 
 
 @app.post("/fahrten")
@@ -198,13 +221,13 @@ def fahrten_add(monat: str = Form(...), km: str = Form(...)):
     v = parse_de(km)
     if v is not None and v >= 0:
         db.set_fahrt_monat(monat, v)
-    return RedirectResponse("/fahrten", status_code=303)
+    return RedirectResponse("fahrten", status_code=303)
 
 
 @app.post("/fahrten/delete")
 def fahrten_delete(monat: str = Form(...)):
     db.delete_fahrt_monat(monat)
-    return RedirectResponse("/fahrten", status_code=303)
+    return RedirectResponse("fahrten", status_code=303)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -217,8 +240,12 @@ def laden(request: Request):
     anbieter = db.get_lade_anbieter()
     tarif = db.get_aktueller_stromtarif()
     pv_ct = db.get_einstellung("pv_preis_ct") or 13.0
+    # Aktueller Abo-Preis je Anbieter fuer die Vorbelegung von ct/kWh
+    abo = {a: {"ac": t["preis_ac"], "dc": t["preis_dc"] or t["preis_ac"],
+               "name": t["tarif_name"] or ""}
+           for a, t in db.get_aktuelle_ladetarife().items()}
     return render(request, "laden.html", rows=daten, anbieter=anbieter,
-                  tarif=tarif, pv_ct=pv_ct, aktiv="laden",
+                  tarif=tarif, pv_ct=pv_ct, abo=abo, aktiv="laden",
                   heute=datetime.now().strftime("%Y-%m-%d"))
 
 
@@ -226,40 +253,46 @@ def laden(request: Request):
 def laden_add(datum: str = Form(...), kwh: str = Form(...),
               preis_kwh: str = Form(""), gesamt: str = Form(""),
               anbieter: str = Form(...), leistung: str = Form(""),
-              ladetyp: str = Form("AC"), notiz: str = Form("")):
+              ladetyp: str = Form("AC"), notiz: str = Form(""),
+              blockier: str = Form("")):
     kwh_v = parse_de(kwh)
     ct_v = parse_de(preis_kwh)
     gesamt_v = parse_de(gesamt)
+    blockier_v = parse_de(blockier)
+    # Der Gesamtpreis enthaelt die Blockiergebuehr
     if gesamt_v is None and kwh_v is not None and ct_v is not None:
-        gesamt_v = round(kwh_v * ct_v / 100, 2)
+        gesamt_v = round(kwh_v * ct_v / 100 + (blockier_v or 0), 2)
     if kwh_v is not None and kwh_v > 0 and gesamt_v is not None:
         db.add_ladevorgang(datum, kwh_v, ct_v, gesamt_v, anbieter,
-                           parse_de(leistung), ladetyp, notiz)
-    return RedirectResponse("/laden", status_code=303)
+                           parse_de(leistung), ladetyp, notiz, blockier_v)
+    return RedirectResponse("laden", status_code=303)
 
 
 @app.post("/laden/update")
 def laden_update(id: int = Form(...), datum: str = Form(...), kwh: str = Form(...),
                  preis_kwh: str = Form(""), gesamt: str = Form(""),
                  anbieter: str = Form(...), leistung: str = Form(""),
-                 ladetyp: str = Form("AC"), notiz: str = Form("")):
+                 ladetyp: str = Form("AC"), notiz: str = Form(""),
+                 blockier: str = Form("")):
     kwh_v = parse_de(kwh)
     ct_v = parse_de(preis_kwh)
     gesamt_v = parse_de(gesamt)
+    blockier_v = parse_de(blockier)
+    # Der Gesamtpreis enthaelt die Blockiergebuehr
     if gesamt_v is None and kwh_v is not None and ct_v is not None:
-        gesamt_v = round(kwh_v * ct_v / 100, 2)
+        gesamt_v = round(kwh_v * ct_v / 100 + (blockier_v or 0), 2)
     if kwh_v is None or kwh_v <= 0 or gesamt_v is None:
         return JSONResponse({"error": "kWh und Gesamtpreis muessen Zahlen sein."},
                             status_code=400)
     db.update_ladevorgang(id, datum, kwh_v, ct_v, gesamt_v, anbieter,
-                          parse_de(leistung), ladetyp, notiz)
+                          parse_de(leistung), ladetyp, notiz, blockier_v)
     return {"ok": True}
 
 
 @app.post("/laden/delete")
 def laden_delete(id: int = Form(...)):
     db.delete_ladevorgang(id)
-    return RedirectResponse("/laden", status_code=303)
+    return RedirectResponse("laden", status_code=303)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -276,13 +309,13 @@ def benzin_add(monat: str = Form(...), preis: str = Form(...)):
     v = parse_de(preis)
     if v is not None and v > 0:
         db.set_benzinpreis(monat, v)
-    return RedirectResponse("/benzin", status_code=303)
+    return RedirectResponse("benzin", status_code=303)
 
 
 @app.post("/benzin/delete")
 def benzin_delete(monat: str = Form(...)):
     db.delete_benzinpreis(monat)
-    return RedirectResponse("/benzin", status_code=303)
+    return RedirectResponse("benzin", status_code=303)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -302,13 +335,66 @@ def stromtarif_add(gueltig_ab: str = Form(...), preis: str = Form(...),
     v = parse_de(preis)
     if v is not None and v > 0:
         db.add_stromtarif(gueltig_ab, v, name)
-    return RedirectResponse("/stromtarif", status_code=303)
+    return RedirectResponse("stromtarif", status_code=303)
 
 
 @app.post("/stromtarif/delete")
 def stromtarif_delete(id: int = Form(...)):
     db.delete_stromtarif(id)
-    return RedirectResponse("/stromtarif", status_code=303)
+    return RedirectResponse("stromtarif", status_code=303)
+
+
+# ─────────────────────────────────────────────────────────────
+#  Ladetarife (eigene Abos)
+# ─────────────────────────────────────────────────────────────
+
+@app.get("/ladetarife", response_class=HTMLResponse)
+def ladetarife(request: Request):
+    d = ladetarife_mod.seite_daten()
+    # Nur oeffentliche Anbieter – fuer Laden zuhause gibt es die Seite Stromtarif
+    anbieter = [a for a in db.get_lade_anbieter() if not a["name"].startswith("Privat")]
+    return render(request, "ladetarife.html", tarife=d["tarife"], monate=d["monate"],
+                  anbieter=anbieter,
+                  chart=charts.chart_ladetarife(d["roh"], db.get_stromtarife()),
+                  aktiv="ladetarife", heute=datetime.now().strftime("%Y-%m-%d"))
+
+
+def _ladetarif_werte(form) -> dict | None:
+    """Formularfelder -> DB-Werte; None, wenn Pflichtangaben fehlen."""
+    werte = {k: (str(form.get(k) or "").strip() or None)
+             for k in ("anbieter", "tarif_name", "gueltig_ab", "gueltig_bis", "notiz")}
+    for k in ("preis_ac", "preis_dc", "grundgebuehr", "blockier_ct_min", "blockier_ab_min",
+              "blockier_max_eur", "fremd_ab_ct", "fremd_max_ct", "ladekarte_eur"):
+        werte[k] = parse_de(form.get(k))
+    werte["grundgebuehr"] = werte["grundgebuehr"] or 0.0
+    if not werte["anbieter"] or not werte["gueltig_ab"] or not werte["preis_ac"]:
+        return None
+    return werte
+
+
+@app.post("/ladetarife")
+async def ladetarife_add(request: Request):
+    werte = _ladetarif_werte(await request.form())
+    if werte:
+        db.add_ladetarif(werte)
+    return RedirectResponse("ladetarife", status_code=303)
+
+
+@app.post("/ladetarife/update")
+async def ladetarife_update(request: Request):
+    form = await request.form()
+    werte = _ladetarif_werte(form)
+    if werte is None:
+        return JSONResponse({"error": "Anbieter, gültig ab und ct/kWh AC sind Pflicht."},
+                            status_code=400)
+    db.update_ladetarif(int(form["id"]), werte)
+    return {"ok": True}
+
+
+@app.post("/ladetarife/delete")
+def ladetarife_delete(id: int = Form(...)):
+    db.delete_ladetarif(id)
+    return RedirectResponse("ladetarife", status_code=303)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -328,7 +414,7 @@ def steuer_kfz(betrag: str = Form(...)):
     v = parse_de(betrag)
     if v is not None and v >= 0:
         db.set_einstellung("kfz_steuer_benziner", v)
-    return RedirectResponse("/steuer", status_code=303)
+    return RedirectResponse("steuer", status_code=303)
 
 
 @app.post("/steuer/thg")
@@ -337,13 +423,111 @@ def steuer_thg_add(datum: str = Form(...), betrag: str = Form(...),
     v = parse_de(betrag)
     if v is not None and v > 0:
         db.add_thg(datum, v, anbieter or "Sonstige", notiz)
-    return RedirectResponse("/steuer", status_code=303)
+    return RedirectResponse("steuer", status_code=303)
 
 
 @app.post("/steuer/thg/delete")
 def steuer_thg_delete(id: int = Form(...)):
     db.delete_thg(id)
-    return RedirectResponse("/steuer", status_code=303)
+    return RedirectResponse("steuer", status_code=303)
+
+
+# ─────────────────────────────────────────────────────────────
+#  Instandhaltung
+# ─────────────────────────────────────────────────────────────
+
+@app.get("/instandhaltung", response_class=HTMLResponse)
+def instandhaltung(request: Request):
+    return render(request, "instandhaltung.html", d=unterhalt.instandhaltung_daten(),
+                  kategorien=unterhalt.KATEGORIEN, aktiv="instandhaltung",
+                  heute=datetime.now().strftime("%Y-%m-%d"))
+
+
+def _instandhaltung_werte(form) -> dict | None:
+    """Formularfelder -> DB-Werte; None, wenn Datum, Kategorie oder Betrag fehlen."""
+    werte = {k: (str(form.get(k) or "").strip() or None)
+             for k in ("datum", "kategorie", "beschreibung", "werkstatt", "notiz")}
+    werte["km_stand"] = parse_de(form.get("km_stand"))
+    werte["betrag"] = parse_de(form.get("betrag"))
+    if not werte["datum"] or not werte["kategorie"] or werte["betrag"] is None:
+        return None
+    return werte
+
+
+@app.post("/instandhaltung")
+async def instandhaltung_add(request: Request):
+    werte = _instandhaltung_werte(await request.form())
+    if werte:
+        db.add_instandhaltung(werte)
+    return RedirectResponse("instandhaltung", status_code=303)
+
+
+@app.post("/instandhaltung/update")
+async def instandhaltung_update(request: Request):
+    form = await request.form()
+    werte = _instandhaltung_werte(form)
+    if werte is None:
+        return JSONResponse({"error": "Datum, Kategorie und Betrag sind Pflicht."},
+                            status_code=400)
+    db.update_instandhaltung(int(form["id"]), werte)
+    return {"ok": True}
+
+
+@app.post("/instandhaltung/delete")
+def instandhaltung_delete(id: int = Form(...)):
+    db.delete_instandhaltung(id)
+    return RedirectResponse("instandhaltung", status_code=303)
+
+
+# ─────────────────────────────────────────────────────────────
+#  Versicherung
+# ─────────────────────────────────────────────────────────────
+
+@app.get("/versicherung", response_class=HTMLResponse)
+def versicherung(request: Request):
+    return render(request, "versicherung.html", d=unterhalt.versicherung_daten(),
+                  deckungen=unterhalt.DECKUNGEN, zusatz=unterhalt.ZUSATZ,
+                  aktiv="versicherung", heute=datetime.now().strftime("%Y-%m-%d"))
+
+
+def _versicherung_werte(form) -> dict | None:
+    """Formularfelder -> DB-Werte; None, wenn Pflichtangaben fehlen.
+    Zusatzbausteine: leer = nicht gebucht, 0 = inklusive, negativ = Rabatt."""
+    werte = {k: (str(form.get(k) or "").strip() or None)
+             for k in ("fahrzeug", "gesellschaft", "tarif_name", "gueltig_ab", "gueltig_bis",
+                       "deckung", "sf_haftpflicht", "sf_kasko", "notiz")}
+    for k in ("jahreslaufleistung", "sb_teilkasko", "sb_vollkasko", "grundbeitrag",
+              *(k for k, _ in unterhalt.ZUSATZ)):
+        werte[k] = parse_de(form.get(k))
+    if (not werte["fahrzeug"] or not werte["gesellschaft"] or not werte["gueltig_ab"]
+            or not werte["deckung"] or werte["grundbeitrag"] is None):
+        return None
+    return werte
+
+
+@app.post("/versicherung")
+async def versicherung_add(request: Request):
+    werte = _versicherung_werte(await request.form())
+    if werte:
+        db.add_versicherung(werte)
+    return RedirectResponse("versicherung", status_code=303)
+
+
+@app.post("/versicherung/update")
+async def versicherung_update(request: Request):
+    form = await request.form()
+    werte = _versicherung_werte(form)
+    if werte is None:
+        return JSONResponse({"error": "Fahrzeug, Gesellschaft, gültig ab, Deckung und "
+                                      "Grundbeitrag sind Pflicht."}, status_code=400)
+    db.update_versicherung(int(form["id"]), werte)
+    return {"ok": True}
+
+
+@app.post("/versicherung/delete")
+def versicherung_delete(id: int = Form(...)):
+    db.delete_versicherung(id)
+    return RedirectResponse("versicherung", status_code=303)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -430,9 +614,8 @@ def _fetch_monat(client, ic, cfg, use_influx, year, month):
 def _import_worker(job_id, monate, cfg):
     job = _import_jobs[job_id]
     use_influx = cfg.get("datasource", "ha") == "influxdb"
-    client = None
-    if cfg.get("ha_url") and cfg.get("ha_token"):
-        client = HAClient(cfg["ha_url"], cfg["ha_token"])
+    verbindung = _ha_verbindung(cfg)
+    client = HAClient(**verbindung) if verbindung else None
     ic = None
     if use_influx:
         try:
@@ -467,8 +650,7 @@ def import_start(von_monat: int = Form(...), von_jahr: int = Form(...),
     if (von_jahr, von_monat) > (bis_jahr, bis_monat):
         return JSONResponse({"error": "Von muss vor Bis liegen."}, status_code=400)
     cfg = db.get_ha_settings()
-    if not (cfg.get("ha_url") and cfg.get("ha_token")) and \
-            cfg.get("datasource") != "influxdb":
+    if not _ha_verbindung(cfg) and cfg.get("datasource") != "influxdb":
         return JSONResponse({"error": "Keine Datenquelle konfiguriert."}, status_code=400)
     monate = _monat_liste(von_jahr, von_monat, bis_jahr, bis_monat)
     job_id = uuid.uuid4().hex[:12]
@@ -529,9 +711,10 @@ def import_apply(payload: dict):
 @app.post("/api/test/ha")
 def test_ha():
     cfg = db.get_ha_settings()
-    if not (cfg.get("ha_url") and cfg.get("ha_token")):
+    verbindung = _ha_verbindung(cfg)
+    if not verbindung:
         return {"ok": False, "text": "URL oder Token fehlt"}
-    ok = HAClient(cfg["ha_url"], cfg["ha_token"]).test_connection()
+    ok = HAClient(**verbindung).test_connection()
     return {"ok": ok, "text": "Verbunden" if ok else "Keine Verbindung"}
 
 
@@ -551,10 +734,8 @@ def test_influx():
 # ─────────────────────────────────────────────────────────────
 
 def _ha_client():
-    cfg = db.get_ha_settings()
-    if not (cfg.get("ha_url") and cfg.get("ha_token")):
-        return None
-    return HAClient(cfg["ha_url"], cfg["ha_token"])
+    verbindung = _ha_verbindung(db.get_ha_settings())
+    return HAClient(**verbindung) if verbindung else None
 
 
 @app.get("/api/entities")
@@ -846,7 +1027,7 @@ async def einstellungen_mail(request: Request):
                      "bericht_warten", "auto_import"]:
         werte[schalter] = "1" if form.get(schalter) else "0"
     db.set_einstellungen(werte)
-    return RedirectResponse("/berichte", status_code=303)
+    return RedirectResponse("berichte", status_code=303)
 
 
 # ── Zeitplan: prueft stuendlich, ob ein Bericht faellig ist ──────────────────
@@ -910,9 +1091,8 @@ def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> lis
     quelle_text = "InfluxDB (Fallback HA-API)" if use_influx else "Home Assistant API"
     _log_import([f"Abruf gestartet ({quelle}) · Quelle: {quelle_text}"], trenner=True)
 
-    client = None
-    if cfg.get("ha_url") and cfg.get("ha_token"):
-        client = HAClient(cfg["ha_url"], cfg["ha_token"])
+    verbindung = _ha_verbindung(cfg)
+    client = HAClient(**verbindung) if verbindung else None
     ic = None
     if use_influx:
         try:
@@ -1138,7 +1318,8 @@ def _sicherungskopie(praefix: str) -> str:
 
 @app.get("/backup", response_class=HTMLResponse)
 def backup_seite(request: Request):
-    return render(request, "backup.html", aktiv="backup", db_pfad=db.DB_PATH)
+    return render(request, "backup.html", aktiv="backup", db_pfad=db.DB_PATH,
+                  add_on_modus=IST_ADDON)
 
 
 @app.get("/api/backup/status")
@@ -1270,13 +1451,16 @@ def reset_messdaten(bereiche: str = Form(""), bestaetigt: str = Form("")):
 @app.get("/api/backup")
 def backup(token: str = ""):
     """Liefert eine konsistente Kopie der SQLite-Datenbank.
-    Nur aktiv, wenn EV_TRACKER_BACKUP_TOKEN gesetzt ist."""
-    if not BACKUP_TOKEN:
-        return JSONResponse(
-            {"error": "Backup deaktiviert – EV_TRACKER_BACKUP_TOKEN nicht gesetzt."},
-            status_code=403)
-    if token != BACKUP_TOKEN:
-        return JSONResponse({"error": "Ungültiger Token."}, status_code=403)
+    Als Add-on reicht die Ingress-Authentifizierung durch HA, daher kein Token
+    nötig. Im Standalone-Docker-Betrieb weiterhin nur mit EV_TRACKER_BACKUP_TOKEN,
+    weil der Endpunkt dort ohne HA-Login direkt aus dem Netz erreichbar ist."""
+    if not IST_ADDON:
+        if not BACKUP_TOKEN:
+            return JSONResponse(
+                {"error": "Backup deaktiviert – EV_TRACKER_BACKUP_TOKEN nicht gesetzt."},
+                status_code=403)
+        if token != BACKUP_TOKEN:
+            return JSONResponse({"error": "Ungültiger Token."}, status_code=403)
 
     import sqlite3
     ziel = os.path.join(STATIC_DIR, f"_backup_{uuid.uuid4().hex}.db")
@@ -1313,10 +1497,13 @@ SENSOR_FELDER = [
 
 @app.get("/einstellungen", response_class=HTMLResponse)
 def einstellungen(request: Request):
+    ha_settings = db.get_ha_settings()
     return render(request, "einstellungen.html",
                   cfg=db.get_config(),
                   kfz=db.get_einstellung("kfz_steuer_benziner") or 0.0,
-                  ha=db.get_ha_settings(),
+                  ha=ha_settings,
+                  supervisor_aktiv=IST_ADDON
+                                   and not (ha_settings.get("ha_url") and ha_settings.get("ha_token")),
                   anbieter=db.get_lade_anbieter(),
                   sensor_felder=SENSOR_FELDER,
                   aktiv="einstellungen")
@@ -1336,20 +1523,20 @@ def einstellungen_parameter(benziner_verbrauch: str = Form(...),
         v = parse_de(raw)
         if v is not None:
             db.set_einstellung(key, v)
-    return RedirectResponse("/einstellungen", status_code=303)
+    return RedirectResponse("einstellungen", status_code=303)
 
 
 @app.post("/einstellungen/anbieter")
 def anbieter_add(name: str = Form(...), gruenstrom: str = Form("")):
     if name.strip():
         db.add_lade_anbieter(name.strip(), 1 if gruenstrom else 0)
-    return RedirectResponse("/einstellungen", status_code=303)
+    return RedirectResponse("einstellungen", status_code=303)
 
 
 @app.post("/einstellungen/anbieter/delete")
 def anbieter_delete(id: int = Form(...)):
     db.delete_lade_anbieter(id)
-    return RedirectResponse("/einstellungen", status_code=303)
+    return RedirectResponse("einstellungen", status_code=303)
 
 
 @app.post("/einstellungen/ha")
@@ -1372,4 +1559,4 @@ async def einstellungen_ha(request: Request):
     if settings.get("influx_password") == "":
         settings.pop("influx_password")
     db.save_ha_settings(settings)
-    return RedirectResponse("/einstellungen", status_code=303)
+    return RedirectResponse("einstellungen", status_code=303)

@@ -10,7 +10,7 @@
 {% endif %}
 
 <div class="card">
-  <form class="inline" method="post" action="/stromtarif">
+  <form class="inline" method="post" action="stromtarif">
     <label class="feld">Gültig ab
       <input type="date" name="gueltig_ab" value="{{ heute }}" required>
     </label>
@@ -32,7 +32,7 @@
     <td>{{ "%.2f"|format(d.preis_kwh)|replace(".", ",") }} ct</td>
     <td>{{ d.tarif_name or "" }}</td>
     <td>
-      <form method="post" action="/stromtarif/delete"
+      <form method="post" action="stromtarif/delete"
             onsubmit="return confirm('Tarif ab {{ d.gueltig_ab }} löschen?')">
         <input type="hidden" name="id" value="{{ d.id }}">
         <button class="danger">🗑</button>

@@ -527,6 +527,66 @@ def chart_stromtarif(daten, von=None, bis=None):
     return _bedienung(opt, len(punkte), umschalten=False, kategorie=False)
 
 
+def chart_ladetarife(tarife, stromtarife=None):
+    """Treppenkurve ct/kWh (AC) je eigenem Ladetarif; der Heimstrompreis als
+    gestrichelte Vergleichslinie."""
+    if not tarife:
+        return _leer("Noch keine Ladetarife erfasst")
+    heute = date.today().isoformat()
+    gruppen = {}
+    for t in sorted(tarife, key=lambda t: t["gueltig_ab"]):
+        name = t["anbieter"] + (f" {t['tarif_name']}" if t["tarif_name"] else "")
+        gruppen.setdefault(name, []).append(t)
+
+    farben = ["blue", "orange", "purple", "green", "red"]
+    serien = []
+    for i, (name, liste) in enumerate(gruppen.items()):
+        punkte = [[t["gueltig_ab"], t["preis_ac"]] for t in liste]
+        ende = liste[-1]["gueltig_bis"] or heute
+        if punkte[-1][0] < ende:
+            punkte.append({"value": [ende, punkte[-1][1]],
+                           "symbol": "none", "label": {"show": False}})
+        serie = _linie(name, farben[i % len(farben)], punkte, "fn:ctKwh", step="end")
+        serie["showSymbol"] = True
+        serie["label"] = {"show": True, "position": "top", "color": COLORS["subtext"],
+                          "fontSize": 10, "formatter": "fn:labelCt"}
+        serien.append(serie)
+
+    if stromtarife:
+        start = min(t["gueltig_ab"] for t in tarife)
+        heim = sorted(stromtarife, key=lambda x: x["gueltig_ab"])
+        davor = [d for d in heim if d["gueltig_ab"] <= start]
+        heim = ([{"gueltig_ab": start, "preis_kwh": davor[-1]["preis_kwh"]}] if davor else []) \
+            + [d for d in heim if d["gueltig_ab"] > start]
+        if heim:
+            punkte = [[d["gueltig_ab"], d["preis_kwh"]] for d in heim]
+            if punkte[-1][0] < heute:
+                punkte.append([heute, punkte[-1][1]])
+            serie = _linie("Heimstrom", "teal", punkte, "fn:ctKwh", step="end")
+            serie["lineStyle"]["type"] = "dashed"
+            serie["lineStyle"]["width"] = 1.5
+            serie["showSymbol"] = False
+            serien.append(serie)
+
+    opt = _basis(
+        grid={"left": 8, "right": 24, "top": 40, "bottom": 8, "containLabel": True},
+        xAxis={
+            "type": "time",
+            "axisLine": {"lineStyle": {"color": COLORS["border"]}},
+            "axisTick": {"show": False},
+            "axisLabel": {"color": COLORS["subtext"], "fontSize": 10,
+                          "formatter": "fn:datumMonat", "hideOverlap": True},
+            "axisPointer": {"label": {"formatter": "fn:datum:ap"}},
+            "splitLine": {"show": False},
+        },
+        yAxis=_achse_wert(scale=True, axisLabel={"color": COLORS["subtext"],
+                                                 "fontSize": 10, "formatter": "fn:zahl1"}),
+        series=serien,
+    )
+    opt["legend"]["show"] = True
+    return _bedienung(opt, max(len(s["data"]) for s in serien), umschalten=False, kategorie=False)
+
+
 def chart_anbieter_verteilung(lade_daten):
     if not lade_daten:
         return _leer("Keine Ladedaten")

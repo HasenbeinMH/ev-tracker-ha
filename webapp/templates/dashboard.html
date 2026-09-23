@@ -8,11 +8,11 @@
     <div class="hero-wert">{{ kz.ersparnis_gesamt | de(2) }}<span> €</span></div>
     <div class="hero-label">Gesamt-Ersparnis gegenüber einem Benziner{% if zeitraum.von %} · {{ zeitraum.titel }}{% endif %}</div>
   </div>
-  <img class="hero-auto" src="/static/Auto.jpg" alt="Kia EV3">
+  <img class="hero-auto" src="static/Auto.jpg" alt="Kia EV3">
 </section>
 
 {# Zeitraum fuer alle Kennzahlen und Charts; wird per Cookie gemerkt #}
-<form class="zeitraum-leiste" method="get" action="/">
+<form class="zeitraum-leiste" method="get" action=".">
   <label for="zeitraum-wahl">Zeitraum</label>
   <select id="zeitraum-wahl" name="zeitraum" onchange="this.form.submit()">
     {% for gruppe, eintraege in zeitraum_optionen %}
@@ -25,7 +25,7 @@
   </select>
   <noscript><button type="submit" class="secondary">Anzeigen</button></noscript>
   {% if zeitraum.von %}
-  <a class="zeitraum-zurueck" href="/?zeitraum=alles">✕ Gesamter Zeitraum</a>
+  <a class="zeitraum-zurueck" href="?zeitraum=alles">✕ Gesamter Zeitraum</a>
   <span class="hint" style="margin:0">KFZ-Steuer anteilig für {{ kz.monate }} Monat{{ "e" if kz.monate != 1 }}</span>
   {% endif %}
 </form>
@@ -79,6 +79,6 @@
   </div>
   {% endfor %}
 </div>
-<script src="/static/echarts.min.js"></script>
-<script src="/static/charts.js"></script>
+<script src="static/echarts.min.js"></script>
+<script src="static/charts.js"></script>
 {% endblock %}

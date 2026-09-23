@@ -57,9 +57,12 @@
   <a href="#statistik">Statistik</a>
   <a href="#fahrten">Fahrten</a>
   <a href="#laden">Laden</a>
+  <a href="#ladetarife">Ladetarife</a>
   <a href="#benzin">Benzin</a>
   <a href="#stromtarif">Stromtarif</a>
   <a href="#steuer">Steuer &amp; THG</a>
+  <a href="#instandhaltung">Instandhaltung</a>
+  <a href="#versicherung">Versicherung</a>
   <a href="#haimport">HA Import</a>
   <a href="#rechnungen">Rechnungen</a>
   <a href="#berichte">Berichte</a>
@@ -160,15 +163,26 @@
 
 <h2 id="laden">Laden <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„🔌 Ladevorgänge"</b> · Einzelvorgänge mit Tagesdatum.</p>
-<div class="hb-formel"><span class="lbl">Gesamtpreis</span>Gesamtpreis [€] = Menge [kWh] × Preis [ct/kWh] ÷ 100</div>
-<p>Lässt du das Gesamtfeld leer, wird es aus kWh und ct/kWh berechnet. Trägst du einen Betrag ein, gilt <b>dieser</b> – wichtig bei Blockiergebühren, Rabatten oder Grundpreisen.</p>
+<div class="hb-formel"><span class="lbl">Gesamtpreis</span>Gesamtpreis [€] = Menge [kWh] × Preis [ct/kWh] ÷ 100 + Blockiergebühr [€]</div>
+<p>Lässt du das Gesamtfeld leer, wird es aus kWh, ct/kWh und Blockiergebühr berechnet. Trägst du einen Betrag ein, gilt <b>dieser</b> – wichtig bei Rabatten. Die <b>Blockiergebühr</b> ist im Gesamtpreis enthalten; das eigene Feld weist sie nur getrennt aus.</p>
 <table>
   <tr><th style="width:28%">Anbieter</th><th>Preisvorschlag</th></tr>
   <tr><td><b>Privat – Netzbezug</b></td><td>Neuester Stromtarif aus der Seite Stromtarif.</td></tr>
   <tr><td><b>Privat – PV</b></td><td>Der PV-Preis aus den Einstellungen (Standard 13 ct/kWh).</td></tr>
-  <tr><td>medl, EnBW, Ionity, ARAL Pulse, eigene</td><td>Kein Vorschlag – Preis selbst eintragen.</td></tr>
+  <tr><td>medl, EnBW, Ionity, ARAL Pulse, eigene</td><td>Der aktuelle Preis aus der Seite <a href="#ladetarife">Ladetarife</a> (AC oder DC je nach Typ). Ohne Tarif kein Vorschlag.</td></tr>
 </table>
 <div class="hb-info"><b>Ladeleistung und AC/DC</b> sind reine Dokumentation und fließen in keine Berechnung ein.</div>
+
+<h2 id="ladetarife">Ladetarife <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<p class="hint">Überschrift: <b>„🏷️ Ladetarife"</b> · deine Abos für öffentliches Laden, z. B. EnBW M.</p>
+<ul>
+  <li>Je Tarif: ct/kWh AC und DC, Grundgebühr je Monat, Blockiergebühr (ct/min, ab wie vielen Minuten, Obergrenze), Preise im Fremdnetz und die Ladekarte.</li>
+  <li><b>Preisänderung = neuer Eintrag</b> mit neuem „gültig ab“. Die Tabelle zeigt die Änderung gegenüber dem Vorgänger, das Diagramm den Verlauf neben deinem Heimstrompreis.</li>
+  <li>„Gültig bis“ nur ausfüllen, wenn du das Abo gekündigt hast.</li>
+  <li>Ladungen werden über den <b>Anbieternamen</b> und das Datum dem Tarif zugeordnet.</li>
+</ul>
+<div class="hb-formel"><span class="lbl">Effektiver Preis</span>effektiv [ct/kWh] = (Σ Ladekosten des Monats + Grundgebühr) ÷ Σ kWh × 100</div>
+<div class="hb-info"><b>Nur zur Kontrolle:</b> Die Grundgebühr fließt nicht in die Ersparnis auf dem Dashboard ein. Bei wenig Ladungen im Monat liegt der effektive Preis deutlich über dem Tarifpreis – dann lohnt vielleicht ein kleinerer Tarif.</div>
 
 <h2 id="benzin">Benzin <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„⛽ Benzinpreise (Monatsdurchschnitt)"</b></p>
@@ -195,6 +209,21 @@
 <div class="hb-warn"><b>Jahreswert ohne Zeitanteilung:</b> Der Betrag geht ungekürzt in die Gesamt-Ersparnis ein – unabhängig davon, wie lange du schon trackst. Bei kürzerer Laufzeit anteilig eintragen.</div>
 <div class="hb-formel"><span class="lbl">THG-Ertrag</span>THG-Ertrag [€] = Σ aller erfassten Beträge</div>
 <p>Jede Auszahlung als eigener Eintrag mit Datum – so landet sie im richtigen Monats- und Jahresbericht.</p>
+
+<h2 id="instandhaltung">Instandhaltung <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<p class="hint">Überschrift: <b>„🔧 Instandhaltung"</b> – im Menü unter Kosten</p>
+<p>Ein Eintrag je Rechnung: Inspektion, Reifen, Bremsen, Verschleißteile, Reparatur, HU/AU, Pflege oder Sonstiges. Der km-Stand ist optional und dient nur der Übersicht.</p>
+<div class="hb-formel"><span class="lbl">€ pro 100 km</span>Instandhaltung [€/100 km] = Σ Kosten ÷ gefahrene km × 100</div>
+<p>Die km kommen aus den Monatswerten der Seite <a href="#fahrten">Fahrten</a>, je Jahr bzw. insgesamt. Ein Vergleich mit einem Benziner gibt es bewusst nicht – dafür fehlen realistische Referenzdaten.</p>
+<div class="hb-warn"><b>km vom Vorgängerauto:</b> Stehen auf der Seite Fahrten noch km des alten Autos, fällt der Wert zu niedrig aus. Beim Fahrzeugwechsel die Fahrten über „Messdaten zurücksetzen“ (Backup) leeren. Instandhaltung und Versicherung fließen nicht in die Ersparnis auf dem Dashboard ein.</div>
+
+<h2 id="versicherung">Versicherung <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<p class="hint">Überschrift: <b>„🛡️ KFZ-Versicherung"</b> – im Menü unter Kosten</p>
+<p>Je Versicherungsjahr ein Eintrag mit Fahrzeug, Gesellschaft, Deckung, SF-Klassen, Selbstbeteiligung, Jahreslaufleistung, Grundbeitrag und Zusatzbausteinen. Ändert sich etwas, einen neuen Eintrag mit neuem „gültig ab“ anlegen – die Tabelle zeigt dann die Änderung zum Vorjahr desselben Fahrzeugs.</p>
+<div class="hb-formel"><span class="lbl">Jahresbeitrag</span>Gesamt [€/Jahr] = Grundbeitrag + Fahrerschutz + Werkstattbindung + Auslandsschutz + Schutzbrief + Sonstiges</div>
+<p>Zusatzbausteine: leer = nicht gebucht, 0 = im Tarif enthalten, negativ = Rabatt (typisch bei der Werkstattbindung).</p>
+<div class="hb-formel"><span class="lbl">Laufleistung</span>gefahren [km/Jahr] = Σ km der letzten 12 abgeschlossenen Monate (weniger Monate: hochgerechnet)</div>
+<p>Liegt der Wert über der vereinbarten Jahreslaufleistung, erscheint eine rote Warnung – dann bei der Versicherung melden, sonst droht im Schadenfall eine Nachzahlung.</p>
 
 <h2 id="haimport">HA Import <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„📥 Datenimport – Home Assistant / InfluxDB"</b></p>
