@@ -119,6 +119,7 @@
         <option value="influxdb" {{ "selected" if ha.datasource == "influxdb" }}>InfluxDB</option>
       </select>
     </label>
+    {% if not supervisor_aktiv %}
     <label class="feld">HA URL
       <input name="ha_url" value="{{ ha.ha_url }}" placeholder="http://192.168.0.59:8123" style="width:260px">
     </label>
@@ -126,6 +127,7 @@
       <input type="password" name="ha_token" placeholder="{{ '••••••••' if ha.ha_token else 'Long-Lived Access Token' }}" style="width:260px">
     </label>
     <button type="button" class="secondary" onclick="testeVerbindung('ha', this)">HA testen</button>
+    {% endif %}
   </div>
 
   <h2>Sensoren (Entity-ID für HA · Friendly Name für InfluxDB)</h2>
