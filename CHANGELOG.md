@@ -3,6 +3,10 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.0.5] - 2026-09-23
+### Hinweistext zur Supervisor-Verbindung entfernt
+- Der gruene Hinweis „Laeuft als Home-Assistant-Add-on ...“ auf der Einstellungen-Seite ist weg – die HA-URL/Token-Felder blenden sich weiterhin automatisch aus, wenn der Supervisor ohne manuelle Zugangsdaten verbindet
+
 ## [2.0.4] - 2026-09-23
 ### Groessenlimits fuer Uploads, CHANGELOG.md fuer den Add-on-Store
 - PDF-Rechnungsupload auf 20 MB begrenzt, Einstellungen-Import auf 2 MB – vorher unbegrenzt, konnte theoretisch viel Speicher/Platz belegen

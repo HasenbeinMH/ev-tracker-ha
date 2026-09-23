@@ -103,13 +103,6 @@
 </div>
 
 <h2>Home Assistant & InfluxDB</h2>
-{% if supervisor_aktiv %}
-<p class="hint gruen">
-  ✓ Läuft als Home-Assistant-Add-on: die App spricht automatisch über den Supervisor
-  mit dieser HA-Instanz – URL und Token unten sind nur nötig, wenn stattdessen
-  eine <em>andere</em> HA-Instanz oder InfluxDB verwendet werden soll.
-</p>
-{% endif %}
 <form method="post" action="einstellungen/ha">
 <div class="card">
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
