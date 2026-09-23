@@ -5,19 +5,35 @@ Version und Aenderungslog des EV Trackers.
 Einzige Quelle fuer beides: Die Versionsnummer steht in der Navigationsleiste,
 der Aenderungslog auf der Hilfeseite unter /hilfe#changelog.
 
+CHANGELOG.md (Repo-Root) ist eine separate Datei nur fuer den Update-Dialog des
+Home-Assistant-Add-on-Stores – wird aus diesem CHANGELOG generiert, nicht von Hand
+gepflegt. Bei einer neuen Version mit erzeugen (siehe Kommentar dort).
+
 Pflege bei einer neuen Version:
-  1. VERSION erhoehen (schema: major.minor.patch)
+  1. VERSION erhoehen (schema: major.minor.patch), config.yaml "version:" mitziehen
   2. Oben in CHANGELOG einen neuen Eintrag einfuegen - neueste Version zuerst
   3. Datum im Format YYYY-MM-DD
+  4. CHANGELOG.md aus diesen Daten neu erzeugen (nicht von Hand editieren)
 
 Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.0.3"
+VERSION = "2.0.4"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.0.4",
+        "datum": "2026-09-23",
+        "titel": "Groessenlimits fuer Uploads, CHANGELOG.md fuer den Add-on-Store",
+        "aenderungen": [
+            "PDF-Rechnungsupload auf 20 MB begrenzt, Einstellungen-Import auf 2 MB – "
+            "vorher unbegrenzt, konnte theoretisch viel Speicher/Platz belegen",
+            "CHANGELOG.md ergaenzt, damit der Update-Dialog im Home-Assistant-Add-on-Store "
+            "die Aenderungen anzeigt statt „No changelog found“",
+        ],
+    },
     {
         "version": "2.0.3",
         "datum": "2026-09-23",

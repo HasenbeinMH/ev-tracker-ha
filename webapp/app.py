@@ -874,9 +874,12 @@ async def rechnung_parse(pdf: UploadFile | None = File(None),
                          text: str = Form("")):
     try:
         if pdf is not None and pdf.filename:
+            inhalt = await pdf.read()
+            if len(inhalt) > 20 * 1024 * 1024:
+                return JSONResponse({"error": "PDF zu groß (max. 20 MB)."}, status_code=400)
             tmp = os.path.join(STATIC_DIR, f"_upload_{uuid.uuid4().hex}.pdf")
             with open(tmp, "wb") as f:
-                f.write(await pdf.read())
+                f.write(inhalt)
             try:
                 anbieter, vorgaenge = parse_rechnung_pdf(tmp)
             finally:
@@ -963,8 +966,11 @@ def settings_export(secrets: int = 1):
 async def settings_import(datei: UploadFile = File(...)):
     """Liest eine zuvor exportierte JSON-Datei ein."""
     import json
+    inhalt = await datei.read()
+    if len(inhalt) > 2 * 1024 * 1024:
+        return JSONResponse({"error": "Datei zu groß (max. 2 MB)."}, status_code=400)
     try:
-        daten = json.loads((await datei.read()).decode("utf-8"))
+        daten = json.loads(inhalt.decode("utf-8"))
     except Exception as e:
         return JSONResponse({"error": f"Datei nicht lesbar: {e}"}, status_code=400)
 
