@@ -9,6 +9,8 @@ Web-App zur Erfassung und Auswertung der Kosteneinsparungen eines Elektroautos
 gegenüber einem Benziner. Fahrzeugname und -bild sind in den Einstellungen frei wählbar –
 nicht auf ein bestimmtes Modell festgelegt.
 
+![Dashboard des EV Trackers](docs/screenshot-dashboard.png)
+
 ## Voraussetzungen
 
 Der EV Tracker **misst selbst nichts** – er liest jeden Monat vorhandene Sensoren aus Home
