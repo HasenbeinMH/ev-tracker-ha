@@ -9,6 +9,25 @@ Web-App zur Erfassung und Auswertung der Kosteneinsparungen eines Elektroautos
 gegenüber einem Benziner. Fahrzeugname und -bild sind in den Einstellungen frei wählbar –
 nicht auf ein bestimmtes Modell festgelegt.
 
+## Voraussetzungen
+
+Der EV Tracker **misst selbst nichts** – er liest jeden Monat vorhandene Sensoren aus Home
+Assistant (oder InfluxDB) aus. Damit die Auswertung funktioniert, müssen diese Sensoren
+vorher in Home Assistant eingerichtet sein:
+
+| Was | Wozu | Hinweis |
+|-----|------|---------|
+| ⛽ **Tankerkönig-Integration** | Benzinpreis für den Vergleich mit einem Verbrenner | Kostenlosen API-Key bei [Tankerkönig](https://creativecommons.tankerkoenig.de/) holen, Integration in HA einrichten und die Tankstelle(n) wählen, an der man sonst tanken würde. Bis zu zwei Preis-Sensoren (€/L) können eingetragen werden, es wird der Monatsdurchschnitt gebildet. |
+| 🔌 **Geladene kWh aus dem Netz** | Stromkosten für das Laden zu Hause (Netzbezug) | Muss **außerhalb** des EV Trackers gezählt werden – z. B. durch den Energiezähler der Wallbox oder einen Zwischenzähler. Benötigt wird ein fortlaufender kWh-Zähler. |
+| ☀️ **Geladene kWh aus der PV** | Anteil des Solarstroms am Laden (mit eigenem PV-Preis bewertet) | Ebenfalls **außerhalb** des Tools zu ermitteln, z. B. über die Wallbox-/PV-Steuerung (evcc, go-e, OpenWB …) oder einen Template-/Utility-Meter-Sensor. Fortlaufender oder täglich zurückgesetzter kWh-Zähler. |
+| 🚗 **Kilometerstand** | Gefahrene km pro Monat | Z. B. über die Fahrzeug-Integration des Herstellers |
+| 🔋 *Batteriestand (optional)* | Ladeerkennung und Verbrauch aus dem Akkustand | Ebenfalls über die Fahrzeug-Integration |
+
+Die Entity-IDs werden anschließend in den **Einstellungen** des EV Trackers eingetragen.
+Die Aufteilung Netz/PV kann der EV Tracker nicht selbst berechnen – ohne diese beiden
+Zähler fehlen die Kosten fürs Laden zu Hause. Ladevorgänge unterwegs (öffentliche
+Ladesäulen) werden dagegen direkt in der App erfasst.
+
 ## Installation als Home-Assistant-Add-on
 
 1. **Einstellungen → Add-ons → Add-on-Store** → oben rechts ⋮ → **Repositories**
