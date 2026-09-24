@@ -19,10 +19,25 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.1.0"
+VERSION = "2.1.1"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.1.1",
+        "datum": "2026-09-24",
+        "titel": "Sensoren direkt in der Datenbank suchen",
+        "aenderungen": [
+            "Einstellungen: neuer Knopf \"In Datenbank suchen\" – findet Sensoren in der "
+            "gewaehlten Datenbank (InfluxDB, PostgreSQL, Prometheus) samt Einheit und Zeitraum "
+            "mit Daten; \"Uebernehmen\" traegt den Treffer in die passende Zeile ein",
+            "PostgreSQL: Fehlermeldungen beim Verbindungstest verstaendlich (z.B. \"Benutzer "
+            "oder Passwort falsch\", \"Tabelle nicht gefunden – ist LTSS eingerichtet?\")",
+            "Alle Datenbank-Anbindungen gegen echte Server getestet (InfluxDB 1.8 und 2.7, "
+            "TimescaleDB, VictoriaMetrics, Prometheus) – Testskript "
+            "tests/datenquellen_docker_test.py",
+        ],
+    },
     {
         "version": "2.1.0",
         "datum": "2026-09-24",

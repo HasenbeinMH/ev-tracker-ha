@@ -58,7 +58,11 @@ PROM_SELEKTOR_STANDARD = ('{__name__=~"homeassistant_sensor_.+",'
                           '__name__!~"homeassistant_sensor_(attr_.+|unit_info)",'
                           'entity="{entity}"}')
 
+UTC = timezone.utc
 TIMEOUT = 15
+# Suche ueber die ganze Datenbank darf laenger dauern
+TIMEOUT_SUCHE = 60
+MAX_TREFFER = 40
 # Plausibilitaet einer Monatsdifferenz (km bzw. kWh) – wie bisher bei InfluxDB 1.x
 MAX_DELTA = 100000
 
@@ -97,18 +101,23 @@ def _parse_zeit(wert) -> datetime:
     return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
 
 
+def _muster(begriff: str) -> str:
+    """Suchbegriff als Regex-Teilstueck (Sonderzeichen maskiert)."""
+    return re.escape((begriff or "").strip())
+
+
 def _lokal(t: datetime) -> str:
     return t.astimezone().strftime("%Y-%m-%dT%H:%M")
 
 
 def _http(url: str, daten: bytes | None = None, kopf: dict | None = None,
-          user: str = "", passwort: str = "") -> bytes:
+          user: str = "", passwort: str = "", timeout: int = TIMEOUT) -> bytes:
     req = urllib.request.Request(url, data=daten, headers=kopf or {})
     if user or passwort:
         cred = base64.b64encode(f"{user}:{passwort}".encode()).decode()
         req.add_header("Authorization", f"Basic {cred}")
     try:
-        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             return resp.read()
     except urllib.error.HTTPError as e:
         text = e.read().decode(errors="replace")[:200]
@@ -225,6 +234,15 @@ class Datenquelle:
     def test(self) -> tuple:
         raise NotImplementedError
 
+    def suche(self, begriff: str) -> list:
+        """Sensoren, deren Name bzw. ID den Begriff enthaelt (Gross-/Kleinschreibung egal).
+        [{"kennung", "name", "einheit", "von", "bis"}] – kennung ist der Wert fuer die
+        Sensortabelle, von/bis (datetime oder None) der Zeitraum mit Daten."""
+        raise NotImplementedError
+
+    def fehlertext(self, e: Exception) -> str:
+        return str(e)
+
     def _letzter(self, schl, kennung, von, bis):
         raise NotImplementedError
 
@@ -269,10 +287,10 @@ class InfluxDB1(_Influx):
         self.base = _url(cfg.get("influx_url") or "http://localhost", cfg.get("influx_port") or 8086)
         self.db = cfg.get("influx_database") or "home_assistant"
 
-    def _query(self, q: str) -> dict:
+    def _query(self, q: str, timeout: int = TIMEOUT) -> dict:
         url = f"{self.base}/query?{urllib.parse.urlencode({'db': self.db, 'q': q, 'epoch': 's'})}"
         return json.loads(_http(url, user=self.cfg.get("influx_user") or "",
-                                passwort=self.cfg.get("influx_password") or ""))
+                                passwort=self.cfg.get("influx_password") or "", timeout=timeout))
 
     @staticmethod
     def _zeilen(ergebnis: dict) -> list:
@@ -304,6 +322,30 @@ class InfluxDB1(_Influx):
         if self.db not in dbs:
             return False, f"Verbunden, aber Datenbank '{self.db}' nicht gefunden"
         return True, f"Verbunden · '{self.db}' gefunden"
+
+    def suche(self, begriff):
+        tag = _esc_ident(self.tag)
+        q = f'SHOW TAG VALUES WITH KEY = "{tag}"'
+        muster = _muster(begriff).replace("/", "\\/")
+        if muster:
+            q += f' WHERE "{tag}" =~ /(?i){muster}/'
+        paare = set()
+        for res in self._query(q, TIMEOUT_SUCHE).get("results", []):
+            if res.get("error"):
+                raise ConnectionError(res["error"])
+            for serie in res.get("series", []):
+                paare |= {(serie["name"], z[1]) for z in serie.get("values", [])}
+        treffer = []
+        for meas, wert in sorted(paare, key=lambda p: (p[1].lower(), p[0])):
+            wo = f'FROM "{_esc_ident(meas)}" WHERE "{tag}" = \'{_esc_str(wert)}\''
+            zeiten = [t for t, _ in self._zeilen(self._query(
+                f'SELECT first("value") {wo}; SELECT last("value") {wo}', TIMEOUT_SUCHE))]
+            if zeiten:          # ohne Zahlenwerte (Textzustaende) nicht brauchbar
+                treffer.append({"kennung": wert, "name": wert, "einheit": meas,
+                                "von": min(zeiten), "bis": max(zeiten)})
+            if len(treffer) >= MAX_TREFFER:
+                break
+        return treffer
 
     def _letzter(self, schl, kennung, von, bis):
         w = self._zeilen(self._query(f'SELECT last("value") {self._wo(schl, kennung, von, bis)}'))
@@ -337,18 +379,22 @@ class InfluxDB2(_Influx):
         self.bucket = (cfg.get("influx2_bucket") or "home_assistant").strip()
         self.token = (cfg.get("influx2_token") or "").strip()
 
-    def _query(self, flux: str) -> list:
+    def _roh(self, flux: str, timeout: int = TIMEOUT) -> list:
+        """Zeilen der CSV-Antwort als dicts (Spaltenname -> Text)."""
         url = f"{self.base}/api/v2/query?{urllib.parse.urlencode({'org': self.org})}"
-        roh = _http(url, daten=flux.encode(), kopf={
+        roh = _http(url, daten=flux.encode(), timeout=timeout, kopf={
             "Authorization": f"Token {self.token}",
             "Content-Type": "application/vnd.flux",
             "Accept": "application/csv"}).decode("utf-8", errors="replace")
-        return self._csv(roh)
+        return self._csv_zeilen(roh)
+
+    def _query(self, flux: str) -> list:
+        return self._csv(self._roh(flux))
 
     @staticmethod
-    def _csv(roh: str) -> list:
-        """[(datetime, float)] aus der CSV-Antwort (mehrere Tabellen, je mit Kopfzeile)."""
-        werte, kopf = [], None
+    def _csv_zeilen(roh: str) -> list:
+        """CSV-Antwort (mehrere Tabellen, je mit Kopfzeile, ggf. Annotationen) -> [dict]."""
+        zeilen, kopf = [], None
         for zeile in csv.reader(io.StringIO(roh)):
             if not any(zeile):                  # Leerzeile trennt Tabellen
                 kopf = None
@@ -356,15 +402,22 @@ class InfluxDB2(_Influx):
             if zeile[0].startswith("#"):        # Annotationen
                 continue
             if kopf is None:
-                kopf = {name: i for i, name in enumerate(zeile)}
+                kopf = zeile
                 continue
-            if "error" in kopf and "_value" not in kopf:
-                raise ConnectionError(zeile[kopf["error"]])
-            if "_value" not in kopf or "_time" not in kopf:
-                continue
+            eintrag = dict(zip(kopf, zeile))
+            if "error" in eintrag and "_value" not in eintrag:
+                raise ConnectionError(eintrag["error"])
+            zeilen.append(eintrag)
+        return zeilen
+
+    @staticmethod
+    def _csv(zeilen: list) -> list:
+        """[(datetime, float)] aus den CSV-Zeilen."""
+        werte = []
+        for z in zeilen:
             try:
-                werte.append((_parse_zeit(zeile[kopf["_time"]]), float(zeile[kopf["_value"]])))
-            except (ValueError, IndexError):
+                werte.append((_parse_zeit(z["_time"]), float(z["_value"])))
+            except (KeyError, ValueError):
                 continue
         return sorted(werte, key=lambda x: x[0])
 
@@ -383,6 +436,30 @@ class InfluxDB2(_Influx):
         except Exception as e:
             return False, str(e)
         return True, f"Verbunden · Bucket '{self.bucket}' gefunden"
+
+    def suche(self, begriff):
+        tag = _flux_str(self.tag)
+        bedingung = f'r._field == "value" and exists r[{tag}]'
+        muster = _muster(begriff).replace("/", "\\/")
+        if muster:
+            bedingung += f" and r[{tag}] =~ /(?i){muster}/"
+        flux = (f"daten = from(bucket: {_flux_str(self.bucket)})\n"
+                f"  |> range(start: 0)\n"
+                f"  |> filter(fn: (r) => {bedingung})\n"
+                f'  |> group(columns: ["_measurement", {tag}])\n'
+                f'daten |> first() |> yield(name: "erster")\n'
+                f'daten |> last() |> yield(name: "letzter")\n')
+        gefunden = {}
+        for z in self._roh(flux, TIMEOUT_SUCHE):
+            schluessel = (z.get("_measurement"), z.get(self.tag))
+            if not all(schluessel) or not z.get("_time"):
+                continue
+            eintrag = gefunden.setdefault(schluessel, {
+                "kennung": schluessel[1], "name": schluessel[1], "einheit": schluessel[0],
+                "von": None, "bis": None})
+            eintrag["von" if z.get("result") == "erster" else "bis"] = _parse_zeit(z["_time"])
+        return sorted(gefunden.values(),
+                      key=lambda e: (e["kennung"].lower(), e["einheit"]))[:MAX_TREFFER]
 
     def _letzter(self, schl, kennung, von, bis):
         # range() schliesst stop aus – eine Sekunde dazu, damit bis enthalten ist
@@ -418,7 +495,7 @@ class PostgresLTSS(Datenquelle):
             raise ValueError(f"Ungültiger Tabellenname: {tabelle}")
         self.tabelle = tabelle
 
-    def _sql(self, sql: str, **param) -> list:
+    def _sql(self, sql: str, timeout: int = TIMEOUT, **param) -> list:
         try:
             import pg8000.native
         except ImportError:
@@ -429,12 +506,27 @@ class PostgresLTSS(Datenquelle):
             host=(self.cfg.get("pg_host") or "localhost").strip(),
             port=int(self.cfg.get("pg_port") or 5432),
             database=(self.cfg.get("pg_database") or "homeassistant").strip(),
-            timeout=TIMEOUT)
+            timeout=timeout)
         try:
             con.run("SET TIME ZONE 'UTC'")
             return con.run(sql, **param)
         finally:
             con.close()
+
+    # Haeufige PostgreSQL-Fehlercodes -> verstaendlicher Hinweis
+    FEHLERCODES = {"28P01": "Benutzer oder Passwort falsch",
+                   "28000": "Benutzer hat keinen Zugriff",
+                   "3D000": "Datenbank nicht gefunden",
+                   "42P01": "Tabelle nicht gefunden – ist LTSS eingerichtet?",
+                   "42501": "Benutzer darf die Tabelle nicht lesen"}
+
+    def fehlertext(self, e: Exception) -> str:
+        """pg8000 liefert Serverfehler als dict {'C': Code, 'M': Meldung, ...}."""
+        info = e.args[0] if e.args and isinstance(e.args[0], dict) else None
+        if not info:
+            return str(e)
+        hinweis = self.FEHLERCODES.get(info.get("C"))
+        return f"{hinweis} ({info.get('M')})" if hinweis else str(info.get("M") or e)
 
     def _wo(self, ab_inkl=False) -> str:
         return (f"FROM {self.tabelle} WHERE entity_id = :e "
@@ -445,8 +537,23 @@ class PostgresLTSS(Datenquelle):
         try:
             self._sql(f"SELECT 1 FROM {self.tabelle} LIMIT 1")
         except Exception as e:
-            return False, str(e)
+            return False, self.fehlertext(e)
         return True, f"Verbunden · Tabelle '{self.tabelle}' gefunden"
+
+    def suche(self, begriff):
+        # ILIKE-Muster: \, % und _ im Suchbegriff maskieren
+        roh = (begriff or "").strip()
+        roh = roh.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        zeilen = self._sql(
+            f"SELECT entity_id, min(time), max(time), "
+            f"max(attributes->>'unit_of_measurement'), max(attributes->>'friendly_name') "
+            f"FROM {self.tabelle} WHERE entity_id ILIKE :m AND state ~ '{_ZAHL}' "
+            f"GROUP BY entity_id ORDER BY entity_id LIMIT {MAX_TREFFER}",
+            timeout=TIMEOUT_SUCHE, m=f"%{roh}%")
+        return [{"kennung": e, "name": name or "", "einheit": einheit or "",
+                 "von": _parse_zeit(von) if von else None,
+                 "bis": _parse_zeit(bis) if bis else None}
+                for e, von, bis, einheit, name in zeilen]
 
     def _letzter(self, schl, kennung, von, bis):
         z = self._sql(f"SELECT state::float {self._wo()} ORDER BY time DESC LIMIT 1",
@@ -490,13 +597,14 @@ class Prometheus(Datenquelle):
         wert = kennung.replace("\\", "\\\\").replace('"', '\\"')
         return self.vorlage.replace("{entity}", wert)
 
-    def _api(self, pfad: str, param: dict) -> list:
+    def _api(self, pfad: str, param: dict, timeout: int = TIMEOUT):
         url = f"{self.base}/api/v1/{pfad}?{urllib.parse.urlencode(param)}"
         d = json.loads(_http(url, user=self.cfg.get("prom_user") or "",
-                             passwort=self.cfg.get("prom_password") or ""))
+                             passwort=self.cfg.get("prom_password") or "", timeout=timeout))
         if d.get("status") != "success":
             raise ConnectionError(d.get("error") or "Abfrage fehlgeschlagen")
-        return d["data"]["result"]
+        # query/query_range: {"result": [...]}; series: direkt eine Liste
+        return d["data"]["result"] if isinstance(d["data"], dict) else d["data"]
 
     def _bereich(self, ausdruck: str, von: datetime, bis: datetime, schritt: int) -> list:
         """query_range in Stuecken; [(datetime Auswertungszeit, float)] der ersten Serie."""
@@ -518,6 +626,26 @@ class Prometheus(Datenquelle):
         except Exception as e:
             return False, str(e)
         return True, "Verbunden"
+
+    def suche(self, begriff):
+        """Ueber die Serien-API: Labels entity/friendly_name, Einheit aus dem Metriknamen.
+        Den Zeitraum mit Daten liefert diese API nicht (von/bis bleiben leer)."""
+        wert = f"(?i).*{_muster(begriff)}.*" if _muster(begriff) else ".+"
+        literal = wert.replace("\\", "\\\\").replace('"', '\\"')
+        vorlage = self.vorlage if 'entity="{entity}"' in self.vorlage else PROM_SELEKTOR_STANDARD
+        selektor = vorlage.replace('entity="{entity}"', f'entity=~"{literal}"')
+        jetzt = datetime.now(UTC)
+        serien = self._api("series", {"match[]": selektor,
+                                      "start": (jetzt - timedelta(days=3650)).timestamp(),
+                                      "end": jetzt.timestamp()}, TIMEOUT_SUCHE)
+        gefunden = {}
+        for s in serien:
+            ent = s.get("entity")
+            if ent and ent not in gefunden:
+                gefunden[ent] = {"kennung": ent, "name": s.get("friendly_name", ""),
+                                 "einheit": s.get("__name__", "").replace("homeassistant_sensor_", ""),
+                                 "von": None, "bis": None}
+        return sorted(gefunden.values(), key=lambda e: e["kennung"])[:MAX_TREFFER]
 
     def _letzter(self, schl, kennung, von, bis):
         sekunden = max(int((_utc(bis) - _utc(von)).total_seconds()), 60)

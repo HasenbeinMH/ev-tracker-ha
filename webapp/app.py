@@ -766,6 +766,29 @@ def test_datenquelle(typ: str):
     return {"ok": ok, "text": text}
 
 
+@app.get("/api/datenbank/suche")
+def datenbank_suche(q: str = ""):
+    """Sucht Sensoren in der eingestellten Datenbank (gespeicherte Verbindungsdaten).
+    spalte: "entity" -> Treffer gehoert in die Entity-ID-Spalte, "name" -> in die
+    InfluxDB-Namensspalte."""
+    try:
+        dq = datenquellen.aus_einstellungen(db.get_ha_settings())
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=400)
+    if dq is None:
+        return JSONResponse({"error": "Keine Datenbank als Datenquelle gewählt und gespeichert."},
+                            status_code=400)
+    try:
+        treffer = dq.suche(q)
+    except Exception as e:
+        return JSONResponse({"error": dq.fehlertext(e)}, status_code=400)
+
+    def monat(t):
+        return t.astimezone().strftime("%m/%Y") if t else None
+    return {"quelle": dq.name, "spalte": "entity" if dq.nutzt_entity_ids else "name",
+            "treffer": [{**t, "von": monat(t["von"]), "bis": monat(t["bis"])} for t in treffer]}
+
+
 # ─────────────────────────────────────────────────────────────
 #  Sensor-Suche und -Diagnose
 # ─────────────────────────────────────────────────────────────

@@ -99,7 +99,7 @@ def ts(s):
 ANFRAGEN = []
 
 
-def fake_http(url, daten=None, kopf=None, user="", passwort=""):
+def fake_http(url, daten=None, kopf=None, user="", passwort="", timeout=None):
     ANFRAGEN.append((url, daten, kopf, user, passwort))
     teile = urllib.parse.urlsplit(url)
     q = dict(urllib.parse.parse_qsl(teile.query))
@@ -354,6 +354,27 @@ for typ, name in datenquellen.QUELLEN.items():
     r = c.post("/api/import/start", data={"von_monat": 2, "von_jahr": 2026, "bis_monat": 2,
                                           "bis_jahr": 2026})
     check("App", f"Zeitraum-Import startet mit {name} ohne HA", r.status_code == 200, r.text[:80])
+
+# Suche in der Datenbank: Schnittstelle (die Abfragen selbst prueft der Docker-Test)
+alt_suche = datenquellen.InfluxDB1.suche
+datenquellen.InfluxDB1.suche = lambda self, b: [
+    {"kennung": "Kilometerstand", "name": "Kilometerstand", "einheit": "km",
+     "von": datetime(2025, 12, 1, tzinfo=UTC), "bis": None}] if b == "kilo" else []
+db.save_ha_settings({"datasource": "influxdb"})
+r = c.get("/api/datenbank/suche", params={"q": "kilo"}).json()
+check("App", "Datenbanksuche: Treffer, Spalte, Monatsformat",
+      r.get("spalte") == "name" and r["treffer"][0]["von"] == "12/2025" and r["treffer"][0]["bis"] is None,
+      str(r))
+datenquellen.InfluxDB1.suche = lambda self, b: (_ for _ in ()).throw(ConnectionError("nicht erreichbar (x)"))
+r = c.get("/api/datenbank/suche", params={"q": "kilo"})
+check("App", "Datenbanksuche: Fehler -> 400 mit Meldung",
+      r.status_code == 400 and "nicht erreichbar" in r.json()["error"], r.text[:80])
+datenquellen.InfluxDB1.suche = alt_suche
+db.save_ha_settings({"datasource": "ha"})
+r = c.get("/api/datenbank/suche", params={"q": "kilo"})
+check("App", "Datenbanksuche ohne Datenbank -> Hinweis", r.status_code == 400, r.text[:80])
+check("App", "Knopf 'In Datenbank suchen' auf der Einstellungsseite",
+      "sucheDatenbank()" in c.get("/einstellungen").text)
 
 r = c.post("/api/test/influx")
 check("App", "Alter Knopfname /api/test/influx funktioniert", r.json().get("ok"), r.text[:80])

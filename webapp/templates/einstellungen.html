@@ -146,6 +146,8 @@
         <input id="sensor-suche" placeholder="z.B. laden oder odometer" style="width:230px">
       </label>
       <button type="button" class="secondary" onclick="sucheSensoren()">🔍 In HA suchen</button>
+      <button type="button" class="secondary" data-quelle="influxdb influxdb2 postgres prometheus"
+              onclick="sucheDatenbank()" title="Sucht mit der gespeicherten Verbindung">🗄️ In Datenbank suchen</button>
       <label class="feld">Sensor prüfen (Monatswerte)
         <input id="sensor-pruef" placeholder="sensor.xyz" style="width:230px">
       </label>
@@ -307,6 +309,78 @@ async function sucheSensoren() {
             `<td>${t.state} ${t.einheit}</td><td class="muted">${t.klasse || "-"}</td></tr>`;
   }
   box.innerHTML = html + "</table></div>";
+}
+
+// ── Suche in der eingestellten Datenbank ────────────────────────────────────
+const SENSOR_ZEILEN = {{ sensor_felder | tojson }};   // [[ha_key, fn_key, label], ...]
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
+  c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+let dbTreffer = [], dbSpalte = "entity";
+
+// Passende Zeile der Sensortabelle aus Einheit und Name raten (nur ein Vorschlag).
+// `vergeben`: in dieser Trefferliste schon vorgeschlagene Zeilen – nicht doppelt vorschlagen.
+function vorschlagZeile(treffer, vergeben) {
+  const e = (treffer.einheit || "").toLowerCase();
+  const text = ((treffer.kennung || "") + " " + (treffer.name || "")).toLowerCase();
+  let kandidaten = [];
+  if (e.includes("kwh") || e.includes("energy"))
+    kandidaten = /pv|solar/.test(text) ? ["ha_pv_production", "ha_wallbox_energy"]
+                                       : ["ha_wallbox_energy", "ha_pv_production"];
+  else if (e.includes("km") || e.includes("distance")) kandidaten = ["ha_odometer"];
+  else if (e.includes("eur") || e.includes("€") || e.includes("monetary"))
+    kandidaten = ["ha_tankerkoenig", "ha_tankerkoenig_2"];
+  else if (e.includes("%") || e.includes("percent") || e.includes("battery")) kandidaten = ["ha_ev_battery"];
+  const wahl = kandidaten.find(k => !vergeben.has(k)) || "";
+  if (wahl) vergeben.add(wahl);
+  return wahl;
+}
+// Eingabefeld zur Zeile: Entity-ID-Spalte oder InfluxDB-Namensspalte
+function feld(haKey) {
+  const zeile = SENSOR_ZEILEN.find(z => z[0] === haKey);
+  return dbSpalte === "name" && zeile && zeile[1] ? zeile[1] : haKey;
+}
+
+async function sucheDatenbank() {
+  const q = document.getElementById("sensor-suche").value.trim();
+  const box = document.getElementById("sensor-ergebnis");
+  box.innerHTML = "<span class='muted'>Suche in der Datenbank …</span>";
+  let d;
+  try {
+    const resp = await fetch("api/datenbank/suche?q=" + encodeURIComponent(q));
+    d = await resp.json();
+  } catch (e) { box.innerHTML = "<span class='rot'>✗ " + esc(e) + "</span>"; return; }
+  if (d.error) { box.innerHTML = "<span class='rot'>✗ " + esc(d.error) + "</span>"; return; }
+  dbTreffer = d.treffer; dbSpalte = d.spalte;
+  if (!dbTreffer.length) { box.innerHTML = `<span class='gelb'>Keine Treffer in ${esc(d.quelle)}</span>`; return; }
+  const optionen = (wahl) => `<option value="">– eintragen als –</option>` + SENSOR_ZEILEN.map(z =>
+    `<option value="${z[0]}" ${z[0] === wahl ? "selected" : ""}>${esc(z[2])}</option>`).join("");
+  let html = `<div class="muted">${dbTreffer.length} Treffer in ${esc(d.quelle)}` +
+             `${dbTreffer.length >= 40 ? " (die ersten 40 – Suchbegriff genauer fassen)" : ""}:</div>`;
+  html += "<div class='tabelle-scroll' style='max-height:300px; overflow-y:auto'><table>";
+  html += "<tr><th>" + (dbSpalte === "name" ? "Name in der InfluxDB" : "Entity-ID") +
+          "</th><th>Name</th><th>Einheit</th><th>Daten</th><th></th></tr>";
+  const vergeben = new Set();
+  dbTreffer.forEach((t, i) => {
+    const zeitraum = t.von ? `${esc(t.von)} – ${esc(t.bis)}` : "<span class='muted'>–</span>";
+    html += `<tr><td>${esc(t.kennung)}</td><td>${t.name !== t.kennung ? esc(t.name) : ""}</td>` +
+            `<td>${esc(t.einheit)}</td><td style="white-space:nowrap">${zeitraum}</td>` +
+            `<td style="white-space:nowrap"><select id="db-ziel-${i}">${optionen(vorschlagZeile(t, vergeben))}</select> ` +
+            `<button type="button" class="secondary" onclick="dbEintragen(${i})">Übernehmen</button></td></tr>`;
+  });
+  box.innerHTML = html + "</table></div>";
+}
+
+function dbEintragen(i) {
+  const haKey = document.getElementById("db-ziel-" + i).value;
+  const box = document.getElementById("sensor-ergebnis");
+  if (!haKey) { alert("Bitte zuerst wählen, in welche Zeile der Treffer gehört."); return; }
+  const eingabe = document.querySelector(`[name="${feld(haKey)}"]`);
+  eingabe.value = dbTreffer[i].kennung;
+  eingabe.style.outline = "2px solid #5aaa78";
+  eingabe.scrollIntoView({block: "center", behavior: "smooth"});
+  const hinweis = document.getElementById("test-ergebnis");
+  hinweis.textContent = "Eingetragen – zum Übernehmen „Alle Einstellungen speichern“ klicken.";
+  hinweis.className = "gelb";
 }
 
 async function pruefeSensor() {

@@ -3,6 +3,12 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.1.1] - 2026-09-24
+### Sensoren direkt in der Datenbank suchen
+- Einstellungen: neuer Knopf "In Datenbank suchen" – findet Sensoren in der gewaehlten Datenbank (InfluxDB, PostgreSQL, Prometheus) samt Einheit und Zeitraum mit Daten; "Uebernehmen" traegt den Treffer in die passende Zeile ein
+- PostgreSQL: Fehlermeldungen beim Verbindungstest verstaendlich (z.B. "Benutzer oder Passwort falsch", "Tabelle nicht gefunden – ist LTSS eingerichtet?")
+- Alle Datenbank-Anbindungen gegen echte Server getestet (InfluxDB 1.8 und 2.7, TimescaleDB, VictoriaMetrics, Prometheus) – Testskript tests/datenquellen_docker_test.py
+
 ## [2.1.0] - 2026-09-24
 ### Weitere Datenbanken: InfluxDB 2.x, PostgreSQL/TimescaleDB, Prometheus
 - Neben der HA-API und InfluxDB 1.x lassen sich jetzt auch InfluxDB 2.x (Flux, Token), PostgreSQL/TimescaleDB (HA-Integration LTSS) und Prometheus/VictoriaMetrics als Datenquelle waehlen – fuer Import, naechtlichen Abruf, Akkuverbrauch und Ladeerkennung; was die Datenbank nicht liefert, kommt weiter aus der HA-API. Die drei neuen Anbindungen sind als "neu" gekennzeichnet
