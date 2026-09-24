@@ -15,8 +15,31 @@ import urllib.parse
 import base64
 import calendar
 import json
+import os
 from datetime import datetime, timezone
 from collections import defaultdict
+
+# Einzige Stelle, die zwischen den beiden Betriebsarten unterscheidet: SUPERVISOR_TOKEN
+# wird nur vom Supervisor in den Add-on-Container injiziert (homeassistant_api: true in
+# config.yaml). Im Standalone-Docker-Betrieb (docker-compose.yml) ist die Variable nie
+# gesetzt. Ueberall im Code, wo sich Add-on und Standalone unterscheiden, wird IST_ADDON
+# verwendet – nie direkt os.environ.get("SUPERVISOR_TOKEN"), damit auf einen Blick klar
+# ist, welcher Code nur eine der beiden Betriebsarten betrifft.
+IST_ADDON = bool(os.environ.get("SUPERVISOR_TOKEN"))
+
+
+def ha_verbindung(cfg: dict) -> dict | None:
+    """Verbindungsdaten fuer HAClient(**...): bevorzugt die manuell in den Einstellungen
+    hinterlegte URL/Token-Kombination, sonst – als HA-Add-on – den Supervisor-Proxy.
+    Gibt None zurueck, wenn keine der beiden Quellen verfuegbar ist.
+    Alle Stellen, die HA abfragen (Import, Akkuverbrauch, Ladeerkennung), nutzen diese
+    Funktion, damit sie im Add-on auch ohne eigenen Token funktionieren."""
+    if cfg.get("ha_url") and cfg.get("ha_token"):
+        return {"url": cfg["ha_url"], "token": cfg["ha_token"]}
+    if IST_ADDON:
+        return {"url": "http://supervisor/core", "token": os.environ["SUPERVISOR_TOKEN"],
+                "ws_pfad": "/websocket"}
+    return None
 
 
 def _normalize_url(url: str) -> str:

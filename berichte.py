@@ -52,14 +52,19 @@ def _zeitraum_kennzahlen(von: str, bis: str, monate: list) -> dict:
     strom_kosten = sum(l["gesamtpreis"] for l in lade)
     thg_summe = sum(t["betrag"] for t in thg)
 
+    # Monat fuer Monat mit dem Preis des Monats – die Monatszeilen des Jahresberichts
+    # summieren sich so genau auf den Jahreswert
+    ersatz = berechnung.durchschnitt_benzinpreis(db.get_benzinpreise())
+    liter = berechnung.benzin_liter(km, cfg["benziner_verbrauch"])
+    benzin_kosten = berechnung.benzin_kosten({m: fahrten.get(m, 0.0) for m in monate}, preise,
+                                             cfg["benziner_verbrauch"], ersatz)
     monatspreise = [preise[m] for m in monate if m in preise]
-    if monatspreise:
+    if liter:
+        avg_benzin = benzin_kosten / liter          # km-gewichteter Ø
+    elif monatspreise:
         avg_benzin = sum(monatspreise) / len(monatspreise)
     else:
-        avg_benzin = berechnung.durchschnitt_benzinpreis(db.get_benzinpreise())
-
-    liter = berechnung.benzin_liter(km, cfg["benziner_verbrauch"])
-    benzin_kosten = liter * avg_benzin
+        avg_benzin = ersatz
 
     nach_anbieter = {}
     for l in lade:
@@ -140,7 +145,8 @@ table{width:100%;border-collapse:collapse;font-size:14px}
 td,th{padding:8px 10px;border-bottom:1px solid #eceef1;text-align:left}
 th{font-size:12px;color:#6b7280;font-weight:600}
 td.z{text-align:right;white-space:nowrap}
-.kachel{display:inline-block;width:46%;margin:0 1% 10px;padding:12px 14px;
+.kachel{display:inline-block;box-sizing:border-box;width:46%;margin:0 1% 10px;padding:12px 14px;
+        vertical-align:top;
         background:#f7f9fb;border:1px solid #e3e6ea;border-radius:6px}
 .kachel .w{font-size:20px;font-weight:700}
 .kachel .l{font-size:11px;color:#6b7280;margin-top:2px}
@@ -185,7 +191,7 @@ def als_html(bericht: dict) -> str:
         ("Ersparnis", fmt(d["ersparnis"], 2, "&euro;"),
          _delta_text(d["ersparnis"], v["ersparnis"], 2, "&euro;")),
         ("THG-Ertrag", fmt(d["thg"], 2, "&euro;"), ""),
-        ("CO&sub2; gespart", fmt(d["co2"], 1, "kg"),
+        ("CO&#8322; gespart",fmt(d["co2"], 1, "kg"),
          _delta_text(d["co2"], v["co2"], 1, "kg")),
     ]
     tabelle = "".join(

@@ -332,6 +332,14 @@ def update_ladevorgang(id, datum, menge_kwh, preis_kwh, gesamtpreis, anbieter,
         conn.commit()
 
 
+def set_ladepreis(id, preis_kwh, gesamtpreis):
+    """Nur den Preis eines Ladevorgangs aendern (Neubewertung nach Tarifaenderung)."""
+    with closing(get_connection()) as conn:
+        conn.execute("UPDATE ladevorgang SET preis_kwh=?, gesamtpreis=? WHERE id=?",
+                     (preis_kwh, gesamtpreis, id))
+        conn.commit()
+
+
 def ladevorgang_exists(datum, menge_kwh, anbieter):
     """Duplikat-Schutz beim Import: existiert bereits ein Vorgang mit
     gleichem Datum, Anbieter und (nahezu) gleicher kWh-Menge?"""
@@ -374,11 +382,12 @@ def upsert_auto_ladevorgang(datum, menge_kwh, preis_kwh, gesamtpreis, anbieter):
     """
     with closing(get_connection()) as conn:
         row = conn.execute(
-            """SELECT id, menge_kwh FROM ladevorgang
+            """SELECT id, menge_kwh, preis_kwh FROM ladevorgang
                WHERE datum=? AND anbieter=? AND notiz LIKE ?""",
             (datum, anbieter, AUTO_NOTIZ + "%")).fetchone()
         if row:
-            if abs((row["menge_kwh"] or 0) - menge_kwh) < 0.01:
+            if (abs((row["menge_kwh"] or 0) - menge_kwh) < 0.01
+                    and abs((row["preis_kwh"] or 0) - (preis_kwh or 0)) < 0.001):
                 return "unveraendert"
             conn.execute(
                 """UPDATE ladevorgang

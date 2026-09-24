@@ -85,7 +85,9 @@ def verlaeufe(start: datetime, ende: datetime, mit_km: bool = True) -> dict:
         else:
             hinweise.append("Friendly Name für Batteriestand oder Kilometerstand fehlt")
 
-    if not (cfg.get("ha_url") and cfg.get("ha_token")):
+    from ha_client import HAClient, ha_verbindung
+    verbindung = ha_verbindung(cfg)
+    if verbindung is None:
         hinweise.append("Home Assistant ist nicht konfiguriert")
         return {"soc": [], "km": [], "quelle": None, "meldung": "; ".join(hinweise)}
     soc_entity = (cfg.get("ha_ev_battery") or "").strip()
@@ -94,8 +96,7 @@ def verlaeufe(start: datetime, ende: datetime, mit_km: bool = True) -> dict:
         hinweise.append("Entity-ID für Batteriestand oder Kilometerstand fehlt")
         return {"soc": [], "km": [], "quelle": None, "meldung": "; ".join(hinweise)}
 
-    from ha_client import HAClient
-    client = HAClient(cfg["ha_url"], cfg["ha_token"])
+    client = HAClient(**verbindung)
     soc = _stundenwerte(client, soc_entity, start, ende, ("mean", "state"))
     km = _stundenwerte(client, km_entity, start, ende, ("state", "mean")) if mit_km else []
     if not soc:

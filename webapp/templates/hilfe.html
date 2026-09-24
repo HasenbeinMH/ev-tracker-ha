@@ -95,7 +95,7 @@
 <table>
   <tr><th style="width:26%">Seite</th><th>Datenquelle</th></tr>
   <tr><td><b>E-Auto (real)</b></td><td>Summe aller erfassten Ladevorgänge – aus HA-Import, Rechnungsimport oder manueller Eingabe.</td></tr>
-  <tr><td><b>Benziner (fiktiv)</b></td><td>Gefahrene km × Benziner-Verbrauch × Ø Benzinpreis.</td></tr>
+  <tr><td><b>Benziner (fiktiv)</b></td><td>Je Monat gefahrene km × Benziner-Verbrauch × Benzinpreis des Monats, aufsummiert.</td></tr>
 </table>
 <p>Dazu zwei Bonusposten: die entfallende <b>KFZ-Steuer</b> und die <b>THG-Quote</b>. Zusätzlich wird das vermiedene <b>CO2</b> ausgewiesen.</p>
 <div class="hb-warn"><b>Monatsraster:</b> Kilometer und Benzinpreise werden <b>pro Monat</b> geführt – ein Wert je Monat, keine Einzelfahrten. Ladevorgänge dagegen haben ein <b>Tagesdatum</b>. Automatisch importierte Ladungen werden deshalb auf den <b>Monatsersten</b> gebucht.</div>
@@ -108,7 +108,7 @@
   <tr><td>Gesamtstrecke</td><td>Summe der Monats-km im Zeitraum.</td></tr>
   <tr><td>Geladene Energie</td><td>Summe der kWh aller Ladevorgänge im Zeitraum.</td></tr>
   <tr><td>Kraftstoff-Ersparnis</td><td>Hochgerechnete Benzinkosten − tatsächliche Stromkosten.</td></tr>
-  <tr><td>Steuer-Ersparnis</td><td>KFZ-Steuer des Benziners – im Gesamtzeitraum einmal voll, sonst anteilig.</td></tr>
+  <tr><td>Steuer-Ersparnis</td><td>KFZ-Steuer des Benziners (Jahresbetrag), anteilig nach Monaten im Zeitraum.</td></tr>
   <tr><td>THG-Ertrag</td><td>Summe der THG-Auszahlungen im Zeitraum.</td></tr>
   <tr><td>CO2 gespart</td><td>Benzin-Äquivalent in Litern × CO2-Faktor.</td></tr>
 </table>
@@ -121,8 +121,8 @@
   <tr><td>Sommer</td><td>April bis September.</td></tr>
   <tr><td>Winter</td><td>Oktober bis März des Folgejahres – „Winter 2025/26“ ist Okt 2025 bis Mär 2026.</td></tr>
 </table>
-<div class="hb-formel"><span class="lbl">KFZ-Steuer im Teilzeitraum</span>Steuer-Ersparnis = KFZ-Steuer × Monate im Zeitraum ÷ 12</div>
-<div class="hb-info"><b>Warum anteilig?</b> Sonst bekäme jedes Quartal die Steuer eines ganzen Jahres gutgeschrieben. Im Gesamtzeitraum zählt die Steuer wie bisher einmal voll. Der Stromtarif-Verlauf zeigt ab Zeitraumbeginn den dann gültigen Tarif, auch wenn er früher eingetragen wurde; Tarifwechsel innerhalb des Zeitraums erscheinen als Stufe.</div>
+<div class="hb-formel"><span class="lbl">KFZ-Steuer</span>Steuer-Ersparnis = KFZ-Steuer [€/Jahr] × Monate im Zeitraum ÷ 12</div>
+<div class="hb-info"><b>Warum anteilig?</b> Die KFZ-Steuer ist ein Jahresbetrag. Sonst bekäme jedes Quartal die Steuer eines ganzen Jahres gutgeschrieben – und mehrere Jahre nur einmal. Im Gesamtzeitraum zählen die Monate vom ersten bis zum letzten Monat mit Daten. Der Stromtarif-Verlauf zeigt ab Zeitraumbeginn den dann gültigen Tarif, auch wenn er früher eingetragen wurde; Tarifwechsel innerhalb des Zeitraums erscheinen als Stufe.</div>
 
 <h2 id="statistik">Statistik <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p>Vergleicht zwei Zeiträume nebeneinander – etwa ein Jahr mit dem Vorjahr oder <b>Sommer gegen Winter</b>. Die Schnellauswahl oben bietet die häufigsten Paare; mit „⇄ tauschen“ wechseln die Seiten.</p>
@@ -137,7 +137,7 @@
 <ul>
   <li>Pro Monat <b>ein</b> km-Wert. Erneutes Speichern desselben Monats überschreibt den alten Wert.</li>
   <li>Kommt normalerweise automatisch aus HA (Differenz des Kilometerstands) – manuelles Nachtragen ist jederzeit möglich.</li>
-  <li>Komma und Punkt sind beide als Dezimaltrenner erlaubt.</li>
+  <li>Komma und Punkt sind beide als Dezimaltrenner erlaubt. Bei km und Euro-Beträgen wird ein Tausenderpunkt erkannt („1.234“ = 1234 km, „1.234,50“ €).</li>
 </ul>
 <div class="hb-formel"><span class="lbl">Benzin-Äquivalent</span>Liter = km ÷ 100 × Benziner-Verbrauch [L/100km]</div>
 <div class="hb-formel"><span class="lbl">CO2</span>CO2 [kg] = Liter × CO2-Faktor [kg/L]</div>
@@ -262,7 +262,7 @@
 <p class="hint">Überschrift: <b>„📊 Berichte per E-Mail"</b></p>
 <h3>Monatsabschluss</h3>
 <p><b>„Monat prüfen"</b> meldet, ob der Monat auswertbar ist. Geprüft wird: sind Kilometer erfasst, ist ein Benzinpreis hinterlegt, sind Ladevorgänge vorhanden – und gibt es am Batterieverlauf erkannte Ladungen <b>ohne</b> passenden Beleg?</p>
-<div class="hb-info"><b>Ladeerkennung:</b> Ein Anstieg des Batteriestands um mindestens 5 Prozentpunkte gilt als Ladevorgang. Die Energiemenge schätzt die App als <code>Anstieg [%] ÷ 100 × Akkukapazität</code> (Standard 58,3 kWh). Findet sich dazu im Umkreis von einem Tag kein erfasster Vorgang, war es vermutlich eine auswärtige Ladung – der Beleg fehlt noch.</div>
+<div class="hb-info"><b>Ladeerkennung:</b> Ein Anstieg des Batteriestands um mindestens 5 Prozentpunkte gilt als Ladevorgang. Die Energiemenge schätzt die App als <code>Anstieg [%] ÷ 100 × Akkukapazität</code> (Standard 58,3 kWh). Zuerst werden Belege von unterwegs über das Datum zugeordnet (± 1 Tag). Die übrigen Ladungen werden gegen die zuhause geladenen kWh des Monats verrechnet – die kommen aus HA nur als Monatssumme (+5 % Spielraum für die Schätzung). Eine fehlende Ladung fällt deshalb erst auf, wenn sie größer ist als die Ladeverluste zuhause im Monat (etwa 10 % der Heimladung).. Was dann noch übrig bleibt, war vermutlich eine auswärtige Ladung – der Beleg fehlt noch.</div>
 <h3>Inhalt der Berichte</h3>
 <p>Monats- und Jahresbericht enthalten Kennzahlen mit Vergleich zur Vorperiode, die Aufstellung nach Anbieter und – beim Jahresbericht – den Monatsverlauf.</p>
 <div class="hb-formel"><span class="lbl">Kosten je 100 km</span>Kosten [€/100km] = Stromkosten ÷ km × 100</div>
@@ -312,10 +312,10 @@
   <tr><td>Benzin-Äquivalent</td><td><code>km ÷ 100 × Benziner-Verbrauch</code></td></tr>
   <tr><td>CO2 gespart</td><td><code>Liter × CO2-Faktor</code></td></tr>
   <tr><td>Ladekosten je Vorgang</td><td><code>kWh × ct/kWh ÷ 100</code></td></tr>
-  <tr><td>Ø Benzinpreis</td><td><code>Σ Monatspreise ÷ Anzahl Monate</code></td></tr>
-  <tr><td>Benzinkosten hochgerechnet</td><td><code>Liter × Ø Benzinpreis</code></td></tr>
+  <tr><td>Benzinkosten hochgerechnet</td><td><code>Σ Monat: km ÷ 100 × Verbrauch × Monatspreis</code></td></tr>
+  <tr><td>Ø Benzinpreis (km-gewichtet)</td><td><code>Benzinkosten ÷ Liter</code></td></tr>
   <tr><td>Kraftstoff-Ersparnis</td><td><code>Benzinkosten − Σ Ladekosten</code></td></tr>
-  <tr><td>Steuer-Ersparnis</td><td><code>KFZ-Steuer Benziner</code></td></tr>
+  <tr><td>Steuer-Ersparnis</td><td><code>KFZ-Steuer Benziner × Monate ÷ 12</code></td></tr>
   <tr><td>THG-Ertrag</td><td><code>Σ THG-Beträge</code></td></tr>
   <tr><td><b>Gesamt-Ersparnis</b></td><td><code>Kraftstoff + Steuer + THG</code></td></tr>
   <tr><td>Verbrauch je Monat</td><td><code>kWh (Monat) ÷ km (Monat) × 100</code></td></tr>
@@ -329,12 +329,13 @@
 
 <h2 id="kennzahlen">Kennzahlen im Detail <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <h3>Kraftstoff-Ersparnis</h3>
-<div class="hb-formel"><span class="lbl">Schritt 1 – fiktive Benzinkosten</span>Benzinkosten = Gesamt-km ÷ 100 × Verbrauch × Ø Benzinpreis</div>
+<div class="hb-formel"><span class="lbl">Schritt 1 – fiktive Benzinkosten</span>Benzinkosten = Σ je Monat ( km ÷ 100 × Verbrauch × Benzinpreis des Monats )</div>
 <div class="hb-formel"><span class="lbl">Schritt 2 – Ersparnis</span>Kraftstoff-Ersparnis = Benzinkosten − Σ aller Ladekosten</div>
-<div class="hb-bsp"><b>Beispiel</b> – 3.288 km · 7,0 L/100 km · Ø 2,063 €/L · noch keine Ladekosten erfasst:
-  <span class="rechnung">3.288 ÷ 100 × 7,0 = 230,16 L</span>
-  <span class="rechnung">230,16 × 2,063 = 474,81 €</span>
-  <span class="rechnung">474,81 − 0,00 = <span class="erg">474,81 €</span></span></div>
+<div class="hb-bsp"><b>Beispiel</b> – zwei Monate, 7,0 L/100 km, noch keine Ladekosten erfasst:
+  <span class="rechnung">Monat 1: 1.500 ÷ 100 × 7,0 = 105,00 L × 1,80 €/L = 189,00 €</span>
+  <span class="rechnung">Monat 2: 1.788 ÷ 100 × 7,0 = 125,16 L × 1,75 €/L = 219,03 €</span>
+  <span class="rechnung">189,00 + 219,03 − 0,00 = <span class="erg">408,03 €</span></span></div>
+<div class="hb-info"><b>Ø Benzinpreis</b> ist damit km-gewichtet: Benzinkosten ÷ Liter (im Beispiel 408,03 ÷ 230,16 = 1,773 €/L). Ein Monat mit 3.000 km zählt mehr als einer mit 100 km. Monate ohne erfassten Preis bekommen den Durchschnitt aller erfassten Monatspreise.</div>
 <div class="hb-warn"><b>Solange Ladekosten fehlen, ist die Ersparnis zu hoch.</b> Sie entspricht dann den vollen Benzinkosten. Erst mit erfassten Ladungen wird der Wert realistisch.</div>
 <h3>Gesamt-Ersparnis</h3>
 <div class="hb-formel"><span class="lbl">Gesamt</span>Gesamt-Ersparnis = Kraftstoff-Ersparnis + KFZ-Steuer + THG-Ertrag</div>
@@ -349,7 +350,7 @@
 <p class="hint">Reihenfolge wie im Dashboard. Unter den Verlaufs-Charts lässt sich der Zeitraum mit dem Schieberegler eingrenzen (ab drei Monaten); oben rechts wechselt ein Symbol zwischen Balken und Linie, ein weiteres setzt die Ansicht zurück.</p>
 <table>
   <tr><th style="width:28%">Diagramm</th><th>Inhalt</th></tr>
-  <tr><td>Monatliche Kosten &amp; Ersparnis</td><td>Balken Benziner und Strom je Monat, Linie (rechte Achse) die Differenz. <b>Nur Monate mit km und Benzinpreis.</b></td></tr>
+  <tr><td>Monatliche Kosten &amp; Ersparnis</td><td>Balken Benziner und Strom je Monat, Linie (rechte Achse) die Differenz. Monate ohne Benzinpreis werden mit dem Ø aller erfassten Preise gerechnet; die Summe der Linie ergibt die Kachel „Kraftstoff-Ersparnis“.</td></tr>
   <tr><td>Kraftstoffkosten Vergleich</td><td>Zwei liegende Balken über den Gesamtzeitraum: Benziner hochgerechnet gegen E-Auto tatsächlich.</td></tr>
   <tr><td>CO2-Ersparnis</td><td>Balken je Monat plus kumulierte Linie.</td></tr>
   <tr><td>Verbrauch kWh/100km</td><td>Zwei Linien: <b>laut Ladung</b> (geladene kWh ÷ km, inkl. Ladeverluste) und <b>laut Akku</b> (aus dem Batteriestand, siehe <a href="#akkuverbrauch">Verbrauch aus dem Akkustand</a>). Gestrichelt die Referenz aus den Einstellungen.</td></tr>
@@ -376,8 +377,8 @@
 <h2 id="annahmen">Annahmen &amp; Grenzen <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <table>
   <tr><th style="width:34%">Annahme</th><th>Konsequenz</th></tr>
-  <tr><td>Ø Benzinpreis ungewichtet (Dashboard)</td><td>Ein Monat mit 100 km zählt so viel wie einer mit 3.000 km. Berichte rechnen sauberer, weil sie nur den Zeitraum mitteln.</td></tr>
-  <tr><td>KFZ-Steuer zählt voll</td><td>Der Jahresbetrag geht ungekürzt ein, unabhängig vom Tracking-Zeitraum.</td></tr>
+  <tr><td>Fehlender Benzinpreis</td><td>Monate ohne erfassten Preis werden mit dem Durchschnitt aller erfassten Monatspreise gerechnet.</td></tr>
+  <tr><td>KFZ-Steuer anteilig</td><td>Der Jahresbetrag wird nach Monaten verteilt – im Gesamtzeitraum vom ersten bis zum letzten Monat mit Daten, in Jahren bis zum laufenden Monat.</td></tr>
   <tr><td>CO2 ohne Strom-Emissionen</td><td>Ausgewiesen wird der Bruttovorteil gegenüber dem Benziner.</td></tr>
   <tr><td>Konstanter Benziner-Verbrauch</td><td>Keine Sommer-/Winter- oder Streckenabhängigkeit beim Vergleichsfahrzeug.</td></tr>
   <tr><td>Nur Energie- und Steuerkosten</td><td>Wartung, Versicherung, Wertverlust bleiben außen vor.</td></tr>

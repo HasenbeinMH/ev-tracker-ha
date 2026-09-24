@@ -70,8 +70,8 @@
   <noscript><button type="submit" class="secondary">Anzeigen</button></noscript>
   {% if zeitraum.von %}
   <a class="zeitraum-zurueck" href="?zeitraum=alles">✕ Gesamter Zeitraum</a>
-  <span class="hint" style="margin:0">KFZ-Steuer anteilig für {{ kz.monate }} Monat{{ "e" if kz.monate != 1 }}</span>
   {% endif %}
+  <span class="hint" style="margin:0">KFZ-Steuer anteilig für {{ kz.monate }} Monat{{ "e" if kz.monate != 1 }}</span>
 </form>
 
 {# Icon-Vorrat fuer die Kennzahl-Kacheln; wird ueber <use href="#ic-..."> eingebunden #}

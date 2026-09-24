@@ -14,9 +14,10 @@ Heizung, Akkutemperatur und Winterreifen treiben den Verbrauch im Winter hoch.
 Alle Daten werden auf Monatsebene zugeordnet (km und Benzinpreise liegen nur
 monatlich vor), Ladungen und THG ueber die ersten sieben Zeichen ihres Datums.
 
-KFZ-Steuer: Im Gesamtzeitraum zaehlt sie wie bisher einmal voll. Fuer Jahre
-und Quartale wird sie nach Monaten anteilig gerechnet (Monate ÷ 12) – sonst
-waere die Steuer-Ersparnis eines Quartals so hoch wie die eines ganzen Jahres.
+KFZ-Steuer: ein Jahresbetrag, daher immer nach Monaten anteilig (Monate ÷ 12) –
+auch im Gesamtzeitraum (erster bis letzter Monat mit Daten). Sonst waere die
+Steuer-Ersparnis eines Quartals so hoch wie die eines ganzen Jahres, und
+mehrere Jahre bekaemen die Steuer nur einmal gutgeschrieben.
 """
 import re
 from datetime import date
@@ -148,8 +149,7 @@ def filtern(z: dict, daten: dict) -> dict:
 # ── Kennzahlen ───────────────────────────────────────────────────────────────
 
 def kennzahlen(z: dict, daten: dict) -> dict:
-    """Kennzahlen eines Zeitraums. `daten` sind die ungefilterten Rohdaten.
-    Die Schluessel der Gesamtwerte entsprechen berechnung.ersparnis_uebersicht()."""
+    """Kennzahlen eines Zeitraums. `daten` sind die ungefilterten Rohdaten."""
     f = filtern(z, daten)
     cfg = daten["cfg"]
     mon = monate(z, daten)
@@ -159,23 +159,28 @@ def kennzahlen(z: dict, daten: dict) -> dict:
     strom_kosten = sum(l["gesamtpreis"] for l in f["lade"])
     thg = sum(t["betrag"] for t in f["thg"])
 
-    if f["benzin"]:
-        avg_benzin = sum(b["preis_liter"] for b in f["benzin"]) / len(f["benzin"])
-    else:
-        avg_benzin = berechnung.durchschnitt_benzinpreis(daten["benzin"])
-    liter = berechnung.benzin_liter(km, cfg["benziner_verbrauch"])
-    benzin_kosten = liter * avg_benzin
-    ersparnis_kraft = benzin_kosten - strom_kosten
-
-    if z["von"] is None:
-        kfz = daten["kfz_steuer"]
-    else:
-        kfz = daten["kfz_steuer"] * len(mon) / 12
-
-    # Verbrauch laut Ladung nur ueber Monate, in denen km und Ladung vorliegen
-    km_m, kwh_m = {}, {}
+    # Benzinkosten Monat fuer Monat mit dem Preis des jeweiligen Monats; der Ø-Preis
+    # ist damit km-gewichtet (ein Monat mit 3.000 km zaehlt mehr als einer mit 100 km)
+    ersatz = berechnung.durchschnitt_benzinpreis(daten["benzin"])
+    km_m = {}
     for x in f["fahrten"]:
         km_m[x["datum"][:7]] = km_m.get(x["datum"][:7], 0) + x["km"]
+    preise = {b["monat"][:7]: b["preis_liter"] for b in daten["benzin"]}
+    liter = berechnung.benzin_liter(km, cfg["benziner_verbrauch"])
+    benzin_kosten = berechnung.benzin_kosten(km_m, preise, cfg["benziner_verbrauch"], ersatz)
+    if liter:
+        avg_benzin = benzin_kosten / liter
+    elif f["benzin"]:
+        avg_benzin = sum(b["preis_liter"] for b in f["benzin"]) / len(f["benzin"])
+    else:
+        avg_benzin = ersatz
+    ersparnis_kraft = benzin_kosten - strom_kosten
+
+    # Jahresbetrag, anteilig nach Monaten (Gesamtzeitraum: erster bis letzter Datenmonat)
+    kfz = daten["kfz_steuer"] * len(mon) / 12
+
+    # Verbrauch laut Ladung nur ueber Monate, in denen km und Ladung vorliegen
+    kwh_m = {}
     for l in f["lade"]:
         kwh_m[l["datum"][:7]] = kwh_m.get(l["datum"][:7], 0) + l["menge_kwh"]
     beide = [m for m in km_m if m in kwh_m and km_m[m] > 0]

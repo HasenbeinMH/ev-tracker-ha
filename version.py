@@ -19,10 +19,35 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.0.6"
+VERSION = "2.0.7"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.0.7",
+        "datum": "2026-09-24",
+        "titel": "Korrekturen aus dem Funktionstest: Tarif je Monat, KFZ-Steuer, Ladeerkennung",
+        "aenderungen": [
+            "Verbrauch aus dem Akkustand und Ladeerkennung funktionieren jetzt auch im "
+            "Add-on ohne eigenen HA-Token (nutzen wie der Import den Supervisor-Zugang)",
+            "Importierter Netzbezug wird mit dem Stromtarif des jeweiligen Monats bewertet "
+            "statt immer mit dem neuesten – bei einem Wechsel mitten im Monat tagesgenau "
+            "gewichtet. Wird ein Tarif nachgetragen oder geloescht, werden die importierten "
+            "Monate neu bewertet; bestehende Daten einmalig beim Start korrigiert",
+            "Ladeerkennung: Heimladungen (aus HA nur als Monatssumme am 1.) gelten nicht "
+            "mehr als \"auswaerts geladen\" – der Monatsbericht wartet dadurch nicht mehr "
+            "grundlos bis zu 10 Tage",
+            "KFZ-Steuer ist ein Jahresbetrag und wird jetzt auch im Gesamtzeitraum anteilig "
+            "nach Monaten gerechnet (vorher nur einmal, egal wie viele Jahre erfasst sind)",
+            "Zahleneingabe: \"1.234,50\" wird ueberall verstanden, bei km und Euro-Betraegen "
+            "auch \"1.234\" als Tausenderpunkt (vorher 1,234 km bzw. stillschweigend verworfen)",
+            "Benziner-Vergleich Monat fuer Monat mit dem Benzinpreis des jeweiligen Monats "
+            "(Ø-Preis damit km-gewichtet) – Monatsdiagramm, Kachel und Jahresbericht ergeben "
+            "jetzt dieselbe Summe; Monate ohne Benzinpreis erscheinen im Diagramm mit dem Ø-Preis",
+            "Monatsbericht (Mail): \"CO₂\" wurde als \"CO&sub2;\" angezeigt, und die vier Kacheln "
+            "standen untereinander statt zu zweit nebeneinander",
+        ],
+    },
     {
         "version": "2.0.6",
         "datum": "2026-09-23",

@@ -217,25 +217,29 @@ def _leer(msg):
 # ─────────────────────────────────────────────────────────────
 
 def chart_monatliche_ersparnis(fahrten_daten, benzinpreise_daten, lade_daten,
-                               benziner_l=7.0):
-    if not fahrten_daten or not benzinpreise_daten:
-        return _leer("Benzinpreise und Fahrten erforderlich")
+                               benziner_l=7.0, ersatzpreis=None):
+    """Benziner- und Stromkosten je Monat. Alle Monate mit km oder Ladungen, damit die
+    Summe der Ersparnis-Linie der Kachel „Kraftstoff-Ersparnis“ entspricht; Monate
+    ohne Benzinpreis werden mit `ersatzpreis` (Ø aller erfassten Preise) gerechnet."""
+    if not fahrten_daten:
+        return _leer("Keine Fahrtdaten")
 
     km_pro_monat = {d["datum"]: d["km"] for d in fahrten_daten}
-    bp = {d["monat"]: d["preis_liter"] for d in benzinpreise_daten}
+    bp = {d["monat"]: d["preis_liter"] for d in benzinpreise_daten or []}
+    if ersatzpreis is None:
+        from berechnung import durchschnitt_benzinpreis
+        ersatzpreis = durchschnitt_benzinpreis(benzinpreise_daten or [])
     strom_pro_monat = {}
     for l in lade_daten:
         m = l["datum"][:7]
         strom_pro_monat[m] = strom_pro_monat.get(m, 0) + l["gesamtpreis"]
 
-    monate = sorted(set(km_pro_monat.keys()) & set(bp.keys()))
-    if not monate:
-        return _leer("Keine übereinstimmenden Monate")
+    monate = sorted(set(km_pro_monat) | set(strom_pro_monat))
 
     benzin_k, strom_k, ersparnis = [], [], []
     for m in monate:
         km = km_pro_monat.get(m, 0)
-        bk = round((km / 100) * benziner_l * bp[m], 2)
+        bk = round((km / 100) * benziner_l * bp.get(m, ersatzpreis), 2)
         sk = round(strom_pro_monat.get(m, 0), 2)
         benzin_k.append(bk)
         strom_k.append(sk)

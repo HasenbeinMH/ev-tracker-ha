@@ -1,10 +1,14 @@
 """
 Zentrale Berechnungslogik: Benzin-Äquivalent, CO2- und Kosten-Ersparnis.
-Eine Wahrheit für Dashboard, Fahrten-Tab und HA-Push.
+Die Zeitraum-Kennzahlen (Dashboard, Statistik) stehen in zeitraum.py.
 """
+import calendar
+
 import database as db
 
 BENZINPREIS_FALLBACK = 1.80  # €/L wenn keine Monatspreise erfasst sind
+NETZPREIS_FALLBACK = 30.0    # ct/kWh wenn noch kein Stromtarif erfasst ist
+NETZBEZUG = "Privat – Netzbezug"
 
 # Stromquelle je Ladevorgang, abgeleitet aus dem Anbieter (Namen aus database.py).
 # Alle uebrigen Anbieter gelten als oeffentliches Laden.
@@ -14,6 +18,47 @@ OEFFENTLICH = "Öffentlich"
 
 def stromquelle(anbieter: str) -> str:
     return STROMQUELLEN.get(anbieter, OEFFENTLICH)
+
+
+def netzpreis_monat(monat: str, tarife: list) -> float:
+    """Strompreis (ct/kWh) fuer den Netzbezug eines Monats 'YYYY-MM'.
+
+    Heimladungen liegen nur als Monatssumme vor. Bewertet wird deshalb mit dem
+    Tarif, der im Monat galt – bei einem Wechsel mitten im Monat tagesgenau
+    gewichtet. Tage vor dem ersten erfassten Tarif bekommen den aeltesten Tarif.
+    """
+    if not tarife:
+        return NETZPREIS_FALLBACK
+    sortiert = sorted(tarife, key=lambda t: t["gueltig_ab"])
+    tage = calendar.monthrange(int(monat[:4]), int(monat[5:7]))[1]
+    summe = 0.0
+    for tag in range(1, tage + 1):
+        datum = f"{monat}-{tag:02d}"
+        gueltig = [t for t in sortiert if t["gueltig_ab"] <= datum]
+        summe += (gueltig[-1] if gueltig else sortiert[0])["preis_kwh"]
+    return round(summe / tage, 2)
+
+
+def ist_heim_import(ladung: dict) -> bool:
+    """Monatssumme aus dem HA-Import (Zeitraum-Import oder naechtlicher Abruf)?"""
+    notiz = ladung.get("notiz") or ""
+    return notiz.startswith("Import ") or notiz.startswith(db.AUTO_NOTIZ)
+
+
+def heimladungen_neu_bewerten() -> int:
+    """Bewertet importierte Netzbezug-Monatssummen mit dem Tarif ihres Monats neu –
+    noetig, wenn ein Stromtarif nachgetragen, geaendert oder geloescht wird.
+    Von Hand erfasste Ladevorgaenge bleiben unberuehrt. Rueckgabe: Anzahl geaendert."""
+    tarife = db.get_stromtarife()
+    geaendert = 0
+    for l in db.get_ladevorgaenge(limit=100000):
+        if l["anbieter"] != NETZBEZUG or not ist_heim_import(l):
+            continue
+        ct = netzpreis_monat(l["datum"][:7], tarife)
+        if abs((l["preis_kwh"] or 0) - ct) > 0.001:
+            db.set_ladepreis(l["id"], ct, round(l["menge_kwh"] * ct / 100, 2))
+            geaendert += 1
+    return geaendert
 
 
 def benzin_liter(km: float, benziner_verbrauch: float) -> float:
@@ -27,37 +72,23 @@ def co2_kg(liter: float, co2_faktor: float) -> float:
 
 
 def durchschnitt_benzinpreis(benzinpreise: list[dict]) -> float:
-    """Ø-Preis über alle erfassten Monatspreise (oder Fallback)."""
+    """Ø-Preis über alle erfassten Monatspreise (oder Fallback).
+    Nur noch Ersatzwert fuer Monate ohne eigenen Benzinpreis."""
     if not benzinpreise:
         return BENZINPREIS_FALLBACK
     return sum(d["preis_liter"] for d in benzinpreise) / len(benzinpreise)
 
 
-def ersparnis_uebersicht() -> dict:
-    """Berechnet alle Gesamt-Kennzahlen aus der Datenbank."""
-    cfg = db.get_config()
-    gesamt_km = db.get_fahrten_gesamt_km()
-    gesamt_kwh, strom_kosten = db.get_lade_gesamt()
-    thg_gesamt = db.get_thg_gesamt()
-    kfz_steuer = db.get_einstellung("kfz_steuer_benziner") or 0.0
+def benzin_kosten(km_je_monat: dict, preise: dict, benziner_verbrauch: float,
+                  ersatzpreis: float) -> float:
+    """Fiktive Benzinkosten Monat fuer Monat: km des Monats × Preis desselben Monats.
 
-    avg_benzin = durchschnitt_benzinpreis(db.get_benzinpreise())
-    liter = benzin_liter(gesamt_km, cfg["benziner_verbrauch"])
-    benzin_kosten = liter * avg_benzin
-    ersparnis_kraft = benzin_kosten - strom_kosten
-
-    return {
-        "gesamt_km":        gesamt_km,
-        "gesamt_kwh":       gesamt_kwh,
-        "strom_kosten":     strom_kosten,
-        "benzin_kosten":    benzin_kosten,
-        "avg_benzin":       avg_benzin,
-        "thg_gesamt":       thg_gesamt,
-        "kfz_steuer":       kfz_steuer,
-        "ersparnis_kraft":  ersparnis_kraft,
-        "ersparnis_gesamt": ersparnis_kraft + kfz_steuer + thg_gesamt,
-        "co2_gespart":      co2_kg(liter, cfg["co2_faktor_benzin"]),
-    }
+    `km_je_monat` und `preise` sind {'YYYY-MM': wert}. Monate ohne Benzinpreis
+    bekommen `ersatzpreis`. So ergibt die Summe der Monatswerte (Diagramm,
+    Monatsberichte) genau den Wert des Zeitraums (Kachel, Jahresbericht).
+    """
+    return sum(benzin_liter(km, benziner_verbrauch) * preise.get(m, ersatzpreis)
+               for m, km in km_je_monat.items())
 
 
 def verbrauch_pro_monat() -> list:

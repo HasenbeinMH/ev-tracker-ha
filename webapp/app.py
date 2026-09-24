@@ -4,6 +4,7 @@ Nutzt dieselben Kern-Module wie die Desktop-App:
 database.py, berechnung.py, ha_client.py, pdf_parser.py, charts.py
 """
 import os
+import re
 import sys
 import threading
 import uuid
@@ -30,7 +31,7 @@ import mailer
 import charts
 import zeitraum as zeitraum_mod
 from version import VERSION, CHANGELOG
-from ha_client import HAClient, InfluxClient
+from ha_client import HAClient, InfluxClient, IST_ADDON, ha_verbindung as _ha_verbindung
 from pdf_parser import parse_rechnung_pdf, parse_rechnung_text
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -47,15 +48,16 @@ db.init_db()
 db.init_ha_settings()
 db.init_mail_settings()
 
-# Einzige Stelle, die zwischen den beiden Betriebsarten unterscheidet: SUPERVISOR_TOKEN
-# wird nur vom Supervisor in den Add-on-Container injiziert (homeassistant_api: true in
-# config.yaml). Im Standalone-Docker-Betrieb (docker-compose.yml) ist die Variable nie
-# gesetzt. Ueberall im Code, wo sich Add-on und Standalone unterscheiden, wird IST_ADDON
-# verwendet – nie direkt os.environ.get("SUPERVISOR_TOKEN"), damit auf einen Blick klar
-# ist, welcher Code nur eine der beiden Betriebsarten betrifft.
-IST_ADDON = bool(os.environ.get("SUPERVISOR_TOKEN"))
+# Einmalig (ab 2.0.7): Netzbezug aus dem Import wurde frueher immer mit dem neuesten
+# Stromtarif bewertet – jetzt mit dem Tarif des jeweiligen Monats
+if db.get_einstellung_str("migration_netzpreis_monat") != "1":
+    berechnung.heimladungen_neu_bewerten()
+    db.set_einstellung("migration_netzpreis_monat", "1")
 
-app = FastAPI(title="EV Tracker")
+# IST_ADDON (Add-on oder Standalone-Docker) und die HA-Verbindung stehen in ha_client.py,
+# weil auch akkuverbrauch.py und ladeerkennung.py sie brauchen.
+
+app =FastAPI(title="EV Tracker")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 templates.env.globals["MONATE"] = MONATE
@@ -69,28 +71,26 @@ def render(request, template, **ctx):
     return templates.TemplateResponse(request, template, ctx)
 
 
-def parse_de(text) -> float | None:
-    """Komma/Punkt-tolerantes Zahlen-Parsen; None bei leer/ungültig."""
-    t = (text or "").strip().replace(",", ".")
+def parse_de(text, tausender: bool = False) -> float | None:
+    """Komma/Punkt-tolerantes Zahlen-Parsen; None bei leer/ungültig.
+
+    "12,5" und "12.5" -> 12.5; mit Komma gelten Punkte als Tausendertrenner
+    ("1.234,5" -> 1234.5), ebenso bei mehreren Punkten ("1.234.567").
+    Ein einzelner Punkt mit genau drei Ziffern dahinter ist mehrdeutig
+    ("1.234" km oder 1,234 €/L) – als Tausendertrenner nur mit tausender=True,
+    also bei km und Euro-Betraegen, wo drei Nachkommastellen nicht vorkommen.
+    """
+    t = str(text or "").strip().replace(" ", "").replace("\xa0", "")
     if not t:
         return None
+    if "," in t:
+        t = t.replace(".", "").replace(",", ".")
+    elif t.count(".") > 1 or (tausender and re.fullmatch(r"-?\d{1,3}\.\d{3}", t)):
+        t = t.replace(".", "")
     try:
         return float(t)
     except ValueError:
         return None
-
-
-def _ha_verbindung(cfg: dict) -> dict | None:
-    """Verbindungsdaten fuer HAClient: bevorzugt den Supervisor-Proxy (laeuft die
-    App als HA-Add-on mit homeassistant_api, injiziert der Supervisor SUPERVISOR_TOKEN),
-    sonst die manuell in den Einstellungen hinterlegte URL/Token-Kombination.
-    Gibt None zurueck, wenn keine der beiden Quellen verfuegbar ist."""
-    if cfg.get("ha_url") and cfg.get("ha_token"):
-        return {"url": cfg["ha_url"], "token": cfg["ha_token"]}
-    if IST_ADDON:
-        return {"url": "http://supervisor/core", "token": os.environ["SUPERVISOR_TOKEN"],
-                "ws_pfad": "/websocket"}
-    return None
 
 
 # ─────────────────────────────────────────────────────────────
@@ -163,7 +163,8 @@ def dashboard(request: Request, zeitraum: str | None = None):
 
     charts_html = {
         "monatlich": charts.chart_monatliche_ersparnis(
-            f["fahrten"], f["benzin"], f["lade"], benziner_l=cfg["benziner_verbrauch"]),
+            f["fahrten"], f["benzin"], f["lade"], benziner_l=cfg["benziner_verbrauch"],
+            ersatzpreis=berechnung.durchschnitt_benzinpreis(daten["benzin"])),
         "kosten": charts.chart_kosten_vergleich(
             kz["benzin_kosten"], kz["strom_kosten"]),
         "co2": charts.chart_co2_ersparnis(
@@ -274,7 +275,7 @@ def fahrten_akku_berechnen(zeitraum: str = Form("alles")):
 
 @app.post("/fahrten")
 def fahrten_add(monat: str = Form(...), km: str = Form(...)):
-    v = parse_de(km)
+    v = parse_de(km, tausender=True)
     if v is not None and v >= 0:
         db.set_fahrt_monat(monat, v)
     return RedirectResponse("fahrten", status_code=303)
@@ -313,8 +314,8 @@ def laden_add(datum: str = Form(...), kwh: str = Form(...),
               blockier: str = Form("")):
     kwh_v = parse_de(kwh)
     ct_v = parse_de(preis_kwh)
-    gesamt_v = parse_de(gesamt)
-    blockier_v = parse_de(blockier)
+    gesamt_v = parse_de(gesamt, tausender=True)
+    blockier_v = parse_de(blockier, tausender=True)
     # Der Gesamtpreis enthaelt die Blockiergebuehr
     if gesamt_v is None and kwh_v is not None and ct_v is not None:
         gesamt_v = round(kwh_v * ct_v / 100 + (blockier_v or 0), 2)
@@ -332,8 +333,8 @@ def laden_update(id: int = Form(...), datum: str = Form(...), kwh: str = Form(..
                  blockier: str = Form("")):
     kwh_v = parse_de(kwh)
     ct_v = parse_de(preis_kwh)
-    gesamt_v = parse_de(gesamt)
-    blockier_v = parse_de(blockier)
+    gesamt_v = parse_de(gesamt, tausender=True)
+    blockier_v = parse_de(blockier, tausender=True)
     # Der Gesamtpreis enthaelt die Blockiergebuehr
     if gesamt_v is None and kwh_v is not None and ct_v is not None:
         gesamt_v = round(kwh_v * ct_v / 100 + (blockier_v or 0), 2)
@@ -391,12 +392,14 @@ def stromtarif_add(gueltig_ab: str = Form(...), preis: str = Form(...),
     v = parse_de(preis)
     if v is not None and v > 0:
         db.add_stromtarif(gueltig_ab, v, name)
+        berechnung.heimladungen_neu_bewerten()
     return RedirectResponse("stromtarif", status_code=303)
 
 
 @app.post("/stromtarif/delete")
 def stromtarif_delete(id: int = Form(...)):
     db.delete_stromtarif(id)
+    berechnung.heimladungen_neu_bewerten()
     return RedirectResponse("../stromtarif", status_code=303)
 
 
@@ -421,7 +424,7 @@ def _ladetarif_werte(form) -> dict | None:
              for k in ("anbieter", "tarif_name", "gueltig_ab", "gueltig_bis", "notiz")}
     for k in ("preis_ac", "preis_dc", "grundgebuehr", "blockier_ct_min", "blockier_ab_min",
               "blockier_max_eur", "fremd_ab_ct", "fremd_max_ct", "ladekarte_eur"):
-        werte[k] = parse_de(form.get(k))
+        werte[k] = parse_de(form.get(k), tausender=k.endswith(("_eur", "gebuehr")))
     werte["grundgebuehr"] = werte["grundgebuehr"] or 0.0
     if not werte["anbieter"] or not werte["gueltig_ab"] or not werte["preis_ac"]:
         return None
@@ -467,7 +470,7 @@ def steuer(request: Request):
 
 @app.post("/steuer/kfz")
 def steuer_kfz(betrag: str = Form(...)):
-    v = parse_de(betrag)
+    v = parse_de(betrag, tausender=True)
     if v is not None and v >= 0:
         db.set_einstellung("kfz_steuer_benziner", v)
     return RedirectResponse("../steuer", status_code=303)
@@ -476,7 +479,7 @@ def steuer_kfz(betrag: str = Form(...)):
 @app.post("/steuer/thg")
 def steuer_thg_add(datum: str = Form(...), betrag: str = Form(...),
                    anbieter: str = Form(""), notiz: str = Form("")):
-    v = parse_de(betrag)
+    v = parse_de(betrag, tausender=True)
     if v is not None and v > 0:
         db.add_thg(datum, v, anbieter or "Sonstige", notiz)
     return RedirectResponse("../steuer", status_code=303)
@@ -503,8 +506,8 @@ def _instandhaltung_werte(form) -> dict | None:
     """Formularfelder -> DB-Werte; None, wenn Datum, Kategorie oder Betrag fehlen."""
     werte = {k: (str(form.get(k) or "").strip() or None)
              for k in ("datum", "kategorie", "beschreibung", "werkstatt", "notiz")}
-    werte["km_stand"] = parse_de(form.get("km_stand"))
-    werte["betrag"] = parse_de(form.get("betrag"))
+    werte["km_stand"] = parse_de(form.get("km_stand"), tausender=True)
+    werte["betrag"] = parse_de(form.get("betrag"), tausender=True)
     if not werte["datum"] or not werte["kategorie"] or werte["betrag"] is None:
         return None
     return werte
@@ -555,7 +558,7 @@ def _versicherung_werte(form) -> dict | None:
                        "deckung", "sf_haftpflicht", "sf_kasko", "notiz")}
     for k in ("jahreslaufleistung", "sb_teilkasko", "sb_vollkasko", "grundbeitrag",
               *(k for k, _ in unterhalt.ZUSATZ)):
-        werte[k] = parse_de(form.get(k))
+        werte[k] = parse_de(form.get(k), tausender=True)   # km und Euro-Betraege
     if (not werte["fahrzeug"] or not werte["gesellschaft"] or not werte["gueltig_ab"]
             or not werte["deckung"] or werte["grundbeitrag"] is None):
         return None
@@ -731,13 +734,14 @@ def import_apply(payload: dict):
     """Schreibt die (ggf. editierten) Vorschauzeilen in die DB."""
     rows = payload.get("rows", [])
     pv_ct = db.get_einstellung("pv_preis_ct") or 13.0
-    tarif = db.get_aktueller_stromtarif()
-    netz_ct = tarif["preis_kwh"] if tarif else 30.0
+    tarife = db.get_stromtarife()
     log = []
     for r in rows:
         monat = r.get("monat", "")
         if not monat:
             continue
+        # Netzbezug mit dem Tarif bewerten, der in diesem Monat galt – nicht dem heutigen
+        netz_ct = berechnung.netzpreis_monat(monat, tarife)
         teile = []
         km = parse_de(str(r.get("km") or ""))
         if km is not None and km > 0:
@@ -1174,13 +1178,13 @@ def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> lis
         monate = [vorher, (jetzt.year, jetzt.month)]
 
     pv_ct = db.get_einstellung("pv_preis_ct") or 13.0
-    tarif = db.get_aktueller_stromtarif()
-    netz_ct = tarif["preis_kwh"] if tarif else 30.0
+    tarife = db.get_stromtarife()
 
     protokoll = []
     fehler = 0
     for jahr, monat in monate:
         schluessel = f"{jahr}-{monat:02d}"
+        netz_ct = berechnung.netzpreis_monat(schluessel, tarife)
         try:
             werte = _fetch_monat(client, ic, cfg, use_influx, jahr, monat)
         except Exception as e:
@@ -1586,7 +1590,7 @@ def einstellungen_parameter(benziner_verbrauch: str = Form(...),
                      ("pv_preis_ct", pv_preis),
                      ("co2_faktor_benzin", co2_benzin),
                      ("kfz_steuer_benziner", kfz_steuer)]:
-        v = parse_de(raw)
+        v = parse_de(raw, tausender=key == "kfz_steuer_benziner")
         if v is not None:
             db.set_einstellung(key, v)
     db.set_einstellung("fahrzeug_name", fahrzeug_name.strip())

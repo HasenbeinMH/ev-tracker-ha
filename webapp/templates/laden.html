@@ -124,7 +124,11 @@ async function speichern(btn) {
 
 // Gesamtpreis = kWh × ct / 100 + Blockiergebuehr; null, solange kWh oder ct fehlen
 function gesamtAus(kwhText, ctText, blockierText) {
-  const zahl = (t) => parseFloat(String(t).replace(",", "."));
+  // Mit Komma gelten Punkte als Tausendertrenner ("1.234,5"), wie in parse_de()
+  const zahl = (t) => {
+    const s = String(t).trim();
+    return parseFloat(s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s);
+  };
   const kwh = zahl(kwhText), ct = zahl(ctText), blockier = zahl(blockierText);
   if (isNaN(kwh) || isNaN(ct)) return null;
   return (kwh * ct / 100 + (isNaN(blockier) ? 0 : blockier)).toFixed(2);

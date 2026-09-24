@@ -11,6 +11,30 @@ nicht auf ein bestimmtes Modell festgelegt.
 
 ![Dashboard des EV Trackers](docs/screenshot-dashboard.png)
 
+## Einblicke
+
+*Alle Bilder mit Beispieldaten: 20 Monate, ein Elektroauto mit Wallbox und PV-Anlage.*
+
+<table>
+<tr>
+<td width="50%"><a href="docs/screenshot-diagramme.png"><img src="docs/screenshot-diagramme.png" alt="Diagramme: CO2, Verbrauch, Ladekosten nach Anbieter, Strommix"></a>
+<br><b>Alles auf einen Blick</b> – CO₂-Ersparnis, Verbrauch im Jahresverlauf, wohin das Geld fürs Laden geht und wie viel davon Solarstrom war.</td>
+<td width="50%"><a href="docs/screenshot-statistik.png"><img src="docs/screenshot-statistik.png" alt="Statistik: Sommer gegen Winter"></a>
+<br><b>Sommer gegen Winter</b> – zwei Zeiträume nebeneinander: Verbrauch, Kosten je 100 km, PV-Anteil, Ersparnis.</td>
+</tr>
+<tr>
+<td><a href="docs/screenshot-verbrauch.png"><img src="docs/screenshot-verbrauch.png" alt="Verbrauch je Monat und aus dem Akkustand"></a>
+<br><b>Echter Verbrauch</b> – je Monat aus den Ladungen und je Fahrt aus dem Akkustand. Die Differenz zeigt die Ladeverluste.</td>
+<td><a href="docs/screenshot-ladetarife.png"><img src="docs/screenshot-ladetarife.png" alt="Ladetarife mit Preisverlauf"></a>
+<br><b>Ladetarife im Griff</b> – Abos mit Preisverlauf, Grundgebühr und Blockiergebühr, im Vergleich zum Heimstrom.</td>
+</tr>
+<tr>
+<td><a href="docs/screenshot-bericht.png"><img src="docs/screenshot-bericht.png" alt="Monatsbericht per Mail" width="70%"></a>
+<br><b>Monatsbericht per Mail</b> – kommt automatisch, sobald der Monat vollständig ist.</td>
+<td valign="top"><br><b>Und außerdem:</b> Import aus Home Assistant oder InfluxDB, jede Nacht automatisch · Rechnungs-PDFs einlesen · Ladeerkennung am Akkustand (meldet Ladungen unterwegs ohne Beleg) · THG-Quote und KFZ-Steuer · Instandhaltung und Versicherung · Backup und Wiederherstellen</td>
+</tr>
+</table>
+
 ## Voraussetzungen
 
 Der EV Tracker **misst selbst nichts** – er liest jeden Monat vorhandene Sensoren aus Home
@@ -87,7 +111,7 @@ Betriebsart und beeinflussen die andere nicht:
 
 Wo sich das Verhalten der App selbst je nach Betriebsart unterscheidet (Backup-Seite,
 Home-Assistant-Verbindung), steht im Code immer die Variable `IST_ADDON`
-(`webapp/app.py`) – erkennt automatisch, ob `SUPERVISOR_TOKEN` gesetzt ist. Danach
+(`ha_client.py`, dort auch `ha_verbindung()`) – erkennt automatisch, ob `SUPERVISOR_TOKEN` gesetzt ist. Danach
 suchen, wenn unklar ist, wo genau sich beide Wege unterscheiden.
 
 ### Aufbau
