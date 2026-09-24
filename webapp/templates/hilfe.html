@@ -81,7 +81,7 @@
 <p>In dieser Reihenfolge einrichten, dann stimmen alle Auswertungen von Anfang an:</p>
 <ol>
   <li><b>Einstellungen → Berechnungsparameter</b>: Benziner-Verbrauch (7,0 L/100 km), EV-Referenz (15,0 kWh/100 km), PV-Preis (13 ct/kWh), CO2-Faktor (2,37 kg/L) und KFZ-Steuer prüfen.</li>
-  <li><b>Einstellungen → Home Assistant &amp; InfluxDB</b>: URL und Token eintragen, Verbindung testen, dann die fünf Sensoren zuordnen.</li>
+  <li><b>Einstellungen → Home Assistant &amp; Datenbank</b>: URL und Token eintragen (im Add-on nicht nötig), Verbindung testen, dann die Sensoren zuordnen. Optional eine Datenbank als Quelle wählen (InfluxDB, PostgreSQL, Prometheus).</li>
   <li><b>Stromtarif</b>: aktuellen Haushaltsstrompreis in ct/kWh anlegen.</li>
   <li><b>HA Import</b>: einmalig den gewünschten Zeitraum rückwirkend abrufen, Vorschau prüfen, übernehmen.</li>
   <li><b>Laden</b> bzw. <b>Rechnungen</b>: auswärtige Ladungen ergänzen – die kommen nicht aus HA.</li>
@@ -226,7 +226,7 @@
 <p>Liegt der Wert über der vereinbarten Jahreslaufleistung, erscheint eine rote Warnung – dann bei der Versicherung melden, sonst droht im Schadenfall eine Nachzahlung.</p>
 
 <h2 id="haimport">HA Import <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
-<p class="hint">Überschrift: <b>„📥 Datenimport – Home Assistant / InfluxDB"</b></p>
+<p class="hint">Überschrift: <b>„📥 Datenimport – Home Assistant / Datenbank"</b></p>
 <h3>Nächtlicher Abruf</h3>
 <p>Läuft automatisch zur eingestellten Uhrzeit (Standard <b>00:00</b>, änderbar unter Berichte) und holt <b>laufenden Monat und Vormonat</b> – so wird der Vormonat noch vervollständigt, wenn Daten spät nachkommen. Mit <b>„Jetzt ausführen"</b> lässt er sich manuell anstoßen.</p>
 <table>
@@ -247,7 +247,16 @@
 <h3>Rückwirkender Abruf</h3>
 <p>Über die Zeitraumauswahl lassen sich beliebige Monate nachladen. Die Werte erscheinen erst in einer <b>Vorschau</b> und sind dort editierbar; ein leeres Feld wird nicht übernommen. Beim Übernehmen werden bereits vorhandene Ladungen als Duplikat übersprungen.</p>
 <h3>Datenquellen</h3>
-<p>Wählbar sind <b>Home-Assistant-API</b> oder <b>InfluxDB</b>. Bei InfluxDB wird pro Wert zuerst dort gesucht; schlägt das fehl, greift automatisch die HA-API als Rückfallebene.</p>
+<p>Standard ist die <b>Home-Assistant-API</b> (Langzeitstatistik). Wer seine Sensordaten zusätzlich in einer Datenbank sammelt, kann sie als Quelle wählen – pro Wert wird dann zuerst dort gesucht; liefert sie nichts, greift automatisch die HA-API. Das lohnt sich vor allem, wenn die Datenbank weiter zurückreicht als HA.</p>
+<table>
+  <tr><th style="width:30%">Datenbank</th><th style="width:22%">HA-Integration</th><th>Sensor-Zuordnung</th></tr>
+  <tr><td>InfluxDB 1.x</td><td>InfluxDB (api_version 1)</td><td>Friendly Name (oder ein anderer Tag, z.B. <code>entity_id</code> ohne „sensor.“) im Measurement der Einheit</td></tr>
+  <tr><td>InfluxDB 2.x</td><td>InfluxDB (api_version 2)</td><td>wie 1.x; Verbindung über URL, Organisation, Bucket und API-Token</td></tr>
+  <tr><td>PostgreSQL / TimescaleDB</td><td>LTSS</td><td>Entity-ID wie bei HA; gelesen wird die Tabelle <code>ltss</code></td></tr>
+  <tr><td>Prometheus / VictoriaMetrics</td><td>Prometheus</td><td>Entity-ID wie bei HA (Label <code>entity</code>); Aufbewahrung muss für Monatswerte reichen</td></tr>
+</table>
+<div class="hb-warn"><b>Neu seit 2.1.0:</b> InfluxDB 2.x, PostgreSQL/TimescaleDB und Prometheus/VictoriaMetrics sind getestet, aber noch nicht mit vielen echten Installationen. Wenn etwas nicht passt, zeigt der Knopf „… testen“ in den Einstellungen die Fehlermeldung der Datenbank – bitte mit dieser Meldung als Issue auf GitHub melden.</div>
+<div class="hb-info"><b>So wird gerechnet:</b> km und kWh als Differenz des Zählerstands (letzter Wert im Monat minus letzter Wert davor, bis ein Jahr zurück); liefert das nichts, bei kWh die Summe der Tageshöchstwerte (für täglich zurückgesetzte Zähler). Benzinpreis als Mittel aller Werte über 0. Akkustand und km-Stand für den Akkuverbrauch als Stundenwerte.</div>
 
 <h2 id="rechnungen">Rechnungen <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„📄 Rechnungsimport"</b> · Für auswärtige Ladungen.</p>
@@ -302,7 +311,7 @@
 <ul>
   <li><b>Einstellungen sichern / laden</b> – Export als JSON, wahlweise mit oder ohne Zugangsdaten.</li>
   <li><b>Lade-Anbieter</b> – eigene Anbieter anlegen, Grünstrom markieren.</li>
-  <li><b>Sensoren</b> – fünf Zuordnungen: Kilometerstand, PV ins Auto, Netz ins Auto, Benzinpreis 1 und 2. Je Sensor eine Entity-ID (HA) bzw. ein Friendly Name (InfluxDB).</li>
+  <li><b>Sensoren</b> – fünf Zuordnungen: Kilometerstand, PV ins Auto, Netz ins Auto, Benzinpreis 1 und 2. Je Sensor eine Entity-ID (HA, PostgreSQL, Prometheus) bzw. ein Friendly Name (InfluxDB).</li>
 </ul>
 <div class="hb-info"><b>Token bleiben gespeichert:</b> Lässt du das Token- oder Passwortfeld leer, wird der gespeicherte Wert beibehalten und nicht überschrieben.</div>
 

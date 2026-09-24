@@ -62,7 +62,7 @@
     <span id="import-status" style="align-self:center; font-size:12px"></span>
   </div>
   <p class="hint" style="margin-bottom:0">
-    ⚠️ Die Datei „mit Zugangsdaten" enthält HA-Token und InfluxDB-Passwort im Klartext –
+    ⚠️ Die Datei „mit Zugangsdaten" enthält HA-Token und Datenbank-Passwörter im Klartext –
     sicher aufbewahren, nicht weitergeben.
   </p>
 </div>
@@ -102,14 +102,16 @@
   </table>
 </div>
 
-<h2>Home Assistant & InfluxDB</h2>
+<h2>Home Assistant & Datenbank</h2>
 <form method="post" action="einstellungen/ha">
 <div class="card">
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
     <label class="feld">Datenquelle
-      <select name="datasource">
-        <option value="ha" {{ "selected" if ha.datasource != "influxdb" }}>Home Assistant API</option>
-        <option value="influxdb" {{ "selected" if ha.datasource == "influxdb" }}>InfluxDB</option>
+      <select name="datasource" id="datasource" onchange="zeigeQuelle()">
+        <option value="ha" {{ "selected" if ha.datasource not in quellen }}>Home Assistant API</option>
+        {% for typ, name in quellen.items() %}
+        <option value="{{ typ }}" {{ "selected" if ha.datasource == typ }}>{{ name }}{{ " – neu" if typ != "influxdb" }}</option>
+        {% endfor %}
       </select>
     </label>
     {% if not supervisor_aktiv %}
@@ -123,10 +125,19 @@
     {% endif %}
   </div>
 
-  <h2>Sensoren (Entity-ID für HA · Friendly Name für InfluxDB)</h2>
+  <p class="hint" style="margin-top:8px">
+    Mit einer Datenbank werden die Werte zuerst dort gesucht; was fehlt, kommt weiter aus der
+    HA-API. Nützlich, wenn die Datenbank weiter zurückreicht als die Langzeitstatistik von HA.
+    <span data-quelle="influxdb2 postgres prometheus"><br>🧪 Diese Anbindung ist neu und noch nicht mit
+    vielen echten Installationen erprobt – Rückmeldungen (auch „läuft“) bitte als Issue auf GitHub.</span>
+  </p>
+
+  <h2>Sensoren</h2>
   <p class="hint">
     Wichtig: Bei den kWh-Feldern die Sensoren eintragen, die <strong>ins Auto geladene</strong>
     Energie zählen – nicht die gesamte PV-Erzeugung oder den Hausnetzbezug.
+    Die Entity-ID gilt für alle Datenquellen (auch PostgreSQL und Prometheus speichern sie so);
+    bei InfluxDB kommt der Name dazu, unter dem der Sensor dort steht.
   </p>
 
   <div class="card" style="background:#171a21">
@@ -144,16 +155,43 @@
   </div>
 
   <table>
-    <tr><th>Sensor</th><th>Entity-ID (HA)</th><th>Friendly Name (InfluxDB)</th></tr>
+    {# Friendly-Name-Spalte nur bei InfluxDB – die Werte bleiben beim Ausblenden erhalten #}
+    <tr><th>Sensor</th><th>Entity-ID (Home Assistant)</th>
+        <th data-quelle="influxdb influxdb2">Name in der InfluxDB (Friendly Name)</th></tr>
     {% for ha_key, fn_key, label in sensor_felder %}
     <tr>
       <td style="white-space:nowrap">{{ label }}</td>
       <td><input class="breit" name="{{ ha_key }}" value="{{ ha[ha_key] }}"></td>
-      <td>{% if fn_key %}<input class="breit" name="{{ fn_key }}" value="{{ ha[fn_key] }}">{% endif %}</td>
+      <td data-quelle="influxdb influxdb2">{% if fn_key %}<input class="breit" name="{{ fn_key }}" value="{{ ha[fn_key] }}">{% endif %}</td>
     </tr>
     {% endfor %}
   </table>
 
+  <div data-quelle="influxdb influxdb2">
+  <h2>InfluxDB – Sensor finden</h2>
+  <p class="hint">HA schreibt je Einheit ein Measurement (km, kWh, EUR/L, %) mit dem Feld „value“.
+    Gesucht wird über einen Tag: <code>friendly_name</code> (Spalte Friendly Name) oder
+    <code>entity_id</code> – dann dort die Entity-ID <em>ohne</em> „sensor.“ eintragen.</p>
+  <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
+    <label class="feld">Tag
+      <input name="influx_tag" value="{{ ha.influx_tag }}" style="width:120px">
+    </label>
+    <label class="feld">Meas. km
+      <input name="influx_measurement_km" value="{{ ha.influx_measurement_km }}" style="width:70px">
+    </label>
+    <label class="feld">Meas. kWh
+      <input name="influx_measurement_kwh" value="{{ ha.influx_measurement_kwh }}" style="width:70px">
+    </label>
+    <label class="feld">Meas. EUR/L
+      <input name="influx_measurement_eur_l" value="{{ ha.influx_measurement_eur_l }}" style="width:70px">
+    </label>
+    <label class="feld">Meas. %
+      <input name="influx_measurement_prozent" value="{{ ha.influx_measurement_prozent }}" style="width:70px">
+    </label>
+  </div>
+  </div>
+
+  <div data-quelle="influxdb">
   <h2>InfluxDB 1.x Verbindung</h2>
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
     <label class="feld">URL
@@ -171,19 +209,77 @@
     <label class="feld">Passwort {{ "(gesetzt)" if ha.influx_password }}
       <input type="password" name="influx_password" placeholder="{{ '••••••••' if ha.influx_password else 'optional' }}" style="width:120px">
     </label>
-    <label class="feld">Meas. km
-      <input name="influx_measurement_km" value="{{ ha.influx_measurement_km }}" style="width:70px">
+    <button type="button" class="secondary" onclick="testeVerbindung('influxdb', this)">InfluxDB 1.x testen</button>
+  </div>
+  </div>
+
+  <div data-quelle="influxdb2">
+  <h2>InfluxDB 2.x Verbindung</h2>
+  <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
+    <label class="feld">URL mit Port
+      <input name="influx2_url" value="{{ ha.influx2_url }}" placeholder="http://192.168.0.59:8086" style="width:220px">
     </label>
-    <label class="feld">Meas. kWh
-      <input name="influx_measurement_kwh" value="{{ ha.influx_measurement_kwh }}" style="width:70px">
+    <label class="feld">Organisation
+      <input name="influx2_org" value="{{ ha.influx2_org }}" style="width:140px">
     </label>
-    <label class="feld">Meas. EUR/L
-      <input name="influx_measurement_eur_l" value="{{ ha.influx_measurement_eur_l }}" style="width:70px">
+    <label class="feld">Bucket
+      <input name="influx2_bucket" value="{{ ha.influx2_bucket }}" style="width:140px">
     </label>
-    <label class="feld">Meas. %
-      <input name="influx_measurement_prozent" value="{{ ha.influx_measurement_prozent }}" style="width:70px">
+    <label class="feld">API-Token {{ "(gesetzt – leer lassen zum Behalten)" if ha.influx2_token }}
+      <input type="password" name="influx2_token" placeholder="{{ '••••••••' if ha.influx2_token else 'Lese-Token für den Bucket' }}" style="width:220px">
     </label>
-    <button type="button" class="secondary" onclick="testeVerbindung('influx', this)">InfluxDB testen</button>
+    <button type="button" class="secondary" onclick="testeVerbindung('influxdb2', this)">InfluxDB 2.x testen</button>
+  </div>
+  </div>
+
+  <div data-quelle="postgres">
+  <h2>PostgreSQL / TimescaleDB (LTSS)</h2>
+  <p class="hint">Liest die Tabelle der HA-Integration „Long Time State Storage“ (LTSS). Sensoren
+    über die Entity-ID wie bei HA. Ein Benutzer mit Leserecht auf die Tabelle genügt.</p>
+  <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
+    <label class="feld">Host
+      <input name="pg_host" value="{{ ha.pg_host }}" placeholder="192.168.0.59" style="width:180px">
+    </label>
+    <label class="feld">Port
+      <input name="pg_port" value="{{ ha.pg_port }}" style="width:70px">
+    </label>
+    <label class="feld">Datenbank
+      <input name="pg_database" value="{{ ha.pg_database }}" style="width:140px">
+    </label>
+    <label class="feld">Tabelle
+      <input name="pg_tabelle" value="{{ ha.pg_tabelle }}" style="width:100px">
+    </label>
+    <label class="feld">Benutzer
+      <input name="pg_user" value="{{ ha.pg_user }}" style="width:120px">
+    </label>
+    <label class="feld">Passwort {{ "(gesetzt)" if ha.pg_password }}
+      <input type="password" name="pg_password" placeholder="{{ '••••••••' if ha.pg_password else '' }}" style="width:120px">
+    </label>
+    <button type="button" class="secondary" onclick="testeVerbindung('postgres', this)">PostgreSQL testen</button>
+  </div>
+  </div>
+
+  <div data-quelle="prometheus">
+  <h2>Prometheus / VictoriaMetrics</h2>
+  <p class="hint">Liest die Metriken der HA-Integration „Prometheus“. Sensoren über die Entity-ID
+    wie bei HA. Achtung: Prometheus speichert standardmäßig nur 15 Tage – für Monatswerte muss die
+    Aufbewahrung länger sein (VictoriaMetrics: Standard 1 Monat).
+    Selektor leer lassen für den Standard; <code>{entity}</code> wird durch die Entity-ID ersetzt.</p>
+  <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
+    <label class="feld">URL mit Port
+      <input name="prom_url" value="{{ ha.prom_url }}" placeholder="http://192.168.0.59:9090" style="width:220px">
+    </label>
+    <label class="feld">Benutzer
+      <input name="prom_user" value="{{ ha.prom_user }}" placeholder="optional" style="width:120px">
+    </label>
+    <label class="feld">Passwort {{ "(gesetzt)" if ha.prom_password }}
+      <input type="password" name="prom_password" placeholder="{{ '••••••••' if ha.prom_password else 'optional' }}" style="width:120px">
+    </label>
+    <label class="feld" style="flex-basis:100%">Selektor
+      <input name="prom_selektor" value="{{ ha.prom_selektor }}" placeholder="{{ prom_standard }}" style="width:100%">
+    </label>
+    <button type="button" class="secondary" onclick="testeVerbindung('prometheus', this)">Prometheus testen</button>
+  </div>
   </div>
 
   <div style="margin-top:14px">
@@ -247,6 +343,16 @@ async function importiereSettings() {
   status.className = "gruen";
   setTimeout(() => location.reload(), 1200);
 }
+
+// Nur den Verbindungsblock der gewaehlten Datenquelle zeigen (die Felder der
+// anderen werden trotzdem mitgespeichert – ein Wechsel verliert also nichts)
+function zeigeQuelle() {
+  const typ = document.getElementById("datasource").value;
+  document.querySelectorAll("[data-quelle]").forEach(el => {
+    el.style.display = el.dataset.quelle.split(" ").includes(typ) ? "" : "none";
+  });
+}
+zeigeQuelle();
 
 async function testeVerbindung(art, btn) {
   const span = document.getElementById("test-ergebnis");

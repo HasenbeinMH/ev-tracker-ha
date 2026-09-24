@@ -748,7 +748,26 @@ HA_ENTITY_DEFAULTS = {
     "influx_measurement_kwh":    "kWh",
     "influx_measurement_eur_l":  "EUR/L",
     "influx_measurement_prozent": "%",
-    # Datenquelle: "ha" oder "influxdb"
+    # Tag, ueber den InfluxDB 1.x/2.x den Sensor findet (friendly_name oder entity_id)
+    "influx_tag":                "friendly_name",
+    # InfluxDB 2.x
+    "influx2_url":               "http://localhost:8086",
+    "influx2_org":               "",
+    "influx2_bucket":            "home_assistant",
+    "influx2_token":             "",
+    # PostgreSQL / TimescaleDB (HA-Integration LTSS)
+    "pg_host":                   "localhost",
+    "pg_port":                   "5432",
+    "pg_database":               "homeassistant",
+    "pg_user":                   "",
+    "pg_password":               "",
+    "pg_tabelle":                "ltss",
+    # Prometheus / VictoriaMetrics (leerer Selektor = Standard aus datenquellen.py)
+    "prom_url":                  "http://localhost:9090",
+    "prom_user":                 "",
+    "prom_password":             "",
+    "prom_selektor":             "",
+    # Datenquelle: "ha", "influxdb", "influxdb2", "postgres" oder "prometheus"
     "datasource":                "ha",
 }
 

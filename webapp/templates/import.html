@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block titel %}HA Import{% endblock %}
 {% block inhalt %}
-<h1>📥 Datenimport – Home Assistant / InfluxDB</h1>
+<h1>📥 Datenimport – Home Assistant / Datenbank</h1>
 <p class="hint">
-  Datenquelle: <strong>{{ "InfluxDB (mit HA-API-Fallback)" if cfg.datasource == "influxdb" else "Home Assistant API" }}</strong>
+  Datenquelle: <strong>{{ quelle_name ~ " (mit HA-API-Fallback)" if quelle_name else "Home Assistant API" }}</strong>
   – änderbar in den <a href="einstellungen" style="color:#7a9ec4">Einstellungen</a>.
 </p>
 

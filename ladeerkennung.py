@@ -33,7 +33,7 @@ def _client():
 
 def batterie_verlauf(jahr: int, monat: int) -> list:
     """Stündlicher Verlauf des Batteriestands als [(zeitstempel, prozent), ...].
-    Nutzt die eingestellte Quelle (InfluxDB oder HA-Langzeitstatistik, siehe
+    Nutzt die eingestellte Quelle (Datenbank oder HA-Langzeitstatistik, siehe
     akkuverbrauch.verlaeufe) und fällt zuletzt auf die History-API zurück."""
     letzter = calendar.monthrange(jahr, monat)[1]
     start = datetime(jahr, monat, 1)

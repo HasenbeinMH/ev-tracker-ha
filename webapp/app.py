@@ -31,7 +31,8 @@ import mailer
 import charts
 import zeitraum as zeitraum_mod
 from version import VERSION, CHANGELOG
-from ha_client import HAClient, InfluxClient, IST_ADDON, ha_verbindung as _ha_verbindung
+import datenquellen
+from ha_client import HAClient, IST_ADDON, ha_verbindung as _ha_verbindung
 from pdf_parser import parse_rechnung_pdf, parse_rechnung_text
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -591,7 +592,7 @@ def versicherung_delete(id: int = Form(...)):
 
 
 # ─────────────────────────────────────────────────────────────
-#  HA / InfluxDB Import
+#  Import aus HA oder einer Datenbank (InfluxDB, PostgreSQL, Prometheus)
 # ─────────────────────────────────────────────────────────────
 
 _import_jobs: dict = {}   # job_id -> {"progress", "total", "rows", "done", "fehler"}
@@ -607,37 +608,10 @@ def _monat_liste(von_y, von_m, bis_y, bis_m):
     return result
 
 
-def _make_influx_client(cfg):
-    return InfluxClient.aus_einstellungen(cfg)
-
-
-def _fetch_monat(client, ic, cfg, use_influx, year, month):
-    """Holt alle Werte eines Monats (InfluxDB primär, HA-API-Fallback)."""
+def _fetch_monat(client, quelle, cfg, year, month):
+    """Holt alle Werte eines Monats: zuerst aus der eingestellten Datenbank
+    (datenquellen.py), was dort fehlt aus der HA-API."""
     out = {}
-
-    def influx(key):
-        if not ic:
-            return None
-        meas_km = cfg.get("influx_measurement_km", "km")
-        meas_kwh = cfg.get("influx_measurement_kwh", "kWh")
-        meas_eur = cfg.get("influx_measurement_eur_l", "EUR/L")
-        try:
-            if key == "km":
-                fn = cfg.get("fn_odometer", "").strip()
-                return ic.get_month_delta(fn, meas_km, year, month) if fn else None
-            if key == "pv":
-                fn = cfg.get("fn_pv_production", "").strip()
-                return ic.get_month_sum(fn, meas_kwh, year, month) if fn else None
-            if key == "wallbox":
-                fn = cfg.get("fn_wallbox_energy", "").strip()
-                return ic.get_month_sum(fn, meas_kwh, year, month) if fn else None
-            if key == "benzin":
-                fns = [f for f in [cfg.get("fn_tankerkoenig", "").strip(),
-                                   cfg.get("fn_tankerkoenig_2", "").strip()] if f]
-                return ic.get_month_avg(fns, meas_eur, year, month) if fns else None
-        except Exception:
-            return None
-        return None
 
     def ha(key):
         if not client:
@@ -664,7 +638,7 @@ def _fetch_monat(client, ic, cfg, use_influx, year, month):
         return None
 
     for key in ("km", "pv", "wallbox", "benzin"):
-        val = influx(key) if use_influx else None
+        val = quelle.monatswert(key, year, month) if quelle else None
         if val is None:
             val = ha(key)
         out[key] = round(val, 3) if val is not None else None
@@ -673,18 +647,16 @@ def _fetch_monat(client, ic, cfg, use_influx, year, month):
 
 def _import_worker(job_id, monate, cfg):
     job = _import_jobs[job_id]
-    use_influx = cfg.get("datasource", "ha") == "influxdb"
     verbindung = _ha_verbindung(cfg)
     client = HAClient(**verbindung) if verbindung else None
-    ic = None
-    if use_influx:
-        try:
-            ic = _make_influx_client(cfg)
-        except Exception as e:
-            job["fehler"].append(str(e))
+    quelle = None
+    try:
+        quelle = datenquellen.aus_einstellungen(cfg)
+    except Exception as e:
+        job["fehler"].append(str(e))
     try:
         for i, (y, m) in enumerate(monate):
-            werte = _fetch_monat(client, ic, cfg, use_influx, y, m)
+            werte = _fetch_monat(client, quelle, cfg, y, m)
             job["rows"].append({"monat": f"{y}-{m:02d}",
                                 "label": f"{MONATE[m-1][:3]} {y}", **werte})
             job["progress"] = i + 1
@@ -699,6 +671,7 @@ def import_page(request: Request):
     cfg = db.get_ha_settings()
     now = datetime.now()
     return render(request, "import.html", cfg=cfg, aktiv="import",
+                  quelle_name=datenquellen.QUELLEN.get(cfg.get("datasource")),
                   mail=db.get_mail_settings(),
                   jahre=list(range(2023, now.year + 2)), jahr=now.year,
                   monat=now.month)
@@ -710,7 +683,7 @@ def import_start(von_monat: int = Form(...), von_jahr: int = Form(...),
     if (von_jahr, von_monat) > (bis_jahr, bis_monat):
         return JSONResponse({"error": "Von muss vor Bis liegen."}, status_code=400)
     cfg = db.get_ha_settings()
-    if not _ha_verbindung(cfg) and cfg.get("datasource") != "influxdb":
+    if not _ha_verbindung(cfg) and cfg.get("datasource") not in datenquellen.QUELLEN:
         return JSONResponse({"error": "Keine Datenquelle konfiguriert."}, status_code=400)
     monate = _monat_liste(von_jahr, von_monat, bis_jahr, bis_monat)
     job_id = uuid.uuid4().hex[:12]
@@ -779,15 +752,18 @@ def test_ha():
     return {"ok": ok, "text": "Verbunden" if ok else "Keine Verbindung"}
 
 
-@app.post("/api/test/influx")
-def test_influx():
-    cfg = db.get_ha_settings()
+@app.post("/api/test/{typ}")
+def test_datenquelle(typ: str):
+    """Verbindungstest einer Datenbank mit den gespeicherten Einstellungen –
+    unabhaengig davon, welche Datenquelle gerade ausgewaehlt ist."""
+    typ = {"influx": "influxdb"}.get(typ, typ)       # alter Name des Knopfs
+    if typ not in datenquellen.QUELLEN:
+        return JSONResponse({"ok": False, "text": "Unbekannte Datenquelle"}, status_code=404)
     try:
-        ok = _make_influx_client(cfg).test_connection()
+        ok, text = datenquellen.aus_einstellungen({**db.get_ha_settings(), "datasource": typ}).test()
     except Exception as e:
-        return {"ok": False, "text": str(e)}
-    return {"ok": ok, "text": f"Verbunden · '{cfg.get('influx_database')}' gefunden"
-            if ok else "Keine Verbindung oder Datenbank nicht gefunden"}
+        ok, text = False, str(e)
+    return {"ok": ok, "text": text}
 
 
 # ─────────────────────────────────────────────────────────────
@@ -933,7 +909,7 @@ def rechnung_apply(payload: dict):
 #  Einstellungen als Datei sichern / laden
 # ─────────────────────────────────────────────────────────────
 
-GEHEIM_KEYS = {"ha_token", "influx_password"}
+GEHEIM_KEYS = {"ha_token"} | datenquellen.GEHEIM
 
 
 @app.get("/api/settings/export")
@@ -1147,27 +1123,26 @@ def _rohwerte_text(werte: dict) -> str:
 
 
 def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> list:
-    """Holt die aktuellen Monatswerte aus HA/InfluxDB und schreibt sie fort.
+    """Holt die aktuellen Monatswerte aus HA bzw. der eingestellten Datenbank und
+    schreibt sie fort.
 
     Standardmaessig laufender Monat und Vormonat – so wird der Vormonat noch
     vervollstaendigt, falls spaet Daten nachkommen.
     Jeder Lauf wird in import.log protokolliert.
     """
     cfg = db.get_ha_settings()
-    use_influx = cfg.get("datasource", "ha") == "influxdb"
-    quelle_text = "InfluxDB (Fallback HA-API)" if use_influx else "Home Assistant API"
+    name = datenquellen.QUELLEN.get(cfg.get("datasource"))
+    quelle_text = f"{name} (Fallback HA-API)" if name else "Home Assistant API"
     _log_import([f"Abruf gestartet ({quelle}) · Quelle: {quelle_text}"], trenner=True)
 
     verbindung = _ha_verbindung(cfg)
     client = HAClient(**verbindung) if verbindung else None
-    ic = None
-    if use_influx:
-        try:
-            ic = _make_influx_client(cfg)
-        except Exception as e:
-            _log_import([f"✗ InfluxDB nicht nutzbar: {e}", "Abruf abgebrochen"])
-            return [f"InfluxDB nicht nutzbar: {e}"]
-    if client is None and ic is None:
+    try:
+        dq = datenquellen.aus_einstellungen(cfg)
+    except Exception as e:
+        _log_import([f"✗ {name} nicht nutzbar: {e}", "Abruf abgebrochen"])
+        return [f"{name} nicht nutzbar: {e}"]
+    if client is None and dq is None:
         _log_import(["✗ Keine Datenquelle konfiguriert", "Abruf abgebrochen"])
         return ["Keine Datenquelle konfiguriert"]
 
@@ -1186,7 +1161,7 @@ def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> lis
         schluessel = f"{jahr}-{monat:02d}"
         netz_ct = berechnung.netzpreis_monat(schluessel, tarife)
         try:
-            werte = _fetch_monat(client, ic, cfg, use_influx, jahr, monat)
+            werte = _fetch_monat(client, dq, cfg, jahr, monat)
         except Exception as e:
             fehler += 1
             _log_import([f"✗ {schluessel}: Abruf fehlgeschlagen ({e})"])
@@ -1215,8 +1190,8 @@ def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> lis
         _log_import([f"{schluessel}: übernommen {zeile}"])
         protokoll.append(f"{schluessel}: {zeile}")
 
-    # Verbrauch aus dem Akkustand fortschreiben (InfluxDB oder HA-API, wie eingestellt)
-    if client is not None or ic is not None:
+    # Verbrauch aus dem Akkustand fortschreiben (Datenbank oder HA-API, wie eingestellt)
+    if client is not None or dq is not None:
         try:
             meldung = akkuverbrauch.aktualisieren()
         except Exception as e:
@@ -1575,6 +1550,8 @@ def einstellungen(request: Request):
                                    and not (ha_settings.get("ha_url") and ha_settings.get("ha_token")),
                   anbieter=db.get_lade_anbieter(),
                   sensor_felder=SENSOR_FELDER,
+                  quellen=datenquellen.QUELLEN,
+                  prom_standard=datenquellen.PROM_SELEKTOR_STANDARD,
                   aktiv="einstellungen")
 
 
@@ -1613,21 +1590,13 @@ def anbieter_delete(id: int = Form(...)):
 @app.post("/einstellungen/ha")
 async def einstellungen_ha(request: Request):
     form = await request.form()
-    keys = ["ha_url", "ha_token", "datasource",
-            "influx_url", "influx_port", "influx_database",
-            "influx_user", "influx_password",
-            "influx_measurement_km", "influx_measurement_kwh",
-            "influx_measurement_eur_l", "influx_measurement_prozent"]
-    keys += [k for k, _, _ in ((h, f, l) for h, f, l in SENSOR_FELDER)]
-    keys += [f for _, f, _ in SENSOR_FELDER if f]
-    settings = {}
-    for key in keys:
-        if key in form:
-            settings[key] = str(form[key]).strip()
-    # Leeres Token-Feld = Token behalten (Maskierung)
-    if settings.get("ha_token") == "":
-        settings.pop("ha_token")
-    if settings.get("influx_password") == "":
-        settings.pop("influx_password")
+    # Alle HA-/Datenbank-Einstellungen, die das Formular mitschickt
+    settings = {k: str(form[k]).strip() for k in db.HA_ENTITY_DEFAULTS if k in form}
+    if settings.get("datasource") not in (None, "ha", *datenquellen.QUELLEN):
+        settings.pop("datasource")
+    # Leeres Token-/Passwortfeld = gespeicherten Wert behalten (Maskierung)
+    for key in GEHEIM_KEYS:
+        if settings.get(key) == "":
+            settings.pop(key)
     db.save_ha_settings(settings)
     return RedirectResponse("../einstellungen", status_code=303)

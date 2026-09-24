@@ -58,32 +58,34 @@ def _stundenwerte(client, entity: str, start: datetime, ende: datetime,
 def verlaeufe(start: datetime, ende: datetime, mit_km: bool = True) -> dict:
     """Stuendlicher Akkustand (und Kilometerstand) aus der eingestellten Datenquelle.
 
-    Ist InfluxDB gewaehlt und sind die Friendly Names eingetragen, kommt der
-    Verlauf von dort; sonst – oder wenn InfluxDB nichts liefert – aus der
-    Langzeitstatistik der HA-API. Rueckgabe: {"soc", "km", "quelle", "meldung"}.
+    Ist eine Datenbank gewaehlt (InfluxDB, PostgreSQL, Prometheus – siehe
+    datenquellen.py) und sind die Sensoren dort eingetragen, kommt der Verlauf
+    von dort; sonst – oder wenn sie nichts liefert – aus der Langzeitstatistik
+    der HA-API. Rueckgabe: {"soc", "km", "quelle", "meldung"}.
     """
+    import datenquellen
     cfg = db.get_ha_settings()
     hinweise = []
 
-    if cfg.get("datasource") == "influxdb":
-        fn_soc = (cfg.get("fn_ev_battery") or "").strip()
-        fn_km = (cfg.get("fn_odometer") or "").strip()
-        if fn_soc and (fn_km or not mit_km):
-            from ha_client import InfluxClient
+    try:
+        dq = datenquellen.aus_einstellungen(cfg)
+    except Exception as e:
+        dq = None
+        hinweise.append(f"{datenquellen.QUELLEN.get(cfg.get('datasource'))} nicht nutzbar ({e})")
+    if dq is not None:
+        if dq.hat("soc") and (dq.hat("km") or not mit_km):
             try:
-                ic = InfluxClient.aus_einstellungen(cfg)
-                soc = ic.get_stundenwerte(fn_soc, cfg.get("influx_measurement_prozent") or "%",
-                                          start, ende, "mean")
-                km = (ic.get_stundenwerte(fn_km, cfg.get("influx_measurement_km") or "km",
-                                          start, ende, "last") if mit_km else [])
+                soc = dq.stundenwerte("soc", start, ende, "mean")
+                km = dq.stundenwerte("km", start, ende, "last") if mit_km else []
                 if soc and (km or not mit_km):
-                    return {"soc": soc, "km": km, "quelle": "InfluxDB", "meldung": ""}
-                hinweise.append("InfluxDB lieferte keine Werte für "
+                    return {"soc": soc, "km": km, "quelle": dq.name, "meldung": ""}
+                hinweise.append(f"{dq.name} lieferte keine Werte für "
                                 + ("Batteriestand" if not soc else "Kilometerstand"))
             except Exception as e:
-                hinweise.append(f"InfluxDB nicht erreichbar ({e})")
+                hinweise.append(f"{dq.name} nicht erreichbar ({e})")
         else:
-            hinweise.append("Friendly Name für Batteriestand oder Kilometerstand fehlt")
+            spalte = "Entity-ID" if dq.nutzt_entity_ids else "Friendly Name"
+            hinweise.append(f"{spalte} für Batteriestand oder Kilometerstand fehlt ({dq.name})")
 
     from ha_client import HAClient, ha_verbindung
     verbindung = ha_verbindung(cfg)

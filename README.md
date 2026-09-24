@@ -31,14 +31,14 @@ nicht auf ein bestimmtes Modell festgelegt.
 <tr>
 <td><a href="docs/screenshot-bericht.png"><img src="docs/screenshot-bericht.png" alt="Monatsbericht per Mail" width="70%"></a>
 <br><b>Monatsbericht per Mail</b> – kommt automatisch, sobald der Monat vollständig ist.</td>
-<td valign="top"><br><b>Und außerdem:</b> Import aus Home Assistant oder InfluxDB, jede Nacht automatisch · Rechnungs-PDFs einlesen · Ladeerkennung am Akkustand (meldet Ladungen unterwegs ohne Beleg) · THG-Quote und KFZ-Steuer · Instandhaltung und Versicherung · Backup und Wiederherstellen</td>
+<td valign="top"><br><b>Und außerdem:</b> Import aus Home Assistant oder einer Datenbank (InfluxDB 1.x/2.x, PostgreSQL/TimescaleDB, Prometheus/VictoriaMetrics), jede Nacht automatisch · Rechnungs-PDFs einlesen · Ladeerkennung am Akkustand (meldet Ladungen unterwegs ohne Beleg) · THG-Quote und KFZ-Steuer · Instandhaltung und Versicherung · Backup und Wiederherstellen</td>
 </tr>
 </table>
 
 ## Voraussetzungen
 
 Der EV Tracker **misst selbst nichts** – er liest jeden Monat vorhandene Sensoren aus Home
-Assistant (oder InfluxDB) aus. Damit die Auswertung funktioniert, müssen diese Sensoren
+Assistant (oder einer Datenbank wie InfluxDB) aus. Damit die Auswertung funktioniert, müssen diese Sensoren
 vorher in Home Assistant eingerichtet sein:
 
 | Was | Wozu | Hinweis |
@@ -122,11 +122,13 @@ suchen, wenn unklar ist, wo genau sich beide Wege unterscheiden.
 | `charts.py` | Chart-Definitionen (Apache ECharts), werden im Browser gezeichnet |
 | `berechnung.py` | Alle Kennzahlen und Ersparnis-Berechnungen |
 | `database.py` | SQLite-Zugriff und Schema |
-| `ha_client.py` | Home Assistant und InfluxDB |
+| `ha_client.py` | Home Assistant (REST, WebSocket, Supervisor) |
+| `datenquellen.py` | Datenbanken: InfluxDB 1.x/2.x, PostgreSQL/TimescaleDB (LTSS), Prometheus/VictoriaMetrics |
 | `berichte.py`, `mailer.py` | Monatsbericht als PDF, Mailversand |
 | `pdf_parser.py`, `ladeerkennung.py` | Rechnungs-PDFs, Erkennung von Ladevorgängen |
 | `backup_db.py`, `backup.sh` | Sicherung der Datenbank (nur Standalone-Docker) |
 | `settings_tool.py` | Einstellungen als JSON exportieren/importieren |
 | `testdaten.py`, `testdaten.bat` | Testdaten anlegen |
 | `tests/funktionstest.py` | Funktions- und Plausibilitätstest mit eigener Test-DB: `python tests/funktionstest.py` (braucht zusätzlich `httpx`) |
+| `tests/datenquellen_test.py` | Test der Datenbank-Anbindungen gegen nachgebaute Server: `python tests/datenquellen_test.py` |
 | `version.py` | Versionsnummer und Änderungslog |

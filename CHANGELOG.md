@@ -3,6 +3,13 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.1.0] - 2026-09-24
+### Weitere Datenbanken: InfluxDB 2.x, PostgreSQL/TimescaleDB, Prometheus
+- Neben der HA-API und InfluxDB 1.x lassen sich jetzt auch InfluxDB 2.x (Flux, Token), PostgreSQL/TimescaleDB (HA-Integration LTSS) und Prometheus/VictoriaMetrics als Datenquelle waehlen – fuer Import, naechtlichen Abruf, Akkuverbrauch und Ladeerkennung; was die Datenbank nicht liefert, kommt weiter aus der HA-API. Die drei neuen Anbindungen sind als "neu" gekennzeichnet
+- Einstellungen: je Datenquelle ein eigener Verbindungsblock mit Test-Knopf; die Spalte "Name in der InfluxDB" erscheint nur noch bei InfluxDB
+- InfluxDB: der Tag, ueber den der Sensor gefunden wird, ist einstellbar (friendly_name oder entity_id); Monatsgrenzen jetzt in Ortszeit statt UTC
+- Stundenwerte fuer den Akkuverbrauch beginnen jetzt mit der ersten Stunde des Zeitraums (vorher fehlte sie)
+
 ## [2.0.7] - 2026-09-24
 ### Korrekturen aus dem Funktionstest: Tarif je Monat, KFZ-Steuer, Ladeerkennung
 - Verbrauch aus dem Akkustand und Ladeerkennung funktionieren jetzt auch im Add-on ohne eigenen HA-Token (nutzen wie der Import den Supervisor-Zugang)

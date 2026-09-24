@@ -19,10 +19,28 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.0.7"
+VERSION = "2.1.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.1.0",
+        "datum": "2026-09-24",
+        "titel": "Weitere Datenbanken: InfluxDB 2.x, PostgreSQL/TimescaleDB, Prometheus",
+        "aenderungen": [
+            "Neben der HA-API und InfluxDB 1.x lassen sich jetzt auch InfluxDB 2.x (Flux, "
+            "Token), PostgreSQL/TimescaleDB (HA-Integration LTSS) und Prometheus/"
+            "VictoriaMetrics als Datenquelle waehlen – fuer Import, naechtlichen Abruf, "
+            "Akkuverbrauch und Ladeerkennung; was die Datenbank nicht liefert, kommt weiter "
+            "aus der HA-API. Die drei neuen Anbindungen sind als \"neu\" gekennzeichnet",
+            "Einstellungen: je Datenquelle ein eigener Verbindungsblock mit Test-Knopf; die "
+            "Spalte \"Name in der InfluxDB\" erscheint nur noch bei InfluxDB",
+            "InfluxDB: der Tag, ueber den der Sensor gefunden wird, ist einstellbar "
+            "(friendly_name oder entity_id); Monatsgrenzen jetzt in Ortszeit statt UTC",
+            "Stundenwerte fuer den Akkuverbrauch beginnen jetzt mit der ersten Stunde des "
+            "Zeitraums (vorher fehlte sie)",
+        ],
+    },
     {
         "version": "2.0.7",
         "datum": "2026-09-24",
