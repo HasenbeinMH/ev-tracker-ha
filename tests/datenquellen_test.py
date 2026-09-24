@@ -354,6 +354,39 @@ for typ, name in datenquellen.QUELLEN.items():
     r = c.post("/api/import/start", data={"von_monat": 2, "von_jahr": 2026, "bis_monat": 2,
                                           "bis_jahr": 2026})
     check("App", f"Zeitraum-Import startet mit {name} ohne HA", r.status_code == 200, r.text[:80])
+    import time as _t
+    for _ in range(50):
+        job = c.get(f"/api/import/status/{r.json()['job_id']}").json()
+        if job["done"]:
+            break
+        _t.sleep(0.2)
+    zeile = job["rows"][0] if job.get("rows") else {}
+    check("App", f"Vorschau nennt Quelle und Herkunft je Wert ({name})",
+          job.get("quelle", "").startswith(name)
+          and all(zeile.get("_quelle", {}).get(k) == name for k in SOLL),
+          f'{job.get("quelle")} / {zeile.get("_quelle")}')
+
+# Rueckfall auf HA wird als "HA-API" gekennzeichnet, nichts geliefert -> None
+class FakeHA:
+    def get_month_delta(self, eid, y, m):
+        return 999.0 if eid == "sensor.odo" else None
+    get_month_sum_from_daily = get_month_delta
+    def get_month_avg_multi(self, ids, y, m):
+        return None
+leer = datenquellen.aus_einstellungen({"datasource": "influxdb", "influx_url": "http://influx"})
+werte = webapp._fetch_monat(FakeHA(), leer, {**ENT, "datasource": "influxdb"}, 2026, 2)
+check("App", "Rueckfall auf HA als 'HA-API' gekennzeichnet",
+      werte["km"] == 999.0 and werte["_quelle"]["km"] == "HA-API" and werte["_quelle"]["benzin"] is None,
+      str(werte))
+check("App", "Protokollzeile nennt Herkunft",
+      webapp._rohwerte_text(werte).startswith("km=999.0 (HA-API) · PV kWh=—"), webapp._rohwerte_text(werte))
+r = c.post("/api/import/apply", json={"quelle": "InfluxDB 1.x, fehlende Werte aus der HA-API", "rows": [
+    {"monat": "2031-05", "km": "1200", "benzin": "1,799",
+     "_quelle": {"km": "InfluxDB 1.x", "benzin": "von Hand"}}]}).json()
+check("App", "Uebernehmen: Protokoll mit Herkunft und 'von Hand'",
+      r["log"] == ["2031-05: 1200 km (InfluxDB 1.x), 1.799 €/L (von Hand)"], str(r["log"]))
+db.delete_fahrt_monat("2031-05")
+db.delete_benzinpreis("2031-05")
 
 # Suche in der Datenbank: Schnittstelle (die Abfragen selbst prueft der Docker-Test)
 alt_suche = datenquellen.InfluxDB1.suche

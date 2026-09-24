@@ -19,10 +19,23 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.1.1"
+VERSION = "2.1.2"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.1.2",
+        "datum": "2026-09-24",
+        "titel": "Import zeigt, woher jeder Wert kommt",
+        "aenderungen": [
+            "Zeitraum-Import: die Vorschau nennt die Quelle und markiert jeden Wert mit "
+            "\"DB\" (aus der Datenbank) oder \"HA\" (Rueckfall auf Home Assistant)",
+            "Importprotokoll: bei jedem Wert steht die Herkunft, z.B. \"790 km (InfluxDB 1.x)\" "
+            "oder \"2.151 €/L (HA-API)\"; in der Vorschau geaenderte Werte als \"von Hand\"",
+            "Importseite: veraltete Hinweise korrigiert (Stromtarif des Monats statt "
+            "aktueller Tarif, naechtlicher Abruf auch aus der Datenbank)",
+        ],
+    },
     {
         "version": "2.1.1",
         "datum": "2026-09-24",

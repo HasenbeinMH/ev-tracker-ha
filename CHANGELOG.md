@@ -3,6 +3,12 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.1.2] - 2026-09-24
+### Import zeigt, woher jeder Wert kommt
+- Zeitraum-Import: die Vorschau nennt die Quelle und markiert jeden Wert mit "DB" (aus der Datenbank) oder "HA" (Rueckfall auf Home Assistant)
+- Importprotokoll: bei jedem Wert steht die Herkunft, z.B. "790 km (InfluxDB 1.x)" oder "2.151 €/L (HA-API)"; in der Vorschau geaenderte Werte als "von Hand"
+- Importseite: veraltete Hinweise korrigiert (Stromtarif des Monats statt aktueller Tarif, naechtlicher Abruf auch aus der Datenbank)
+
 ## [2.1.1] - 2026-09-24
 ### Sensoren direkt in der Datenbank suchen
 - Einstellungen: neuer Knopf "In Datenbank suchen" – findet Sensoren in der gewaehlten Datenbank (InfluxDB, PostgreSQL, Prometheus) samt Einheit und Zeitraum mit Daten; "Uebernehmen" traegt den Treffer in die passende Zeile ein

@@ -15,7 +15,7 @@
   </div>
   <p class="hint" style="margin-bottom:0">
     Jede Nacht um 0:00 Uhr holt die App km, geladene kWh und Benzinpreis für den
-    laufenden Monat und den Vormonat automatisch aus Home Assistant – bereits
+    laufenden Monat und den Vormonat automatisch aus der eingestellten Datenquelle (Home Assistant oder Datenbank) – bereits
     importierte Werte werden aktualisiert, manuelle Einträge bleiben unberührt.
     {% if mail.auto_import != "1" %}<br><span class="gelb">Derzeit deaktiviert
     (Schalter im Reiter Berichte).</span>{% endif %}
@@ -69,9 +69,10 @@
   <h2>Vorschau – alle Werte editierbar, leeres Feld wird nicht übernommen</h2>
   <p class="hint">
     <strong>km</strong> → Monatskilometer · <strong>PV kWh</strong> → Ladevorgang „Privat – PV" (PV-Preis) ·
-    <strong>Wallbox kWh</strong> → Ladevorgang „Privat – Netzbezug" (aktueller Stromtarif) ·
+    <strong>Wallbox kWh</strong> → Ladevorgang „Privat – Netzbezug" (Stromtarif des Monats) ·
     <strong>Benzin €/L</strong> → Monats-Benzinpreis
   </p>
+  <p class="hint" id="vorschau-quelle"></p>
   <div class="tabelle-scroll"><table id="vorschau-tabelle">
     <tr><th>Monat</th><th>km</th><th>PV kWh</th><th>Wallbox kWh</th><th>Benzin €/L</th></tr>
   </table></div>
@@ -101,7 +102,7 @@ async function ladeImportLog() {
 async function autoImport(btn) {
   const m = document.getElementById("auto-meldung");
   btn.disabled = true;
-  m.textContent = "Hole Daten aus Home Assistant …"; m.className = "muted";
+  m.textContent = "Hole Daten …"; m.className = "muted";
   try {
     const r = await fetch("api/import/auto", { method: "POST" });
     const d = await r.json();
@@ -145,19 +146,35 @@ async function pollStatus() {
     document.getElementById("btn-fetch").disabled = false;
     document.getElementById("progress-bereich").style.display = "none";
     if (job.fehler.length) zeigeFehler(job.fehler.join("\n"));
-    zeigeVorschau(job.rows);
+    zeigeVorschau(job.rows, job.quelle);
   }
 }
 
-function zeigeVorschau(rows) {
+// Kennzeichen unter jedem Wert: DB = aus der Datenbank, HA = aus der HA-API
+const HA_API = "HA-API";
+function herkunftMarke(herkunft) {
+  if (!herkunft) return "";
+  const db = herkunft !== HA_API;
+  return `<div class="herkunft" title="${herkunft}" style="font-size:10px; margin-top:2px;` +
+         ` color:${db ? "#7cc896" : "#6fb0e0"}">${db ? "DB" : "HA"}</div>`;
+}
+
+let vorschauQuelle = "";
+function zeigeVorschau(rows, quelle) {
   vorschauRows = rows;
+  vorschauQuelle = quelle || "";
+  document.getElementById("vorschau-quelle").innerHTML = quelle
+    ? `Abgerufen aus: <strong>${quelle}</strong> · unter jedem Wert steht seine Herkunft: ` +
+      `<span style="color:#7cc896">DB</span> = Datenbank, <span style="color:#6fb0e0">HA</span> = Home Assistant`
+    : "";
   const tabelle = document.getElementById("vorschau-tabelle");
   tabelle.querySelectorAll("tr:not(:first-child)").forEach(tr => tr.remove());
   for (const r of rows) {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${r.label}</td>` +
       ["km", "pv", "wallbox", "benzin"].map(k =>
-        `<td><input data-monat="${r.monat}" data-key="${k}" value="${r[k] ?? ""}"></td>`
+        `<td><input data-monat="${r.monat}" data-key="${k}" value="${r[k] ?? ""}">` +
+        `${herkunftMarke((r._quelle || {})[k])}</td>`
       ).join("");
     tabelle.appendChild(tr);
   }
@@ -166,14 +183,25 @@ function zeigeVorschau(rows) {
 
 document.getElementById("btn-apply").addEventListener("click", async () => {
   const rowsByMonat = {};
-  for (const r of vorschauRows) rowsByMonat[r.monat] = { monat: r.monat };
+  const original = {};
+  for (const r of vorschauRows) {
+    rowsByMonat[r.monat] = { monat: r.monat, _quelle: {} };
+    original[r.monat] = r;
+  }
   document.querySelectorAll("#vorschau-tabelle input").forEach(inp => {
-    rowsByMonat[inp.dataset.monat][inp.dataset.key] = inp.value.trim();
+    const {monat, key} = inp.dataset;
+    const wert = inp.value.trim();
+    rowsByMonat[monat][key] = wert;
+    // Herkunft fuers Protokoll; geaenderte Werte gelten als "von Hand"
+    const alt = original[monat][key];
+    const herkunft = (original[monat]._quelle || {})[key];
+    if (wert && String(alt ?? "") !== wert) rowsByMonat[monat]._quelle[key] = "von Hand";
+    else if (wert && herkunft) rowsByMonat[monat]._quelle[key] = herkunft;
   });
   const resp = await fetch("api/import/apply", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ rows: Object.values(rowsByMonat) }),
+    body: JSON.stringify({ rows: Object.values(rowsByMonat), quelle: vorschauQuelle }),
   });
   const data = await resp.json();
   const log = document.getElementById("log");

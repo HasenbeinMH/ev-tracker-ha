@@ -608,10 +608,14 @@ def _monat_liste(von_y, von_m, bis_y, bis_m):
     return result
 
 
+HA_API = "HA-API"
+
+
 def _fetch_monat(client, quelle, cfg, year, month):
     """Holt alle Werte eines Monats: zuerst aus der eingestellten Datenbank
-    (datenquellen.py), was dort fehlt aus der HA-API."""
-    out = {}
+    (datenquellen.py), was dort fehlt aus der HA-API.
+    Unter "_quelle" steht je Wert, woher er kam (Name der Datenbank, HA_API oder None)."""
+    out = {"_quelle": {}}
 
     def ha(key):
         if not client:
@@ -639,9 +643,12 @@ def _fetch_monat(client, quelle, cfg, year, month):
 
     for key in ("km", "pv", "wallbox", "benzin"):
         val = quelle.monatswert(key, year, month) if quelle else None
+        herkunft = quelle.name if val is not None else None
         if val is None:
             val = ha(key)
+            herkunft = HA_API if val is not None else None
         out[key] = round(val, 3) if val is not None else None
+        out["_quelle"][key] = herkunft
     return out
 
 
@@ -654,6 +661,8 @@ def _import_worker(job_id, monate, cfg):
         quelle = datenquellen.aus_einstellungen(cfg)
     except Exception as e:
         job["fehler"].append(str(e))
+    job["quelle"] = (f"{quelle.name}, fehlende Werte aus der HA-API" if quelle
+                     else "Home Assistant API")
     try:
         for i, (y, m) in enumerate(monate):
             werte = _fetch_monat(client, quelle, cfg, y, m)
@@ -713,17 +722,23 @@ def import_apply(payload: dict):
         monat = r.get("monat", "")
         if not monat:
             continue
+        # Herkunft je Wert aus der Vorschau (Datenbank, HA-API oder "von Hand")
+        herkunft = r.get("_quelle") or {}
+
+        def mit_quelle(text, key):
+            return f"{text} ({herkunft[key]})" if herkunft.get(key) else text
+
         # Netzbezug mit dem Tarif bewerten, der in diesem Monat galt – nicht dem heutigen
         netz_ct = berechnung.netzpreis_monat(monat, tarife)
         teile = []
         km = parse_de(str(r.get("km") or ""))
         if km is not None and km > 0:
             db.set_fahrt_monat(monat, round(km, 1))
-            teile.append(f"{km:.0f} km")
+            teile.append(mit_quelle(f"{km:.0f} km", "km"))
         benzin = parse_de(str(r.get("benzin") or ""))
         if benzin is not None and benzin > 0:
             db.set_benzinpreis(monat, round(benzin, 3))
-            teile.append(f"{benzin:.3f} €/L")
+            teile.append(mit_quelle(f"{benzin:.3f} €/L", "benzin"))
         for key, anbieter, ct in [("pv", "Privat – PV", pv_ct),
                                   ("wallbox", "Privat – Netzbezug", netz_ct)]:
             kwh = parse_de(str(r.get(key) or ""))
@@ -734,11 +749,13 @@ def import_apply(payload: dict):
                     db.add_ladevorgang(f"{monat}-01", kwh, ct,
                                        round(kwh * ct / 100, 2), anbieter,
                                        11, "AC", f"Import {monat}")
-                    teile.append(f"{key} {kwh:.1f} kWh")
+                    teile.append(mit_quelle(f"{key} {kwh:.1f} kWh", key))
         if teile:
             log.append(f"{monat}: " + ", ".join(teile))
-    _log_import([f"Zeitraum-Import übernommen ({len(log)} Monat(e))"] + log,
-                trenner=True)
+    kopf = f"Zeitraum-Import übernommen ({len(log)} Monat(e))"
+    if payload.get("quelle"):
+        kopf += f" · Quelle: {payload['quelle']}"
+    _log_import([kopf] + log, trenner=True)
     return {"log": log}
 
 
@@ -1137,11 +1154,14 @@ def _log_kuerzen(grenze: int = 4000, behalten: int = 2000):
 
 
 def _rohwerte_text(werte: dict) -> str:
-    """Gelesene Sensorwerte lesbar machen – '—' fuer nicht gelieferte Werte."""
+    """Gelesene Sensorwerte lesbar machen – '—' fuer nicht gelieferte Werte,
+    dahinter in Klammern die Herkunft (Datenbank oder HA-API)."""
     namen = [("km", "km"), ("pv", "PV kWh"), ("wallbox", "Netz kWh"),
              ("benzin", "€/L")]
+    herkunft = werte.get("_quelle") or {}
     return " · ".join(
-        f"{label}={werte.get(key) if werte.get(key) is not None else '—'}"
+        f"{label}={werte[key]} ({herkunft.get(key)})" if werte.get(key) is not None
+        else f"{label}=—"
         for key, label in namen)
 
 
@@ -1194,12 +1214,13 @@ def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> lis
         _log_import([f"{schluessel}: gelesen {_rohwerte_text(werte)}"])
 
         teile = []
+        herkunft = werte["_quelle"]
         if werte.get("km"):
             db.set_fahrt_monat(schluessel, round(werte["km"], 1))
-            teile.append(f"{werte['km']:.0f} km")
+            teile.append(f"{werte['km']:.0f} km ({herkunft['km']})")
         if werte.get("benzin"):
             db.set_benzinpreis(schluessel, round(werte["benzin"], 3))
-            teile.append(f"{werte['benzin']:.3f} €/L")
+            teile.append(f"{werte['benzin']:.3f} €/L ({herkunft['benzin']})")
         for key, anbieter, ct in [("pv", "Privat – PV", pv_ct),
                                   ("wallbox", "Privat – Netzbezug", netz_ct)]:
             kwh = werte.get(key)
@@ -1208,7 +1229,7 @@ def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> lis
                     f"{schluessel}-01", round(kwh, 3), ct,
                     round(kwh * ct / 100, 2), anbieter)
                 if ergebnis != "unveraendert":
-                    teile.append(f"{key} {kwh:.1f} kWh ({ergebnis})")
+                    teile.append(f"{key} {kwh:.1f} kWh ({ergebnis}, {herkunft[key]})")
         zeile = ", ".join(teile) if teile else "keine neuen Werte"
         _log_import([f"{schluessel}: übernommen {zeile}"])
         protokoll.append(f"{schluessel}: {zeile}")
