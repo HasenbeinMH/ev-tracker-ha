@@ -65,6 +65,11 @@ TIMEOUT_SUCHE = 60
 MAX_TREFFER = 40
 # Plausibilitaet einer Monatsdifferenz (km bzw. kWh) – wie bisher bei InfluxDB 1.x
 MAX_DELTA = 100000
+# Stammt der letzte Zaehlerstand vor dem Monat aus einer laengeren Luecke, waere die
+# Differenz die Strecke mehrerer Monate. Ab dieser Luecke wird sie nicht uebernommen.
+# (Ein Auto, das so lange steht, meldet oft keinen neuen Stand – dann springt die
+# HA-API ein, deren Langzeitstatistik auch ohne Aenderung stuendliche Werte hat.)
+LUECKE_TAGE = 45
 
 
 def namen_liste(wert: str) -> list:
@@ -226,6 +231,20 @@ class Datenquelle:
         delta = jetzt[1] - vorher[1]
         if delta < 0 or delta > MAX_DELTA:
             self._warum = f"Differenz unplausibel ({delta:.1f})"
+            return None
+        # Liegt der Stand davor lange zurueck, umfasst die Differenz auch die Monate der
+        # Luecke – dann lieber nichts liefern (HA-API bzw. Nachtragen von Hand)
+        grenze = start - timedelta(days=LUECKE_TAGE)
+        if vorher[0] >= start:
+            # Zeit des Werts unbekannt (Prometheus liefert nur den Auswertungszeitpunkt)
+            luecke = self._letzter_von(schl, kennungen, grenze, start) is None
+        else:
+            luecke = vorher[0] < grenze
+        if luecke:
+            seit = (f"letzter Wert davor vom {vorher[0].astimezone():%d.%m.%Y}"
+                    if vorher[0] < start else f"kein Wert in den {LUECKE_TAGE} Tagen davor")
+            self._warum = (f"Lücke: {seit} – die Differenz ({delta:.0f}) "
+                           f"würde mehrere Monate umfassen")
             return None
         return round(delta, 3)
 

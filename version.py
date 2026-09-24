@@ -19,10 +19,21 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.1.3"
+VERSION = "2.1.4"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.1.4",
+        "datum": "2026-09-24",
+        "titel": "Keine Mehrmonats-Strecke nach einer Datenluecke",
+        "aenderungen": [
+            "Import aus einer Datenbank: Liegt der letzte Kilometer- bzw. Zaehlerstand vor dem "
+            "Monat mehr als 45 Tage zurueck, wird die Differenz nicht mehr uebernommen – sie "
+            "waere die Strecke mehrerer Monate (z.B. 8.847 km fuer einen Monat nach einer "
+            "Luecke). Stattdessen springt die HA-API ein; Vorschau und Protokoll nennen den Grund",
+        ],
+    },
     {
         "version": "2.1.3",
         "datum": "2026-09-24",

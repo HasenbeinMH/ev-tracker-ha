@@ -88,6 +88,11 @@ SENSOREN["km_alt"] = ("sensor.km_alt", "KM Alt", "km", "homeassistant_sensor_dis
 SENSOREN["km_neu"] = ("sensor.km_neu", "KM Neu", "km", "homeassistant_sensor_distance_km", None)
 PUNKTE["km_alt"] = [p for p in PUNKTE["odo"] if p[0] < UMBENENNUNG]
 PUNKTE["km_neu"] = [p for p in PUNKTE["odo"] if p[0] >= UMBENENNUNG]
+# Kilometerstand mit Luecke Januar/Februar (Auto faehrt weiter, es wird nur nichts gespeichert)
+LUECKE_VON = datetime(2026, 1, 1).astimezone().astimezone(UTC)
+LUECKE_BIS = datetime(2026, 3, 2).astimezone().astimezone(UTC)   # Stand um Mitternacht am 1.3. fehlt auch
+SENSOREN["km_luecke"] = ("sensor.km_luecke", "KM Luecke", "km", "homeassistant_sensor_distance_km", None)
+PUNKTE["km_luecke"] = [p for p in PUNKTE["odo"] if p[0] < LUECKE_VON or p[0] >= LUECKE_BIS]
 
 CFG = {"ha_odometer": "sensor.odo", "ha_wallbox_energy": "sensor.wallbox",
        "ha_pv_production": "sensor.pv", "ha_tankerkoenig": "sensor.benzin1",
@@ -303,6 +308,20 @@ def pruefen():
         check(name, "Nur neuer Name: Februar ohne Vorwert, Grund wird genannt",
               "kein Wert vor dem Monat" in dq.grund.get("km", ""), str(dq.grund))
 
+    # Luecke: der erste Monat danach darf nicht die Strecke mehrerer Monate liefern
+    print()
+    for name, extra in QUELLEN:
+        influx = extra["datasource"].startswith("influx")
+        feld = "fn_odometer" if influx else "ha_odometer"
+        dq = datenquellen.aus_einstellungen({**CFG, **extra,
+                                             feld: "KM Luecke" if influx else "sensor.km_luecke"})
+        ist = dq.monatswert("km", 2026, 3)
+        check(name, "Luecke Jan/Feb: Maerz liefert nichts statt 3 Monate Strecke",
+              ist is None and dq.grund.get("km", "").startswith("Lücke"), f"{ist} / {dq.grund}")
+        print(f"          Grund: {dq.grund.get('km')}")
+        check(name, "Luecke: Dezember davor unveraendert", nah(dq.monatswert("km", 2025, 12), (31 * 24 - 1) * 40 / 24),
+              str(dq.grund))
+
     # Suche in der Datenbank
     print()
     for name, extra in QUELLEN:
@@ -327,7 +346,7 @@ def pruefen():
                         t.get("bis") and t["bis"].astimezone().strftime("%Y-%m"))
             check(name, "Suche liefert Zeitraum 12/2025 – 03/2026",
                   zeitraum == ("2025-12", "2026-03"), str(zeitraum))
-        check(name, "Leere Suche listet alle 8 Zahlen-Sensoren", len(alle) == 8,
+        check(name, "Leere Suche listet alle 9 Zahlen-Sensoren", len(alle) == 9,
               str([x["kennung"] for x in alle]))
         check(name, "Sonderzeichen im Suchbegriff -> keine Treffer, kein Fehler", leer == [], str(leer))
 

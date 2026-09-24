@@ -3,6 +3,10 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.1.4] - 2026-09-24
+### Keine Mehrmonats-Strecke nach einer Datenluecke
+- Import aus einer Datenbank: Liegt der letzte Kilometer- bzw. Zaehlerstand vor dem Monat mehr als 45 Tage zurueck, wird die Differenz nicht mehr uebernommen – sie waere die Strecke mehrerer Monate (z.B. 8.847 km fuer einen Monat nach einer Luecke). Stattdessen springt die HA-API ein; Vorschau und Protokoll nennen den Grund
+
 ## [2.1.3] - 2026-09-24
 ### Umbenannte Sensoren und Grund, wenn die Datenbank nichts liefert
 - Mehrere Namen je Sensor mit "|" (z.B. "Alter Name | Neuer Name"): die Werte werden zusammengefuehrt, beim Kilometerstand stimmt auch der Monat der Umbenennung
