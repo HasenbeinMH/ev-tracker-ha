@@ -128,4 +128,5 @@ suchen, wenn unklar ist, wo genau sich beide Wege unterscheiden.
 | `backup_db.py`, `backup.sh` | Sicherung der Datenbank (nur Standalone-Docker) |
 | `settings_tool.py` | Einstellungen als JSON exportieren/importieren |
 | `testdaten.py`, `testdaten.bat` | Testdaten anlegen |
+| `tests/funktionstest.py` | Funktions- und Plausibilitätstest mit eigener Test-DB: `python tests/funktionstest.py` (braucht zusätzlich `httpx`) |
 | `version.py` | Versionsnummer und Änderungslog |
