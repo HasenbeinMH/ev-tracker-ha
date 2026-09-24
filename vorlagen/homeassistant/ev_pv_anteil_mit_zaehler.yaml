@@ -1,0 +1,123 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  EV Tracker – PV-Anteil beim Laden · mit Energiezähler der Wallbox
+#  (Home-Assistant-Paket, ohne Node-RED)
+#
+#  Wie ev_pv_anteil.yaml, aber genauer: statt die Leistung aufzusummieren wird jeder
+#  Anstieg des Wallbox-Zählers nach dem PV-Anteil in diesem Moment aufgeteilt.
+#  PV + Netz ergeben so immer genau den Zähler der Wallbox.
+#    sensor.ev_ladung_pv    (kWh)  → im EV Tracker als „PV ins Auto“ eintragen
+#    sensor.ev_ladung_netz  (kWh)  → im EV Tracker als „Netz ins Auto“ eintragen
+#
+#  Regel „Haus zuerst, das Auto bekommt den Überschuss“:
+#    Netz ins Auto = min(Netzbezug, Wallbox-Leistung),  PV ins Auto = Rest
+#  Ein Hausakku, der ins Auto entlädt, senkt den Netzbezug und zählt damit als PV.
+#
+#  EINRICHTUNG
+#  1. Diese Datei nach /config/packages/ev_pv_anteil.yaml kopieren. Falls noch nicht
+#     vorhanden, in configuration.yaml ergänzen:
+#         homeassistant:
+#           packages: !include_dir_named packages
+#  2. Suchen & Ersetzen (alle Vorkommen):
+#         sensor.DEIN_NETZ              → deine Netzleistung   (W oder kW – wird erkannt)
+#         sensor.DEINE_WALLBOX          → Ladeleistung der Wallbox (W oder kW)
+#         sensor.DEIN_WALLBOX_ZAEHLER   → Energiezähler der Wallbox (kWh oder Wh)
+#  3. Unten bei „EINSTELLUNGEN“ das Vorzeichen des Netzes prüfen.
+#  4. Einstellungen → System → Neu starten.
+#
+#  Nur eine der beiden Dateien verwenden (diese oder ev_pv_anteil.yaml).
+# ═══════════════════════════════════════════════════════════════════════════
+
+template:
+  - sensor:
+      # Ladeleistung der Wallbox in W, Standby als 0
+      - name: EV Ladeleistung Wallbox
+        unique_id: ev_tracker_ladeleistung_wallbox
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        availability: "{{ states('sensor.DEINE_WALLBOX') | is_number }}"
+        state: >
+          {# ── EINSTELLUNGEN ── unter dieser Leistung gilt die Wallbox als aus #}
+          {% set standby_w = 50 %}
+          {% set e = 'sensor.DEINE_WALLBOX' %}
+          {% set w = states(e) | float(0) * (1000 if state_attr(e, 'unit_of_measurement') == 'kW' else 1) %}
+          {{ 0 if w < standby_w else w | round(0) }}
+
+      # Anteil aus dem Netz
+      - name: EV Ladeleistung Netz
+        unique_id: ev_tracker_ladeleistung_netz
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        availability: >
+          {{ states('sensor.DEIN_NETZ') | is_number
+             and states('sensor.ev_ladeleistung_wallbox') | is_number }}
+        state: >
+          {# ── EINSTELLUNGEN ────────────────────────────────────────────────── #}
+          {# true: positiver Wert = Bezug aus dem Netz, negativ = Einspeisung.     #}
+          {# false: umgekehrt (z.B. viele SolarEdge-Zähler: positiv = Einspeisung) #}
+          {% set netz_bezug_positiv = true %}
+          {# Hausakku-Entladung ins Auto als Netz zählen (Akku lädt auch aus dem Netz)? #}
+          {# Dann true und sensor.DEIN_AKKU ersetzen (Entladung positiv).          #}
+          {% set akku_als_netz = false %}
+          {# ────────────────────────────────────────────────────────────────── #}
+          {% set e = 'sensor.DEIN_NETZ' %}
+          {% set netz = states(e) | float(0) * (1000 if state_attr(e, 'unit_of_measurement') == 'kW' else 1) %}
+          {% set bezug = [netz if netz_bezug_positiv else -netz, 0] | max %}
+          {% if akku_als_netz %}
+            {% set a = 'sensor.DEIN_AKKU' %}
+            {% set akku = states(a) | float(0) * (1000 if state_attr(a, 'unit_of_measurement') == 'kW' else 1) %}
+            {% set bezug = bezug + [akku, 0] | max %}
+          {% endif %}
+          {% set wb = states('sensor.ev_ladeleistung_wallbox') | float(0) %}
+          {{ [bezug, wb] | min | round(0) }}
+
+      # Anteil aus der PV (inkl. Hausakku, siehe oben)
+      - name: EV Ladeleistung PV
+        unique_id: ev_tracker_ladeleistung_pv
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        availability: >
+          {{ states('sensor.ev_ladeleistung_wallbox') | is_number
+             and states('sensor.ev_ladeleistung_netz') | is_number }}
+        state: >
+          {% set wb = states('sensor.ev_ladeleistung_wallbox') | float(0) %}
+          {% set netz = states('sensor.ev_ladeleistung_netz') | float(0) %}
+          {{ [wb - netz, 0] | max | round(0) }}
+
+  # Jeder Anstieg des Wallbox-Zählers wird nach dem aktuellen PV-Anteil aufgeteilt.
+  # Die Sensoren behalten ihren Stand über Neustarts hinweg.
+  - trigger:
+      - platform: state
+        entity_id: sensor.DEIN_WALLBOX_ZAEHLER
+        not_from: ["unavailable", "unknown"]
+        not_to: ["unavailable", "unknown"]
+    sensor:
+      - name: EV Ladung PV
+        unique_id: ev_tracker_ladung_pv
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        icon: mdi:solar-power
+        state: >
+          {% set f = 0.001 if trigger.to_state.attributes.unit_of_measurement == 'Wh' else 1 %}
+          {% set d = (trigger.to_state.state | float(0) - trigger.from_state.state | float(0)) * f %}
+          {% set wb = states('sensor.ev_ladeleistung_wallbox') | float(0) %}
+          {% set anteil = states('sensor.ev_ladeleistung_pv') | float(0) / wb if wb > 0 else 0 %}
+          {% set alt = this.state | float(0) if this.state | is_number else 0 %}
+          {{ (alt + (d * anteil if 0 < d <= 20 else 0)) | round(5) }}
+
+      - name: EV Ladung Netz
+        unique_id: ev_tracker_ladung_netz
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total_increasing
+        icon: mdi:transmission-tower
+        state: >
+          {% set f = 0.001 if trigger.to_state.attributes.unit_of_measurement == 'Wh' else 1 %}
+          {% set d = (trigger.to_state.state | float(0) - trigger.from_state.state | float(0)) * f %}
+          {% set wb = states('sensor.ev_ladeleistung_wallbox') | float(0) %}
+          {% set anteil = states('sensor.ev_ladeleistung_pv') | float(0) / wb if wb > 0 else 0 %}
+          {% set alt = this.state | float(0) if this.state | is_number else 0 %}
+          {{ (alt + (d * (1 - anteil) if 0 < d <= 20 else 0)) | round(5) }}

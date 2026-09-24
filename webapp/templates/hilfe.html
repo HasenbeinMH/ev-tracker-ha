@@ -315,6 +315,7 @@
   <li><b>Einstellungen sichern / laden</b> – Export als JSON, wahlweise mit oder ohne Zugangsdaten.</li>
   <li><b>Lade-Anbieter</b> – eigene Anbieter anlegen, Grünstrom markieren.</li>
   <li><b>Sensoren</b> – fünf Zuordnungen: Kilometerstand, PV ins Auto, Netz ins Auto, Benzinpreis 1 und 2. Je Sensor eine Entity-ID (HA, PostgreSQL, Prometheus) bzw. ein Friendly Name (InfluxDB).</li>
+  <li><b>Keine Zähler für „PV ins Auto“ / „Netz ins Auto“?</b> Liefert die Wallbox nur die gesamte Ladeleistung, erzeugen die <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen" target="_blank" rel="noopener">Vorlagen</a> beide Zähler – als Node-RED-Flow oder als Home-Assistant-Paket. Regel: Haus zuerst, das Auto bekommt den Überschuss (Netz ins Auto = min(Netzbezug, Wallbox-Leistung), der Rest ist PV; ein Hausakku zählt als PV). Danach <code>sensor.ev_ladung_pv</code> und <code>sensor.ev_ladung_netz</code> hier eintragen.</li>
 </ul>
 <div class="hb-info"><b>Token bleiben gespeichert:</b> Lässt du das Token- oder Passwortfeld leer, wird der gespeicherte Wert beibehalten und nicht überschrieben.</div>
 

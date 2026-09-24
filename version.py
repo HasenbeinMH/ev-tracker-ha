@@ -19,10 +19,28 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.1.4"
+VERSION = "2.2.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.2.0",
+        "datum": "2026-09-24",
+        "titel": "Vorlagen: PV- und Netz-Anteil beim Laden selbst berechnen",
+        "aenderungen": [
+            "Neu im Repo unter vorlagen/: ein Node-RED-Flow und ein Home-Assistant-Paket, die "
+            "die Ladeleistung der Wallbox in PV und Netz aufteilen und die Zaehler "
+            "sensor.ev_ladung_pv / sensor.ev_ladung_netz anlegen – fuer \"PV ins Auto\" und "
+            "\"Netz ins Auto\" im EV Tracker und fuers Energie-Dashboard",
+            "Regel \"Haus zuerst, das Auto bekommt den Ueberschuss\": Netz ins Auto = "
+            "min(Netzbezug, Wallbox-Leistung); ein Hausakku, der ins Auto entlaedt, zaehlt als PV "
+            "(einstellbar). Es genuegen Netz- und Wallbox-Leistung, mit Energiezaehler der "
+            "Wallbox wird dieser genau aufgeteilt",
+            "Node-RED-Flow nur mit Standard-Knoten, im Node-RED-Add-on ohne Token; nur ein "
+            "Einstellungs-Knoten auszufuellen, Einheiten W/kW und Wh/kWh werden erkannt",
+            "Einstellungen und Hilfe verweisen auf die Vorlagen",
+        ],
+    },
     {
         "version": "2.1.4",
         "datum": "2026-09-24",

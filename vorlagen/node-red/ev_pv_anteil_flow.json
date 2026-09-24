@@ -1,0 +1,177 @@
+[
+  {
+    "id": "evpv0000tab00001",
+    "type": "tab",
+    "label": "EV Tracker – PV-Anteil beim Laden",
+    "disabled": false,
+    "info": "Teilt die Ladeleistung der Wallbox in PV und Netz auf und legt in Home Assistant die Sensoren sensor.ev_ladung_pv und sensor.ev_ladung_netz (kWh) an – fuer den EV Tracker (PV ins Auto / Netz ins Auto) und das Energie-Dashboard.\n\nEinrichtung: nur den Knoten \"⚙ Einstellungen\" oeffnen, Sensoren eintragen, Übernehmen (Deploy)."
+  },
+  {
+    "id": "evpv0000cmt00001",
+    "type": "comment",
+    "z": "evpv0000tab00001",
+    "name": "① Knoten \"⚙ Einstellungen\" öffnen und Sensoren eintragen · ② Übernehmen",
+    "info": "Regel: Haus zuerst, das Auto bekommt den Überschuss.\nNetz ins Auto = min(Netzbezug, Wallbox-Leistung), PV ins Auto = Rest.\nEin Hausakku, der ins Auto entlädt, zählt als PV (einstellbar).",
+    "x": 330,
+    "y": 40,
+    "wires": []
+  },
+  {
+    "id": "evpv0000inj00001",
+    "type": "inject",
+    "z": "evpv0000tab00001",
+    "name": "alle 10 s",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "10",
+    "crontab": "",
+    "once": true,
+    "onceDelay": "5",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 120,
+    "y": 100,
+    "wires": [
+      [
+        "evpv0000fn000001"
+      ]
+    ]
+  },
+  {
+    "id": "evpv0000fn000001",
+    "type": "function",
+    "z": "evpv0000tab00001",
+    "name": "⚙ Einstellungen – hier Sensoren eintragen",
+    "func": "// ═══════════════════════════════════════════════════════════════════════════\n//  EV Tracker – PV-Anteil beim Laden · EINSTELLUNGEN\n//  Nur diesen Block anpassen, dann oben rechts \"Übernehmen\" (Deploy).\n// ═══════════════════════════════════════════════════════════════════════════\nconst EINSTELLUNGEN = {\n    // Netzleistung (W oder kW – wird erkannt).\n    netz: \"sensor.DEIN_NETZ\",\n    // true: positiver Wert = Bezug aus dem Netz, negativ = Einspeisung.\n    // false: umgekehrt (z.B. viele SolarEdge-Zähler: positiv = Einspeisung).\n    netz_bezug_positiv: true,\n\n    // Ladeleistung der Wallbox (W oder kW).\n    wallbox: \"sensor.DEINE_WALLBOX\",\n\n    // Optional, empfohlen: Energiezähler der Wallbox (kWh oder Wh). Dann wird dieser\n    // Zähler aufgeteilt – genauer als die Leistung aufzusummieren. Sonst \"\".\n    wallbox_zaehler: \"\",\n\n    // Hausakku-Entladung ins Auto zählt als \"pv\" (Akku lädt nur mit Solarstrom)\n    // oder \"netz\" (Akku lädt auch aus dem Netz). Ohne Akku egal.\n    akku_als: \"pv\",\n    // Nur bei akku_als \"netz\": Akku-Leistung (W/kW) und Vorzeichen der Entladung.\n    akku: \"\",\n    akku_entladung_positiv: true,\n\n    // Unter dieser Leistung gilt die Wallbox als aus (Standby).\n    standby_w: 50,\n\n    // Home Assistant: im Node-RED-Add-on leer lassen – der Zugang kommt automatisch.\n    // Sonst z.B. \"http://192.168.0.10:8123\" und ein langlebiges Zugriffstoken.\n    ha_url: \"\",\n    ha_token: \"\",\n\n    // Namen der Sensoren, die dieser Flow in Home Assistant anlegt.\n    sensor_pv: \"sensor.ev_ladung_pv\",\n    sensor_netz: \"sensor.ev_ladung_netz\",\n    sensor_pv_leistung: \"sensor.ev_ladeleistung_pv\",\n    sensor_netz_leistung: \"sensor.ev_ladeleistung_netz\",\n};\n// ═══ Ab hier nichts mehr ändern ═══════════════════════════════════════════\n\nconst cfg = EINSTELLUNGEN;\nconst basis = (cfg.ha_url || \"http://supervisor/core\").replace(/\\/+$/, \"\");\nconst token = cfg.ha_token || env.get(\"SUPERVISOR_TOKEN\");\nif (!token) {\n    node.status({fill: \"red\", shape: \"ring\",\n                 text: \"Kein Zugang zu HA: ha_url und ha_token eintragen\"});\n    return null;\n}\nfor (const feld of [\"netz\", \"wallbox\"]) {\n    if (!cfg[feld] || cfg[feld].includes(\"DEIN\")) {\n        node.status({fill: \"red\", shape: \"ring\", text: `Sensor \"${feld}\" eintragen`});\n        return null;\n    }\n}\n\n// Welche Zustaende pro Durchlauf gelesen werden (Reihenfolge = Rollen)\nconst rollen = [[\"netz\", cfg.netz], [\"wallbox\", cfg.wallbox],\n                [\"eigen_pv\", cfg.sensor_pv], [\"eigen_netz\", cfg.sensor_netz]];\nif (cfg.wallbox_zaehler) rollen.push([\"zaehler\", cfg.wallbox_zaehler]);\nif (cfg.akku_als === \"netz\" && cfg.akku) rollen.push([\"akku\", cfg.akku]);\n\nflow.set(\"ev_pv_cfg\", {...cfg, basis, token, rollen: rollen.map(r => r[0])});\n\nconst kopf = {Authorization: \"Bearer \" + token, \"Content-Type\": \"application/json\"};\nconst id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);\nnode.status({fill: \"green\", shape: \"dot\", text: `liest ${rollen.length} Sensoren`});\nreturn [rollen.map(([rolle, entity], i) => ({\n    url: `${basis}/api/states/${entity}`,\n    method: \"GET\",\n    headers: kopf,\n    rolle,\n    parts: {id, index: i, count: rollen.length, type: \"array\", len: 1},\n}))];\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 360,
+    "y": 100,
+    "wires": [
+      [
+        "evpv0000http0001"
+      ]
+    ]
+  },
+  {
+    "id": "evpv0000http0001",
+    "type": "http request",
+    "z": "evpv0000tab00001",
+    "name": "Zustände lesen",
+    "method": "use",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 610,
+    "y": 100,
+    "wires": [
+      [
+        "evpv0000join0001"
+      ]
+    ]
+  },
+  {
+    "id": "evpv0000join0001",
+    "type": "join",
+    "z": "evpv0000tab00001",
+    "name": "sammeln",
+    "mode": "auto",
+    "build": "object",
+    "property": "payload",
+    "propertyType": "msg",
+    "key": "topic",
+    "joiner": "\\n",
+    "joinerType": "str",
+    "accumulate": false,
+    "timeout": "",
+    "count": "",
+    "reduceRight": false,
+    "reduceExp": "",
+    "reduceInit": "",
+    "reduceInitType": "",
+    "reduceFixup": "",
+    "x": 790,
+    "y": 100,
+    "wires": [
+      [
+        "evpv0000fn000002"
+      ]
+    ]
+  },
+  {
+    "id": "evpv0000fn000002",
+    "type": "function",
+    "z": "evpv0000tab00001",
+    "name": "PV / Netz berechnen",
+    "func": "// EV Tracker – PV-Anteil beim Laden · BERECHNUNG (nichts ändern, Einstellungen oben)\n//\n// Regel \"Haus zuerst, das Auto bekommt den Ueberschuss\":\n//   Netz ins Auto = min(Netzbezug, Wallbox-Leistung),  PV ins Auto = Rest\n// Ein Hausakku, der ins Auto entlaedt, senkt den Netzbezug und zaehlt damit als PV\n// (Einstellung akku_als \"netz\": Akku-Entladung wird zum Netzbezug gerechnet).\n//\n// kWh: mit Wallbox-Zaehler wird jeder Zaehleranstieg nach dem mittleren PV-Anteil\n// seit dem letzten Anstieg aufgeteilt; ohne Zaehler wird die Leistung aufsummiert.\n\nconst cfg = flow.get(\"ev_pv_cfg\");\nif (!cfg || !Array.isArray(msg.payload)) return null;\n\n// Antworten den Rollen zuordnen (Reihenfolge wie im Einstellungs-Knoten)\nconst st = {};\ncfg.rollen.forEach((rolle, i) => { st[rolle] = msg.payload[i]; });\n\nfunction zahl(s) {\n    if (!s || s.state === undefined) return null;\n    const v = parseFloat(s.state);\n    return Number.isFinite(v) ? v : null;\n}\nfunction einheit(s) {\n    return ((s && s.attributes && s.attributes.unit_of_measurement) || \"\").trim();\n}\nfunction watt(s) {\n    const v = zahl(s);\n    if (v === null) return null;\n    const e = einheit(s);\n    return e === \"kW\" ? v * 1000 : e === \"MW\" ? v * 1e6 : v;\n}\nfunction kwh(s) {\n    const v = zahl(s);\n    if (v === null) return null;\n    const e = einheit(s);\n    return e === \"Wh\" ? v / 1000 : e === \"MWh\" ? v * 1000 : v;\n}\n\n// ── Zustand (in \"file\" gespeichert, wenn eingerichtet – sonst im Speicher) ────\nfunction laden() {\n    try { return context.get(\"zaehler\", \"file\"); } catch (e) { return context.get(\"zaehler\"); }\n}\nfunction speichern(z) {\n    try { context.set(\"zaehler\", z, \"file\"); } catch (e) { context.set(\"zaehler\", z); }\n}\nconst jetzt = Date.now();\nlet z = laden();\nif (!z) {\n    // Erster Lauf oder Neustart ohne Dateispeicher: Stand aus den eigenen HA-Sensoren\n    // uebernehmen. Nur dann – im laufenden Betrieb waeren die gesendeten Werte gerundet\n    // und wuerden den Zaehler bei jedem Durchlauf ein wenig nach oben ziehen.\n    z = {pv: kwh(st.eigen_pv) || 0, netz: kwh(st.eigen_netz) || 0, t: null, zaehler: null,\n         anteil_summe: 0, dauer_summe: 0, anteil_letzt: 0, gesendet: {}};\n}\n\n// ── Momentane Aufteilung ─────────────────────────────────────────────────────\nconst netz_roh = watt(st.netz), wb_roh = watt(st.wallbox);\nif (netz_roh === null || wb_roh === null) {\n    const [fehlt, antwort] = netz_roh === null ? [cfg.netz, st.netz] : [cfg.wallbox, st.wallbox];\n    // HA antwortet bei unbekannter Entity mit {\"message\": \"Entity not found.\"}\n    const grund = (antwort && (antwort.message || antwort.state)) || \"keine Antwort\";\n    node.status({fill: \"yellow\", shape: \"ring\", text: `${fehlt}: ${grund}`});\n    z.t = jetzt;                    // keine grosse Luecke integrieren\n    speichern(z);\n    return null;\n}\nconst wb = wb_roh < cfg.standby_w ? 0 : wb_roh;\nlet bezug = Math.max(0, cfg.netz_bezug_positiv ? netz_roh : -netz_roh);\nif (cfg.akku_als === \"netz\" && st.akku) {\n    const akku = watt(st.akku);\n    if (akku !== null) bezug += Math.max(0, cfg.akku_entladung_positiv ? akku : -akku);\n}\nconst netz_w = Math.min(bezug, wb);\nconst pv_w = wb - netz_w;\nconst anteil = wb > 0 ? pv_w / wb : null;\n\n// ── kWh fortschreiben ────────────────────────────────────────────────────────\n// Zeit seit dem letzten Durchlauf; nach laengerer Pause (Neustart) nicht integrieren\nconst dt = typeof z.t === \"number\" ? (jetzt - z.t) / 1000 : 0;\nconst dt_ok = dt > 0 && dt <= 120 ? dt : 0;\nz.t = jetzt;\n\nif (cfg.wallbox_zaehler) {\n    const stand = kwh(st.zaehler);\n    if (anteil !== null) {\n        z.anteil_summe += anteil * dt_ok;\n        z.dauer_summe += dt_ok;\n        z.anteil_letzt = anteil;\n    }\n    if (stand !== null) {\n        const delta = z.zaehler === null ? 0 : stand - z.zaehler;\n        if (delta > 0 && delta <= 20) {\n            // Mittlerer PV-Anteil seit dem letzten Zaehleranstieg\n            const a = z.dauer_summe > 0 ? z.anteil_summe / z.dauer_summe : z.anteil_letzt;\n            z.pv += delta * a;\n            z.netz += delta * (1 - a);\n            z.anteil_summe = 0;\n            z.dauer_summe = 0;\n        }\n        // delta <= 0: unveraendert · delta > 20 kWh oder Zaehler zurueckgesetzt: neue Basis\n        if (delta !== 0 || z.zaehler === null) z.zaehler = stand;\n    }\n} else {\n    z.pv += pv_w * dt_ok / 3.6e6;\n    z.netz += netz_w * dt_ok / 3.6e6;\n}\nspeichern(z);\n\n// ── Nach Home Assistant schreiben (bei Aenderung oder alle 5 Minuten) ──────────\nconst sensoren = [\n    [cfg.sensor_pv, +z.pv.toFixed(3), \"kWh\", \"energy\", \"total_increasing\",\n     \"EV Ladung PV\", \"mdi:solar-power\"],\n    [cfg.sensor_netz, +z.netz.toFixed(3), \"kWh\", \"energy\", \"total_increasing\",\n     \"EV Ladung Netz\", \"mdi:transmission-tower\"],\n    [cfg.sensor_pv_leistung, Math.round(pv_w), \"W\", \"power\", \"measurement\",\n     \"EV Ladeleistung PV\", \"mdi:solar-power\"],\n    [cfg.sensor_netz_leistung, Math.round(netz_w), \"W\", \"power\", \"measurement\",\n     \"EV Ladeleistung Netz\", \"mdi:transmission-tower\"],\n];\nz.gesendet = z.gesendet || {};\nconst raus = [];\nfor (const [entity, wert, e, klasse, art, name, icon] of sensoren) {\n    const alt = z.gesendet[entity];\n    if (alt && alt.wert === wert && jetzt - alt.zeit < 300000) continue;\n    z.gesendet[entity] = {wert, zeit: jetzt};\n    raus.push({\n        url: `${cfg.basis}/api/states/${entity}`,\n        method: \"POST\",\n        headers: {Authorization: \"Bearer \" + cfg.token, \"Content-Type\": \"application/json\"},\n        payload: {state: wert, attributes: {unit_of_measurement: e, device_class: klasse,\n                  state_class: art, friendly_name: name, icon}},\n    });\n}\nspeichern(z);\n\nconst pct = anteil === null ? \"–\" : Math.round(anteil * 100) + \" %\";\nnode.status({fill: \"green\", shape: \"dot\",\n             text: `PV ${Math.round(pv_w)} W · Netz ${Math.round(netz_w)} W (PV-Anteil ${pct}) · `\n                 + `${z.pv.toFixed(2)} / ${z.netz.toFixed(2)} kWh`});\nreturn [raus];\n",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 380,
+    "y": 180,
+    "wires": [
+      [
+        "evpv0000http0002"
+      ]
+    ]
+  },
+  {
+    "id": "evpv0000http0002",
+    "type": "http request",
+    "z": "evpv0000tab00001",
+    "name": "Sensoren nach HA schreiben",
+    "method": "use",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 640,
+    "y": 180,
+    "wires": [
+      [
+        "evpv0000dbg00001"
+      ]
+    ]
+  },
+  {
+    "id": "evpv0000dbg00001",
+    "type": "debug",
+    "z": "evpv0000tab00001",
+    "name": "Antwort (bei Bedarf einschalten)",
+    "active": false,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 900,
+    "y": 180,
+    "wires": []
+  }
+]

@@ -3,6 +3,13 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.2.0] - 2026-09-24
+### Vorlagen: PV- und Netz-Anteil beim Laden selbst berechnen
+- Neu im Repo unter vorlagen/: ein Node-RED-Flow und ein Home-Assistant-Paket, die die Ladeleistung der Wallbox in PV und Netz aufteilen und die Zaehler sensor.ev_ladung_pv / sensor.ev_ladung_netz anlegen – fuer "PV ins Auto" und "Netz ins Auto" im EV Tracker und fuers Energie-Dashboard
+- Regel "Haus zuerst, das Auto bekommt den Ueberschuss": Netz ins Auto = min(Netzbezug, Wallbox-Leistung); ein Hausakku, der ins Auto entlaedt, zaehlt als PV (einstellbar). Es genuegen Netz- und Wallbox-Leistung, mit Energiezaehler der Wallbox wird dieser genau aufgeteilt
+- Node-RED-Flow nur mit Standard-Knoten, im Node-RED-Add-on ohne Token; nur ein Einstellungs-Knoten auszufuellen, Einheiten W/kW und Wh/kWh werden erkannt
+- Einstellungen und Hilfe verweisen auf die Vorlagen
+
 ## [2.1.4] - 2026-09-24
 ### Keine Mehrmonats-Strecke nach einer Datenluecke
 - Import aus einer Datenbank: Liegt der letzte Kilometer- bzw. Zaehlerstand vor dem Monat mehr als 45 Tage zurueck, wird die Differenz nicht mehr uebernommen – sie waere die Strecke mehrerer Monate (z.B. 8.847 km fuer einen Monat nach einer Luecke). Stattdessen springt die HA-API ein; Vorschau und Protokoll nennen den Grund

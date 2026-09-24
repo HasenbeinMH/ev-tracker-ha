@@ -1,0 +1,109 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  EV Tracker – PV-Anteil beim Laden (Home-Assistant-Paket, ohne Node-RED)
+#
+#  Teilt die Ladeleistung der Wallbox in PV und Netz auf und zählt daraus
+#    sensor.ev_ladung_pv    (kWh)  → im EV Tracker als „PV ins Auto“ eintragen
+#    sensor.ev_ladung_netz  (kWh)  → im EV Tracker als „Netz ins Auto“ eintragen
+#  Beide eignen sich auch fürs HA-Energie-Dashboard.
+#
+#  Regel „Haus zuerst, das Auto bekommt den Überschuss“:
+#    Netz ins Auto = min(Netzbezug, Wallbox-Leistung),  PV ins Auto = Rest
+#  Ein Hausakku, der ins Auto entlädt, senkt den Netzbezug und zählt damit als PV.
+#
+#  EINRICHTUNG
+#  1. Diese Datei nach /config/packages/ev_pv_anteil.yaml kopieren. Falls noch nicht
+#     vorhanden, in configuration.yaml ergänzen:
+#         homeassistant:
+#           packages: !include_dir_named packages
+#  2. Suchen & Ersetzen (alle Vorkommen):
+#         sensor.DEIN_NETZ        → deine Netzleistung   (W oder kW – wird erkannt)
+#         sensor.DEINE_WALLBOX    → Ladeleistung der Wallbox (W oder kW)
+#  3. Unten bei „EINSTELLUNGEN“ das Vorzeichen des Netzes prüfen.
+#  4. Einstellungen → System → Neu starten (oder YAML neu laden: Template-Entitäten
+#     und Integral-Sensoren brauchen einen Neustart).
+#
+#  Hat die Wallbox einen eigenen Energiezähler (kWh)? Dann ist
+#  ev_pv_anteil_mit_zaehler.yaml genauer – nur eine der beiden Dateien verwenden.
+# ═══════════════════════════════════════════════════════════════════════════
+
+template:
+  - sensor:
+      # Ladeleistung der Wallbox in W, Standby als 0
+      - name: EV Ladeleistung Wallbox
+        unique_id: ev_tracker_ladeleistung_wallbox
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        availability: "{{ states('sensor.DEINE_WALLBOX') | is_number }}"
+        state: >
+          {# ── EINSTELLUNGEN ── unter dieser Leistung gilt die Wallbox als aus #}
+          {% set standby_w = 50 %}
+          {% set e = 'sensor.DEINE_WALLBOX' %}
+          {% set w = states(e) | float(0) * (1000 if state_attr(e, 'unit_of_measurement') == 'kW' else 1) %}
+          {{ 0 if w < standby_w else w | round(0) }}
+
+      # Anteil aus dem Netz
+      - name: EV Ladeleistung Netz
+        unique_id: ev_tracker_ladeleistung_netz
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        availability: >
+          {{ states('sensor.DEIN_NETZ') | is_number
+             and states('sensor.ev_ladeleistung_wallbox') | is_number }}
+        state: >
+          {# ── EINSTELLUNGEN ────────────────────────────────────────────────── #}
+          {# true: positiver Wert = Bezug aus dem Netz, negativ = Einspeisung.     #}
+          {# false: umgekehrt (z.B. viele SolarEdge-Zähler: positiv = Einspeisung) #}
+          {% set netz_bezug_positiv = true %}
+          {# Hausakku-Entladung ins Auto als Netz zählen (Akku lädt auch aus dem Netz)? #}
+          {# Dann true und sensor.DEIN_AKKU ersetzen (Entladung positiv).          #}
+          {% set akku_als_netz = false %}
+          {# ────────────────────────────────────────────────────────────────── #}
+          {% set e = 'sensor.DEIN_NETZ' %}
+          {% set netz = states(e) | float(0) * (1000 if state_attr(e, 'unit_of_measurement') == 'kW' else 1) %}
+          {% set bezug = [netz if netz_bezug_positiv else -netz, 0] | max %}
+          {% if akku_als_netz %}
+            {% set a = 'sensor.DEIN_AKKU' %}
+            {% set akku = states(a) | float(0) * (1000 if state_attr(a, 'unit_of_measurement') == 'kW' else 1) %}
+            {% set bezug = bezug + [akku, 0] | max %}
+          {% endif %}
+          {% set wb = states('sensor.ev_ladeleistung_wallbox') | float(0) %}
+          {{ [bezug, wb] | min | round(0) }}
+
+      # Anteil aus der PV (inkl. Hausakku, siehe oben)
+      - name: EV Ladeleistung PV
+        unique_id: ev_tracker_ladeleistung_pv
+        unit_of_measurement: W
+        device_class: power
+        state_class: measurement
+        availability: >
+          {{ states('sensor.ev_ladeleistung_wallbox') | is_number
+             and states('sensor.ev_ladeleistung_netz') | is_number }}
+        state: >
+          {% set wb = states('sensor.ev_ladeleistung_wallbox') | float(0) %}
+          {% set netz = states('sensor.ev_ladeleistung_netz') | float(0) %}
+          {{ [wb - netz, 0] | max | round(0) }}
+
+# Leistung → Energie (kWh). max_sub_interval rechnet auch weiter, wenn die Leistung
+# länger gleich bleibt (ab HA 2024.7; bei älteren Versionen die zwei Zeilen entfernen).
+sensor:
+  - platform: integration
+    name: EV Ladung PV
+    unique_id: ev_tracker_ladung_pv
+    source: sensor.ev_ladeleistung_pv
+    method: left
+    unit_prefix: k
+    round: 3
+    max_sub_interval:
+      minutes: 1
+
+  - platform: integration
+    name: EV Ladung Netz
+    unique_id: ev_tracker_ladung_netz
+    source: sensor.ev_ladeleistung_netz
+    method: left
+    unit_prefix: k
+    round: 3
+    max_sub_interval:
+      minutes: 1

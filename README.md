@@ -44,12 +44,14 @@ vorher in Home Assistant eingerichtet sein:
 | Was | Wozu | Hinweis |
 |-----|------|---------|
 | ⛽ **Tankerkönig-Integration** | Benzinpreis für den Vergleich mit einem Verbrenner | Kostenlosen API-Key bei [Tankerkönig](https://creativecommons.tankerkoenig.de/) holen, Integration in HA einrichten und die Tankstelle(n) wählen, an der man sonst tanken würde. Bis zu zwei Preis-Sensoren (€/L) können eingetragen werden, es wird der Monatsdurchschnitt gebildet. |
-| 🔌 **Geladene kWh aus dem Netz** | Stromkosten für das Laden zu Hause (Netzbezug) | Muss **außerhalb** des EV Trackers gezählt werden – z. B. durch den Energiezähler der Wallbox oder einen Zwischenzähler. Benötigt wird ein fortlaufender kWh-Zähler. |
-| ☀️ **Geladene kWh aus der PV** | Anteil des Solarstroms am Laden (mit eigenem PV-Preis bewertet) | Ebenfalls **außerhalb** des Tools zu ermitteln, z. B. über die Wallbox-/PV-Steuerung (evcc, go-e, OpenWB …) oder einen Template-/Utility-Meter-Sensor. Fortlaufender oder täglich zurückgesetzter kWh-Zähler. |
+| 🔌 **Geladene kWh aus dem Netz** | Stromkosten für das Laden zu Hause (Netzbezug) | Muss **außerhalb** des EV Trackers gezählt werden – z. B. durch den Energiezähler der Wallbox oder einen Zwischenzähler. Benötigt wird ein fortlaufender kWh-Zähler. Liefert die Wallbox nur die gesamte Ladeleistung: siehe [Vorlagen](vorlagen/README.md) unten. |
+| ☀️ **Geladene kWh aus der PV** | Anteil des Solarstroms am Laden (mit eigenem PV-Preis bewertet) | Ebenfalls **außerhalb** des Tools zu ermitteln, z. B. über die Wallbox-/PV-Steuerung (evcc, go-e, OpenWB …) oder einen Template-/Utility-Meter-Sensor. Fortlaufender oder täglich zurückgesetzter kWh-Zähler. Oder mit den [Vorlagen](vorlagen/README.md) aus Netz- und Wallbox-Leistung berechnen. |
 | 🚗 **Kilometerstand** | Gefahrene km pro Monat | Z. B. über die Fahrzeug-Integration des Herstellers |
 | 🔋 *Batteriestand (optional)* | Ladeerkennung und Verbrauch aus dem Akkustand | Ebenfalls über die Fahrzeug-Integration |
 
 Die Entity-IDs werden anschließend in den **Einstellungen** des EV Trackers eingetragen.
+
+**PV/Netz ins Auto selbst berechnen:** Die [Vorlagen](vorlagen/README.md) – als Node-RED-Flow oder als Home-Assistant-Paket – teilen die Ladeleistung der Wallbox nach „Haus zuerst, das Auto bekommt den Überschuss“ in PV und Netz auf (ein Hausakku zählt als PV) und legen die beiden kWh-Zähler an. Es genügen die Netzleistung und die Ladeleistung der Wallbox.
 Die Aufteilung Netz/PV kann der EV Tracker nicht selbst berechnen – ohne diese beiden
 Zähler fehlen die Kosten fürs Laden zu Hause. Ladevorgänge unterwegs (öffentliche
 Ladesäulen) werden dagegen direkt in der App erfasst.
@@ -131,5 +133,7 @@ suchen, wenn unklar ist, wo genau sich beide Wege unterscheiden.
 | `testdaten.py`, `testdaten.bat` | Testdaten anlegen |
 | `tests/funktionstest.py` | Funktions- und Plausibilitätstest mit eigener Test-DB: `python tests/funktionstest.py` (braucht zusätzlich `httpx`) |
 | `tests/datenquellen_test.py` | Test der Datenbank-Anbindungen gegen nachgebaute Server: `python tests/datenquellen_test.py` |
+| `vorlagen/` | Node-RED-Flow und HA-Paket: PV-/Netz-Anteil beim Laden (`node-red/flow_bauen.py` baut den Flow aus den `.js`-Quellen) |
+| `tests/vorlagen_test.py` | Test der Vorlagen (Node.js + Jinja2): `python tests/vorlagen_test.py` |
 | `tests/datenquellen_docker_test.py` | Dieselben Anbindungen gegen echte Server in Docker (InfluxDB 1.8/2.7, TimescaleDB, VictoriaMetrics, Prometheus): `python tests/datenquellen_docker_test.py` |
 | `version.py` | Versionsnummer und Änderungslog |
