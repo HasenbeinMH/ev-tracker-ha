@@ -67,6 +67,12 @@ MAX_TREFFER = 40
 MAX_DELTA = 100000
 
 
+def namen_liste(wert: str) -> list:
+    """Mehrere Namen je Sensor, getrennt mit "|" – etwa wenn ein Sensor umbenannt wurde
+    ("Alter Name | Neuer Name"). Reihenfolge: aeltester zuerst, aktueller zuletzt."""
+    return [n.strip() for n in (wert or "").split("|") if n.strip()]
+
+
 def aus_einstellungen(cfg: dict):
     """Die eingestellte Datenquelle, oder None bei "ha" (nur HA-API)."""
     klasse = {"influxdb": InfluxDB1, "influxdb2": InfluxDB2,
@@ -142,7 +148,9 @@ def _url(roh: str, port: str | int | None = None) -> str:
 class Datenquelle:
     """Gemeinsame Logik. Unterklassen setzen um:
         test()                                     -> (ok, text)
-        _letzter(schl, kennung, von, bis)          -> letzter Wert in (von, bis] oder None
+        suche(begriff)                             -> [Treffer] (siehe unten)
+        _letzter(schl, kennung, von, bis)          -> (zeit, wert) des letzten Werts in
+                                                      (von, bis] oder None
         _werte(schl, kennung, von, bis)            -> [(datetime, float)] aufsteigend
         _stunden(schl, kennung, von, bis, aggregat) -> [(datetime Stundenbeginn, float)]
     """
@@ -151,83 +159,119 @@ class Datenquelle:
 
     def __init__(self, cfg: dict):
         self.cfg = cfg
+        # Warum monatswert() fuer einen Schluessel nichts geliefert hat (kurzer Text)
+        self.grund = {}
+        self._warum = ""
 
     @property
     def name(self) -> str:
         return QUELLEN[self.typ]
 
     def kennungen(self, schluessel: str) -> list:
+        """Alle Namen bzw. Entity-IDs des Sensors – je Feld auch mehrere mit "|"."""
         ent, namen, _, _ = SENSOREN[schluessel]
         felder = ent if self.nutzt_entity_ids else namen
-        return [v for v in ((self.cfg.get(f) or "").strip() for f in felder) if v]
+        return [n for f in felder for n in namen_liste(self.cfg.get(f))]
 
     def hat(self, schluessel: str) -> bool:
         return bool(self.kennungen(schluessel))
 
+    def beschreibung(self, schluessel: str) -> str:
+        """Wonach gesucht wird – fuer Hinweise, warum nichts kam."""
+        return " | ".join(self.kennungen(schluessel)) or "–"
+
     # ── Monatswerte ──────────────────────────────────────────────────────────
 
     def monatswert(self, schluessel: str, jahr: int, monat: int) -> float | None:
-        """Monatswert fuer den Import (None = keine Daten, Fehler werden geschluckt)."""
+        """Monatswert fuer den Import. None = keine Daten; der Grund steht dann in
+        self.grund[schluessel]. Fehler der Datenbank werden abgefangen."""
+        self.grund.pop(schluessel, None)
         ids = self.kennungen(schluessel)
         if not ids:
+            self.grund[schluessel] = "kein Sensor eingetragen"
             return None
+        self._warum = "keine Werte im Monat"
         try:
             if schluessel == "benzin":
-                return self.monat_mittel(schluessel, ids, jahr, monat)
-            if schluessel in ("pv", "wallbox"):
-                return self.monat_summe(schluessel, ids[0], jahr, monat)
-            return self.monat_delta(schluessel, ids[0], jahr, monat)
-        except Exception:
-            return None
+                wert = self.monat_mittel(schluessel, ids, jahr, monat)
+            elif schluessel in ("pv", "wallbox"):
+                wert = self.monat_summe(schluessel, ids, jahr, monat)
+            else:
+                wert = self.monat_delta(schluessel, ids, jahr, monat)
+        except Exception as e:
+            wert = None
+            self._warum = "Fehler: " + self.fehlertext(e)
+        if wert is None:
+            self.grund[schluessel] = self._warum
+        return wert
 
-    def monat_delta(self, schl, kennung, jahr, monat) -> float | None:
-        """Zaehlerstand am Monatsende minus letzter Stand vor dem Monat (bis 1 Jahr zurueck)."""
+    def _letzter_von(self, schl, kennungen, von, bis):
+        """Juengster Wert ueber alle Namen – nach einer Umbenennung der des neuen Namens."""
+        treffer = [x for x in (self._letzter(schl, k, von, bis) for k in kennungen) if x]
+        return max(treffer, key=lambda x: (x[0], x[1])) if treffer else None
+
+    def monat_delta(self, schl, kennungen, jahr, monat) -> float | None:
+        """Zaehlerstand am Monatsende minus letzter Stand vor dem Monat (bis 1 Jahr zurueck).
+        Bei mehreren Namen zaehlt je Zeitpunkt der juengste Wert – so klappt auch der Monat
+        einer Umbenennung (Stand unter dem neuen minus Stand unter dem alten Namen)."""
         start, ende = _monat(jahr, monat)
-        jetzt = self._letzter(schl, kennung, start, ende)
+        jetzt = self._letzter_von(schl, kennungen, start, ende)
         if jetzt is None:
+            self._warum = "keine Werte im Monat"
             return None
-        vorher = self._letzter(schl, kennung, start - timedelta(days=366), start)
+        vorher = self._letzter_von(schl, kennungen, start - timedelta(days=366), start)
         if vorher is None:
+            self._warum = "kein Wert vor dem Monat (nötig für die Differenz)"
             return None
-        delta = jetzt - vorher
+        delta = jetzt[1] - vorher[1]
         if delta < 0 or delta > MAX_DELTA:
+            self._warum = f"Differenz unplausibel ({delta:.1f})"
             return None
         return round(delta, 3)
 
-    def monat_summe(self, schl, kennung, jahr, monat) -> float | None:
+    def monat_summe(self, schl, kennungen, jahr, monat) -> float | None:
         """Differenz wie beim Zaehler; bei taeglich zurueckgesetzten Sensoren (Differenz
         leer oder 0) die Summe der Tagesmaxima."""
-        delta = self.monat_delta(schl, kennung, jahr, monat)
+        delta = self.monat_delta(schl, kennungen, jahr, monat)
         if delta:
             return delta
         start, ende = _monat(jahr, monat)
         tage = {}
-        for t, v in self._werte(schl, kennung, start, ende):
-            tag = t.astimezone().date()
-            tage[tag] = max(tage.get(tag, v), v)
+        for k in kennungen:
+            for t, v in self._werte(schl, k, start, ende):
+                tag = t.astimezone().date()
+                tage[tag] = max(tage.get(tag, v), v)
         summe = sum(v for v in tage.values() if v > 0)
-        return round(summe, 3) if summe > 0 else None
+        if summe > 0:
+            return round(summe, 3)
+        if tage:
+            self._warum = "nur Nullwerte im Monat"
+        return None
 
     def monat_mittel(self, schl, kennungen, jahr, monat) -> float | None:
         """Mittel aller Werte > 0 ueber alle Sensoren (Tankstelle nachts geschlossen = 0)."""
         start, ende = _monat(jahr, monat)
-        alle = []
+        alle, fehler = [], []
         for k in kennungen:
             try:
                 alle += [v for _, v in self._werte(schl, k, start, ende) if v > 0]
-            except Exception:
-                continue
-        return round(sum(alle) / len(alle), 4) if alle else None
+            except Exception as e:
+                fehler.append(self.fehlertext(e))
+        if alle:
+            return round(sum(alle) / len(alle), 4)
+        self._warum = ("Fehler: " + fehler[0]) if len(fehler) == len(kennungen) \
+            else "keine Werte über 0 im Monat"
+        return None
 
     def stundenwerte(self, schluessel: str, start: datetime, ende: datetime,
                      aggregat: str = "mean") -> list:
-        """[('YYYY-MM-DDTHH:MM' Ortszeit, wert)], aufsteigend. aggregat "mean" oder "last"."""
-        ids = self.kennungen(schluessel)
-        if not ids:
-            return []
-        werte = [(_lokal(t), float(v))
-                 for t, v in self._stunden(schluessel, ids[0], _utc(start), _utc(ende), aggregat)]
-        return sorted(werte, key=lambda x: x[0])
+        """[('YYYY-MM-DDTHH:MM' Ortszeit, wert)], aufsteigend. aggregat "mean" oder "last".
+        Bei mehreren Namen werden die Verlaeufe zusammengefuegt (spaetere Namen gehen vor)."""
+        werte = {}
+        for k in self.kennungen(schluessel):
+            for t, v in self._stunden(schluessel, k, _utc(start), _utc(ende), aggregat):
+                werte[_lokal(t)] = float(v)
+        return sorted(werte.items())
 
     # ── von den Unterklassen umzusetzen ──────────────────────────────────────
 
@@ -277,6 +321,9 @@ class _Influx(Datenquelle):
     @property
     def tag(self) -> str:
         return (self.cfg.get("influx_tag") or "friendly_name").strip()
+
+    def beschreibung(self, schluessel: str) -> str:
+        return f"{super().beschreibung(schluessel)} im Measurement {self.measurement(schluessel)}"
 
 
 class InfluxDB1(_Influx):
@@ -349,7 +396,7 @@ class InfluxDB1(_Influx):
 
     def _letzter(self, schl, kennung, von, bis):
         w = self._zeilen(self._query(f'SELECT last("value") {self._wo(schl, kennung, von, bis)}'))
-        return w[-1][1] if w else None
+        return w[-1] if w else None
 
     def _werte(self, schl, kennung, von, bis):
         return self._zeilen(self._query(f'SELECT "value" {self._wo(schl, kennung, von, bis)}'))
@@ -465,7 +512,7 @@ class InfluxDB2(_Influx):
         # range() schliesst stop aus – eine Sekunde dazu, damit bis enthalten ist
         w = self._query(self._basis(schl, kennung, von + timedelta(seconds=1),
                                     bis + timedelta(seconds=1)) + "  |> last()")
-        return w[-1][1] if w else None
+        return w[-1] if w else None
 
     def _werte(self, schl, kennung, von, bis):
         return self._query(self._basis(schl, kennung, von, bis))
@@ -556,9 +603,9 @@ class PostgresLTSS(Datenquelle):
                 for e, von, bis, einheit, name in zeilen]
 
     def _letzter(self, schl, kennung, von, bis):
-        z = self._sql(f"SELECT state::float {self._wo()} ORDER BY time DESC LIMIT 1",
+        z = self._sql(f"SELECT time, state::float {self._wo()} ORDER BY time DESC LIMIT 1",
                       e=kennung, von=_utc(von), bis=_utc(bis))
-        return float(z[0][0]) if z else None
+        return (_parse_zeit(z[0][0]), float(z[0][1])) if z else None
 
     def _werte(self, schl, kennung, von, bis):
         z = self._sql(f"SELECT time, state::float {self._wo()} ORDER BY time",
@@ -651,7 +698,9 @@ class Prometheus(Datenquelle):
         sekunden = max(int((_utc(bis) - _utc(von)).total_seconds()), 60)
         serien = self._api("query", {"query": f"last_over_time({self.selektor(kennung)}[{sekunden}s])",
                                      "time": _utc(bis).timestamp()})
-        return float(serien[0]["value"][1]) if serien else None
+        # Die Zeit des Werts liefert last_over_time nicht – der Auswertungszeitpunkt
+        # genuegt, um mehrere Namen zu vergleichen (bei Gleichstand gewinnt der hoehere)
+        return (_utc(bis), float(serien[0]["value"][1])) if serien else None
 
     def _werte(self, schl, kennung, von, bis):
         # Keine Rohwerte ueber die API – Stichproben alle 5 Minuten

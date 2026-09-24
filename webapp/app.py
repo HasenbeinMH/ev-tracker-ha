@@ -614,28 +614,38 @@ HA_API = "HA-API"
 def _fetch_monat(client, quelle, cfg, year, month):
     """Holt alle Werte eines Monats: zuerst aus der eingestellten Datenbank
     (datenquellen.py), was dort fehlt aus der HA-API.
-    Unter "_quelle" steht je Wert, woher er kam (Name der Datenbank, HA_API oder None)."""
-    out = {"_quelle": {}}
+    Unter "_quelle" steht je Wert, woher er kam (Name der Datenbank, HA_API oder None),
+    unter "_grund", warum die Datenbank nichts geliefert hat (nur wenn eine gewaehlt ist)."""
+    out = {"_quelle": {}, "_grund": {}}
+
+    def ha_ids(feld):
+        # Mehrere Entity-IDs mit "|" moeglich (umbenannter Sensor) – aktuelle zuerst probieren
+        return list(reversed(datenquellen.namen_liste(cfg.get(feld))))
+
+    def erster_wert(ids, abruf):
+        for eid in ids:
+            v = abruf(eid)
+            if v is not None:
+                return v
+        return None
 
     def ha(key):
         if not client:
             return None
         try:
             if key == "km":
-                eid = cfg.get("ha_odometer", "")
-                return client.get_month_delta(eid, year, month) if eid else None
+                return erster_wert(ha_ids("ha_odometer"),
+                                   lambda e: client.get_month_delta(e, year, month))
             if key == "pv":
-                eid = cfg.get("ha_pv_production", "")
-                if not eid:
-                    return None
-                v = client.get_month_sum_from_daily(eid, year, month)
-                return v if v is not None else client.get_month_delta(eid, year, month)
+                def pv(e):
+                    v = client.get_month_sum_from_daily(e, year, month)
+                    return v if v is not None else client.get_month_delta(e, year, month)
+                return erster_wert(ha_ids("ha_pv_production"), pv)
             if key == "wallbox":
-                eid = cfg.get("ha_wallbox_energy", "")
-                return client.get_month_delta(eid, year, month) if eid else None
+                return erster_wert(ha_ids("ha_wallbox_energy"),
+                                   lambda e: client.get_month_delta(e, year, month))
             if key == "benzin":
-                ids = [e for e in [cfg.get("ha_tankerkoenig", "").strip(),
-                                   cfg.get("ha_tankerkoenig_2", "").strip()] if e]
+                ids = ha_ids("ha_tankerkoenig") + ha_ids("ha_tankerkoenig_2")
                 return client.get_month_avg_multi(ids, year, month) if ids else None
         except Exception:
             return None
@@ -645,6 +655,10 @@ def _fetch_monat(client, quelle, cfg, year, month):
         val = quelle.monatswert(key, year, month) if quelle else None
         herkunft = quelle.name if val is not None else None
         if val is None:
+            if quelle is not None:
+                kurz = quelle.grund.get(key, "keine Werte")
+                out["_grund"][key] = {"kurz": kurz, "lang": f"{quelle.name}: {kurz} "
+                                                            f"({quelle.beschreibung(key)})"}
             val = ha(key)
             herkunft = HA_API if val is not None else None
         out[key] = round(val, 3) if val is not None else None
@@ -1159,10 +1173,19 @@ def _rohwerte_text(werte: dict) -> str:
     namen = [("km", "km"), ("pv", "PV kWh"), ("wallbox", "Netz kWh"),
              ("benzin", "€/L")]
     herkunft = werte.get("_quelle") or {}
-    return " · ".join(
-        f"{label}={werte[key]} ({herkunft.get(key)})" if werte.get(key) is not None
-        else f"{label}=—"
-        for key, label in namen)
+    grund = werte.get("_grund") or {}
+    teile = []
+    for key, label in namen:
+        if werte.get(key) is not None:
+            teile.append(f"{label}={werte[key]} ({herkunft.get(key)})")
+        else:
+            teile.append(f"{label}=—")
+    text = " · ".join(teile)
+    # Warum die Datenbank nichts lieferte – je Wert eine Zeile darunter
+    for key, label in namen:
+        if grund.get(key):
+            text += f"\n      {label}: {grund[key]['lang']}"
+    return text
 
 
 def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> list:
@@ -1211,7 +1234,9 @@ def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> lis
             protokoll.append(f"{schluessel}: Abruf fehlgeschlagen ({e})")
             continue
 
-        _log_import([f"{schluessel}: gelesen {_rohwerte_text(werte)}"])
+        zeilen = _rohwerte_text(werte).split("\n")
+        _log_import([f"{schluessel}: gelesen {zeilen[0]}"]
+                    + [f"{schluessel}:   {z.strip()}" for z in zeilen[1:]])
 
         teile = []
         herkunft = werte["_quelle"]

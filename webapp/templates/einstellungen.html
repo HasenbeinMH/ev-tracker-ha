@@ -138,6 +138,8 @@
     Energie zählen – nicht die gesamte PV-Erzeugung oder den Hausnetzbezug.
     Die Entity-ID gilt für alle Datenquellen (auch PostgreSQL und Prometheus speichern sie so);
     bei InfluxDB kommt der Name dazu, unter dem der Sensor dort steht.
+    <strong>Umbenannter Sensor?</strong> Mehrere Namen mit <code>|</code> trennen, alten zuerst –
+    z.B. <code>Ceed Kilometerstand | Neuer Name</code>. Die Werte beider Namen werden zusammengeführt.
   </p>
 
   <div class="card" style="background:#171a21">
@@ -375,8 +377,26 @@ function dbEintragen(i) {
   const box = document.getElementById("sensor-ergebnis");
   if (!haKey) { alert("Bitte zuerst wählen, in welche Zeile der Treffer gehört."); return; }
   const eingabe = document.querySelector(`[name="${feld(haKey)}"]`);
-  eingabe.value = dbTreffer[i].kennung;
+  const neu = dbTreffer[i].kennung;
+  const vorhanden = eingabe.value.split("|").map(s => s.trim()).filter(Boolean);
+  if (vorhanden.length && !vorhanden.includes(neu) &&
+      confirm(`In dieser Zeile steht schon „${vorhanden.join(" | ")}“.\n\n` +
+              `OK = als weiteren Namen ergänzen (z.B. nach einer Umbenennung)\n` +
+              `Abbrechen = ersetzen`)) {
+    eingabe.value = [...vorhanden, neu].join(" | ");
+  } else if (!vorhanden.includes(neu)) {
+    eingabe.value = neu;          // leer oder "ersetzen" gewaehlt
+  }
   eingabe.style.outline = "2px solid #5aaa78";
+  // InfluxDB: das Measurement des Treffers fuer diese Einheit uebernehmen
+  const MEAS_FELD = {ha_odometer: "influx_measurement_km", ha_pv_production: "influx_measurement_kwh",
+                     ha_wallbox_energy: "influx_measurement_kwh", ha_tankerkoenig: "influx_measurement_eur_l",
+                     ha_tankerkoenig_2: "influx_measurement_eur_l", ha_ev_battery: "influx_measurement_prozent"};
+  const measEingabe = dbSpalte === "name" && document.querySelector(`[name="${MEAS_FELD[haKey]}"]`);
+  if (measEingabe && dbTreffer[i].einheit && measEingabe.value !== dbTreffer[i].einheit) {
+    measEingabe.value = dbTreffer[i].einheit;
+    measEingabe.style.outline = "2px solid #5aaa78";
+  }
   eingabe.scrollIntoView({block: "center", behavior: "smooth"});
   const hinweis = document.getElementById("test-ergebnis");
   hinweis.textContent = "Eingetragen – zum Übernehmen „Alle Einstellungen speichern“ klicken.";

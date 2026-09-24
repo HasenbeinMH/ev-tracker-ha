@@ -92,8 +92,9 @@ def verlaeufe(start: datetime, ende: datetime, mit_km: bool = True) -> dict:
     if verbindung is None:
         hinweise.append("Home Assistant ist nicht konfiguriert")
         return {"soc": [], "km": [], "quelle": None, "meldung": "; ".join(hinweise)}
-    soc_entity = (cfg.get("ha_ev_battery") or "").strip()
-    km_entity = (cfg.get("ha_odometer") or "").strip()
+    # Bei mehreren Entity-IDs ("alt | neu") gilt fuer HA die aktuelle, also die letzte
+    soc_entity = (datenquellen.namen_liste(cfg.get("ha_ev_battery")) or [""])[-1]
+    km_entity = (datenquellen.namen_liste(cfg.get("ha_odometer")) or [""])[-1]
     if not soc_entity or (mit_km and not km_entity):
         hinweise.append("Entity-ID für Batteriestand oder Kilometerstand fehlt")
         return {"soc": [], "km": [], "quelle": None, "meldung": "; ".join(hinweise)}

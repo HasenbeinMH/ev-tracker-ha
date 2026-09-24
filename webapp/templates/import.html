@@ -152,11 +152,21 @@ async function pollStatus() {
 
 // Kennzeichen unter jedem Wert: DB = aus der Datenbank, HA = aus der HA-API
 const HA_API = "HA-API";
-function herkunftMarke(herkunft) {
-  if (!herkunft) return "";
-  const db = herkunft !== HA_API;
-  return `<div class="herkunft" title="${herkunft}" style="font-size:10px; margin-top:2px;` +
-         ` color:${db ? "#7cc896" : "#6fb0e0"}">${db ? "DB" : "HA"}</div>`;
+const escHtml = (s) => String(s ?? "").replace(/[&<>"']/g,
+  c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+// grund: warum die Datenbank nichts lieferte ({kurz, lang}) – grau unter dem Feld
+function herkunftMarke(herkunft, grund) {
+  let html = "";
+  if (herkunft) {
+    const db = herkunft !== HA_API;
+    html += `<div class="herkunft" title="${escHtml(herkunft)}" style="font-size:10px; margin-top:2px;` +
+            ` color:${db ? "#7cc896" : "#6fb0e0"}">${db ? "DB" : "HA"}</div>`;
+  }
+  if (grund) {
+    html += `<div title="${escHtml(grund.lang)}" style="font-size:10px; color:#8a8f98; max-width:170px;` +
+            ` white-space:normal; line-height:1.2; margin-top:2px">DB: ${escHtml(grund.kurz)}</div>`;
+  }
+  return html;
 }
 
 let vorschauQuelle = "";
@@ -165,7 +175,8 @@ function zeigeVorschau(rows, quelle) {
   vorschauQuelle = quelle || "";
   document.getElementById("vorschau-quelle").innerHTML = quelle
     ? `Abgerufen aus: <strong>${quelle}</strong> · unter jedem Wert steht seine Herkunft: ` +
-      `<span style="color:#7cc896">DB</span> = Datenbank, <span style="color:#6fb0e0">HA</span> = Home Assistant`
+      `<span style="color:#7cc896">DB</span> = Datenbank, <span style="color:#6fb0e0">HA</span> = Home Assistant.` +
+      ` Grau darunter: warum die Datenbank für den Wert nichts geliefert hat (Details beim Überfahren mit der Maus).`
     : "";
   const tabelle = document.getElementById("vorschau-tabelle");
   tabelle.querySelectorAll("tr:not(:first-child)").forEach(tr => tr.remove());
@@ -174,7 +185,7 @@ function zeigeVorschau(rows, quelle) {
     tr.innerHTML = `<td>${r.label}</td>` +
       ["km", "pv", "wallbox", "benzin"].map(k =>
         `<td><input data-monat="${r.monat}" data-key="${k}" value="${r[k] ?? ""}">` +
-        `${herkunftMarke((r._quelle || {})[k])}</td>`
+        `${herkunftMarke((r._quelle || {})[k], (r._grund || {})[k])}</td>`
       ).join("");
     tabelle.appendChild(tr);
   }

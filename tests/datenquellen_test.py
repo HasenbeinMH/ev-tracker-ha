@@ -226,7 +226,7 @@ class FakePG:
         punkte = [(t, v) for t, v in zahlen(k, p["von"] - timedelta(seconds=1), p["bis"])
                   if inkl or t > p["von"]]
         if "ORDER BY time DESC LIMIT 1" in sql:
-            return [[punkte[-1][1]]] if punkte else []
+            return [[punkte[-1][0], punkte[-1][1]]] if punkte else []
         if sql.startswith("SELECT time, state"):
             return [[t, v] for t, v in punkte]
         if "DISTINCT ON" in sql:

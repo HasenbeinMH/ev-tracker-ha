@@ -82,6 +82,13 @@ SENSOREN = {
 PUNKTE = {k: [(t.astimezone().astimezone(UTC), s[4](i, t)) for i, t in enumerate(STUNDEN)]
           for k, s in SENSOREN.items()}
 
+# Umbenannter Sensor: derselbe Kilometerstand heisst bis Mitte Februar "KM Alt", danach "KM Neu"
+UMBENENNUNG = datetime(2026, 2, 15).astimezone().astimezone(UTC)
+SENSOREN["km_alt"] = ("sensor.km_alt", "KM Alt", "km", "homeassistant_sensor_distance_km", None)
+SENSOREN["km_neu"] = ("sensor.km_neu", "KM Neu", "km", "homeassistant_sensor_distance_km", None)
+PUNKTE["km_alt"] = [p for p in PUNKTE["odo"] if p[0] < UMBENENNUNG]
+PUNKTE["km_neu"] = [p for p in PUNKTE["odo"] if p[0] >= UMBENENNUNG]
+
 CFG = {"ha_odometer": "sensor.odo", "ha_wallbox_energy": "sensor.wallbox",
        "ha_pv_production": "sensor.pv", "ha_tankerkoenig": "sensor.benzin1",
        "ha_tankerkoenig_2": "sensor.benzin2", "ha_ev_battery": "sensor.soc",
@@ -251,8 +258,8 @@ def pruefen():
         for key, soll in SOLL.items():
             try:
                 ist = dq.monat_mittel(key, dq.kennungen(key), 2026, 2) if key == "benzin" else (
-                    dq.monat_summe(key, dq.kennungen(key)[0], 2026, 2) if key in ("pv", "wallbox")
-                    else dq.monat_delta(key, dq.kennungen(key)[0], 2026, 2))
+                    dq.monat_summe(key, dq.kennungen(key), 2026, 2) if key in ("pv", "wallbox")
+                    else dq.monat_delta(key, dq.kennungen(key), 2026, 2))
             except Exception as e:
                 ist = f"Fehler: {e}"
             check(name, f"Monatswert {key} 02/2026",
@@ -275,6 +282,27 @@ def pruefen():
                                              "fn_odometer": "odo"})
         ist = dq.monatswert("km", 2026, 2)
         check(name, "Tag entity_id (ohne 'sensor.')", nah(ist, SOLL["km"]), str(ist))
+    # Umbenannter Sensor: beide Namen mit "|" -> lueckenlos, auch im Monat der Umbenennung
+    print()
+    for name, extra in QUELLEN:
+        influx = extra["datasource"].startswith("influx")
+        feld = "fn_odometer" if influx else "ha_odometer"
+        beide = "KM Alt | KM Neu" if influx else "sensor.km_alt | sensor.km_neu"
+        nur_neu = "KM Neu" if influx else "sensor.km_neu"
+        dq = datenquellen.aus_einstellungen({**CFG, **extra, feld: beide})
+        werte = {m: dq.monatswert("km", 2026, m) for m in (1, 2, 3)}
+        soll = {1: 31 * 40, 2: 28 * 40}
+        check(name, "Umbenennung: Jan und Feb (Monat der Umbenennung) mit beiden Namen",
+              all(nah(werte[m], soll[m]) for m in soll), str(werte))
+        check(name, "Umbenennung: Maerz aus dem neuen Namen", werte[3] and werte[3] > 0, str(werte[3]))
+        dq = datenquellen.aus_einstellungen({**CFG, **extra, feld: nur_neu})
+        ist = dq.monatswert("km", 2026, 1)
+        check(name, "Nur neuer Name: Januar leer, Grund wird genannt",
+              ist is None and dq.grund.get("km") == "keine Werte im Monat", f"{ist} / {dq.grund}")
+        dq.monatswert("km", 2026, 2)
+        check(name, "Nur neuer Name: Februar ohne Vorwert, Grund wird genannt",
+              "kein Wert vor dem Monat" in dq.grund.get("km", ""), str(dq.grund))
+
     # Suche in der Datenbank
     print()
     for name, extra in QUELLEN:
@@ -299,7 +327,7 @@ def pruefen():
                         t.get("bis") and t["bis"].astimezone().strftime("%Y-%m"))
             check(name, "Suche liefert Zeitraum 12/2025 – 03/2026",
                   zeitraum == ("2025-12", "2026-03"), str(zeitraum))
-        check(name, "Leere Suche listet alle 6 Zahlen-Sensoren", len(alle) == 6,
+        check(name, "Leere Suche listet alle 8 Zahlen-Sensoren", len(alle) == 8,
               str([x["kennung"] for x in alle]))
         check(name, "Sonderzeichen im Suchbegriff -> keine Treffer, kein Fehler", leer == [], str(leer))
 

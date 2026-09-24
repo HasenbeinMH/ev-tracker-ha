@@ -48,7 +48,8 @@ def batterie_verlauf(jahr: int, monat: int) -> list:
         return verlauf
 
     client, cfg = _client()
-    entity = (cfg.get("ha_ev_battery") or "").strip()
+    import datenquellen
+    entity = (datenquellen.namen_liste(cfg.get("ha_ev_battery")) or [""])[-1]
     if client is None or not entity:
         return []
 

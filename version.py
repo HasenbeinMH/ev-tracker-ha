@@ -19,10 +19,25 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.1.2"
+VERSION = "2.1.3"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.1.3",
+        "datum": "2026-09-24",
+        "titel": "Umbenannte Sensoren und Grund, wenn die Datenbank nichts liefert",
+        "aenderungen": [
+            "Mehrere Namen je Sensor mit \"|\" (z.B. \"Alter Name | Neuer Name\"): die Werte "
+            "werden zusammengefuehrt, beim Kilometerstand stimmt auch der Monat der Umbenennung",
+            "Import-Vorschau und Protokoll nennen den Grund, wenn die Datenbank fuer einen Wert "
+            "nichts liefert (keine Werte im Monat, kein Vorwert, Fehlermeldung der Datenbank) – "
+            "vorher sprang die App still auf Home Assistant um",
+            "Datenbanksuche: \"Uebernehmen\" setzt bei InfluxDB auch das passende Measurement "
+            "(z.B. \"€\" statt \"EUR/L\") und fragt, ob ein weiterer Name ergaenzt oder der "
+            "vorhandene ersetzt werden soll",
+        ],
+    },
     {
         "version": "2.1.2",
         "datum": "2026-09-24",
