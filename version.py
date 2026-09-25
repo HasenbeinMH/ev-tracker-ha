@@ -19,10 +19,20 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.5.3"
+VERSION = "2.5.4"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.5.4",
+        "datum": "2026-09-25",
+        "titel": "InfluxDB 3 Core: Abfragen in Zeitfenstern",
+        "aenderungen": [
+            "InfluxDB 3 Core liest je Abfrage nur begrenzt viele Parquet-Dateien (Standard 432, etwa 72 Stunden). Die App fragt deshalb in Fenstern von hoechstens 48 Stunden ab und setzt sie zusammen; meldet die Datenbank die Grenze trotzdem, wird das Fenster halbiert. Vorher: \"Query would scan 5000 Parquet files, exceeding the file limit\"",
+            "Sensorsuche und Tabellenwahl schauen nur in die letzten zwei Tage; die Suche zeigt \"zuletzt MM/JJJJ\" statt des ganzen Datenzeitraums",
+            "Reicht selbst ein Fenster von einer Stunde nicht, erklaert die Meldung, wie man die Grenze in InfluxDB anhebt (--query-file-limit bzw. INFLUXDB3_QUERY_FILE_LIMIT)",
+        ],
+    },
     {
         "version": "2.5.3",
         "datum": "2026-09-25",

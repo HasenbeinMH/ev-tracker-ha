@@ -580,13 +580,23 @@ def _sql_ident(s: str) -> str:
 
 
 class InfluxDB3(_Influx):
+    """InfluxDB 3 Core liest je Abfrage nur eine begrenzte Zahl von Parquet-Dateien
+    (Standard 432 ≈ 72 Stunden, da Core etwa alle 10 Minuten je Measurement eine Datei
+    schreibt und nicht zusammenfasst). Deshalb wird nie ueber lange Zeitraeume gefragt,
+    sondern in Fenstern von hoechstens FENSTER_H Stunden; meldet die Datenbank die Grenze
+    trotzdem, wird das Fenster halbiert."""
     typ = "influxdb3"
+    FENSTER_H = 48
+    # So weit sucht _letzter hoechstens zurueck – reicht fuer die Lueckenpruefung
+    # (LUECKE_TAGE), ohne ein ganzes Jahr in Fenstern abzuklappern
+    RUECKBLICK = timedelta(days=LUECKE_TAGE + 15)
 
     def __init__(self, cfg):
         super().__init__(cfg)
         self.base = _url(cfg.get("influx3_url") or "http://localhost:8181")
         self.db = (cfg.get("influx3_database") or "home_assistant").strip()
         self.token = (cfg.get("influx3_token") or "").strip()
+        self.fenster_h = self.FENSTER_H
         self._tabellen_cache = None     # Tabellen mit Tag und Feld "value"
         self._tabelle_je = {}           # (schl, kennung) -> Tabelle, in der der Sensor liegt
 
@@ -602,6 +612,13 @@ class InfluxDB3(_Influx):
         text = roh.decode("utf-8", errors="replace").strip()
         return json.loads(text) if text else []
 
+    def _fenster_kleiner(self, e: Exception) -> None:
+        """Nach der Meldung "Query would scan … Parquet files": Fenster halbieren –
+        bis 1 Stunde; darunter hilft nur, die Grenze in InfluxDB anzuheben."""
+        if "parquet files" not in str(e).lower() or self.fenster_h <= 1:
+            raise e
+        self.fenster_h = max(1, self.fenster_h // 2)
+
     def _fehlertext(self, text: str) -> str:
         if "HTTP 401" in text or "HTTP 403" in text:
             ende = self.token[-4:] if len(self.token) > 12 else "…"
@@ -611,6 +628,14 @@ class InfluxDB3(_Influx):
         if "HTTP 404" in text and "database" in text.lower():
             return (f"Datenbank '{self.db}' nicht gefunden – das ist der Name, den Home Assistant "
                     f"in der InfluxDB-Konfiguration als bucket einträgt. — {text}")
+        return text
+
+    def fehlertext(self, e: Exception) -> str:
+        text = str(e)
+        if "parquet files" in text.lower():
+            return ("InfluxDB 3 Core liest je Abfrage nur eine begrenzte Zahl von Dateien – "
+                    "schon für eine Stunde zu viele. Grenze in InfluxDB anheben, z.B. mit "
+                    f"--query-file-limit bzw. INFLUXDB3_QUERY_FILE_LIMIT. — {text}")
         return text
 
     @staticmethod
@@ -624,8 +649,37 @@ class InfluxDB3(_Influx):
                 continue
         return sorted(werte, key=lambda x: x[0])
 
+    def _fenster(self, von: datetime, bis: datetime, sql_fuer, rueckwaerts=False,
+                 bis_treffer=False) -> list:
+        """Zeilen aus (von, bis] in Fenstern von hoechstens fenster_h Stunden.
+        sql_fuer(a, b, erstes) baut die Abfrage fuer ein Fenster; erstes = das Fenster
+        beginnt bei von. Die Grenzen liegen auf vollen Stunden, damit Stundenwerte
+        nicht zwischen zwei Fenstern zerfallen. bis_treffer: beim ersten Fenster mit
+        Zeilen aufhoeren (rueckwaerts: der juengste Wert)."""
+        zeilen = []
+        pos = bis if rueckwaerts else von
+        while (pos > von) if rueckwaerts else (pos < bis):
+            schritt = timedelta(hours=self.fenster_h)
+            stunde = pos.replace(minute=0, second=0, microsecond=0)
+            if rueckwaerts:
+                # Fensterbeginn auf voller Stunde, Fenster hoechstens fenster_h Stunden lang
+                ab = stunde if stunde < pos else stunde - timedelta(hours=1)
+                a, b = max(von, ab - schritt + timedelta(hours=1)), pos
+            else:
+                a, b = pos, min(bis, stunde + schritt)
+            try:
+                z = self._sql(sql_fuer(a, b, a == von))
+            except ConnectionError as e:
+                self._fenster_kleiner(e)
+                continue
+            zeilen += z
+            if bis_treffer and z:
+                break
+            pos = a if rueckwaerts else b
+        return zeilen
+
     def _tabellen(self, timeout: int = TIMEOUT) -> list:
-        """Measurements (Tabellen), die den Tag und das Feld "value" haben."""
+        """Measurements (Tabellen), die den Tag und das Feld "value" haben (nur Metadaten)."""
         if self._tabellen_cache is None:
             spalten = self._sql("SELECT table_name, column_name FROM information_schema.columns "
                                 f"WHERE table_schema = 'iox' AND column_name IN "
@@ -636,34 +690,46 @@ class InfluxDB3(_Influx):
             self._tabellen_cache = sorted(t for t, s in je.items() if s == {self.tag, "value"})
         return self._tabellen_cache
 
-    def _hat(self, tabelle: str, kennung: str) -> bool:
-        return bool(self._sql(f"SELECT 1 AS x FROM {_sql_ident(tabelle)} "
-                              f"WHERE {_sql_ident(self.tag)} = {_sql_str(kennung)} LIMIT 1"))
+    def _juengst(self, tabelle: str, bedingung: str, spalten: str, rest: str = "",
+                 timeout: int = TIMEOUT) -> list:
+        """Abfrage ueber die letzten fenster_h Stunden (fuer Suche und Tabellenwahl)."""
+        while True:
+            try:
+                return self._sql(f"SELECT {spalten} FROM {_sql_ident(tabelle)} WHERE {bedingung} "
+                                 f"AND time > now() - INTERVAL '{self.fenster_h} hours' {rest}",
+                                 timeout)
+            except ConnectionError as e:
+                self._fenster_kleiner(e)
 
     def _tabelle(self, schl: str, kennung: str) -> str:
         """Tabelle, in der der Sensor liegt. HA legt jeden Sensor im Measurement seiner
-        Einheit ab – die steht nicht immer so in den Einstellungen (z.B. "€" statt
-        "EUR/L", wenn der Name von Hand eingetragen wurde). Dann wird der Sensor ueber
-        seinen Namen in den uebrigen Tabellen gesucht; das Ergebnis gilt fuer diesen Abruf."""
+        Einheit ab – das steht nicht immer so in den Einstellungen (z.B. "€" statt
+        "EUR/L", wenn der Name von Hand eingetragen wurde). Gibt es das eingestellte
+        Measurement nicht, wird der Name in den juengsten Werten der uebrigen gesucht."""
         schluessel = (schl, kennung)
         if schluessel not in self._tabelle_je:
             tabellen = self._tabellen()
             eingestellt = self.measurement(schl)
-            kandidaten = ([eingestellt] if eingestellt in tabellen else []) +                          [t for t in tabellen if t != eingestellt]
-            gefunden = next((t for t in kandidaten if self._hat(t, kennung)), None)
+            if eingestellt in tabellen:
+                gefunden = eingestellt
+            else:
+                bedingung = f"{_sql_ident(self.tag)} = {_sql_str(kennung)}"
+                gefunden = next((t for t in tabellen
+                                 if self._juengst(t, bedingung, "1 AS x", "LIMIT 1")), None)
             if gefunden is None:
                 raise ConnectionError(
-                    f"„{kennung}“ steht in keinem Measurement mit dem Tag {self.tag} "
-                    f"(vorhanden: {', '.join(tabellen) or 'keine'}) – Namen mit der "
-                    f"Datenbanksuche prüfen")
+                    f"Measurement „{eingestellt}“ gibt es nicht, und „{kennung}“ hat in den "
+                    f"letzten {self.fenster_h} Stunden in keinem anderen Werte (vorhanden: "
+                    f"{', '.join(tabellen) or 'keine'}) – Sensor mit der Datenbanksuche "
+                    f"übernehmen oder das Measurement unter „Erweitert“ eintragen")
             self._tabelle_je[schluessel] = gefunden
         return self._tabelle_je[schluessel]
 
     def beschreibung(self, schluessel: str) -> str:
         return f"{Datenquelle.beschreibung(self, schluessel)} (Measurement wird über den Namen gefunden)"
 
-    def _wo(self, schl, kennung, von, bis, ab_inkl=False) -> str:
-        return (f"FROM {_sql_ident(self._tabelle(schl, kennung))} "
+    def _wo(self, tabelle, kennung, von, bis, ab_inkl=False) -> str:
+        return (f"FROM {_sql_ident(tabelle)} "
                 f"WHERE {_sql_ident(self.tag)} = {_sql_str(kennung)} AND \"value\" IS NOT NULL "
                 f"AND time {'>=' if ab_inkl else '>'} {_sql_str(_iso(von))} "
                 f"AND time <= {_sql_str(_iso(bis))}")
@@ -679,35 +745,46 @@ class InfluxDB3(_Influx):
         return True, f"Verbunden · Datenbank '{self.db}' mit {len(tabellen)} Measurements"
 
     def suche(self, begriff):
-        tag = self.tag
-        tabellen = self._tabellen(TIMEOUT_SUCHE)
+        """Sucht in den juengsten Werten (letzte fenster_h Stunden): eine Suche ueber alle
+        Zeit wuerde an der Dateigrenze von InfluxDB 3 Core scheitern. Den Beginn der Daten
+        kennt die Suche deshalb nicht (von = None), nur den letzten Wert."""
+        tag = _sql_ident(self.tag)
         begriff = (begriff or "").strip().lower()
+        bedingung = '"value" IS NOT NULL'
+        if begriff:
+            bedingung += f" AND strpos(lower({tag}), {_sql_str(begriff)}) > 0"
         treffer = []
-        for tabelle in tabellen:
-            q = (f"SELECT {_sql_ident(tag)} AS kennung, min(time) AS von, max(time) AS bis "
-                 f"FROM {_sql_ident(tabelle)} WHERE \"value\" IS NOT NULL")
-            if begriff:
-                q += f" AND strpos(lower({_sql_ident(tag)}), {_sql_str(begriff)}) > 0"
-            for z in self._sql(q + " GROUP BY 1", TIMEOUT_SUCHE):
-                if z.get("kennung") and z.get("von"):
+        for tabelle in self._tabellen(TIMEOUT_SUCHE):
+            for z in self._juengst(tabelle, bedingung, f"{tag} AS kennung, max(time) AS bis",
+                                   "GROUP BY 1", TIMEOUT_SUCHE):
+                if z.get("kennung"):
                     treffer.append({"kennung": z["kennung"], "name": z["kennung"], "einheit": tabelle,
-                                    "von": _parse_zeit(z["von"]), "bis": _parse_zeit(z["bis"])})
+                                    "von": None, "bis": _parse_zeit(z["bis"]) if z.get("bis") else None})
         return sorted(treffer, key=lambda e: (e["kennung"].lower(), e["einheit"]))[:MAX_TREFFER]
 
     def _letzter(self, schl, kennung, von, bis):
-        w = self._paare(self._sql(f"SELECT time, \"value\" {self._wo(schl, kennung, von, bis)} "
-                                  "ORDER BY time DESC LIMIT 1"))
+        tabelle = self._tabelle(schl, kennung)
+        zeilen = self._fenster(
+            max(von, bis - self.RUECKBLICK), bis,
+            lambda a, b, _: f"SELECT time, \"value\" {self._wo(tabelle, kennung, a, b)} "
+                            "ORDER BY time DESC LIMIT 1",
+            rueckwaerts=True, bis_treffer=True)
+        w = self._paare(zeilen)
         return w[-1] if w else None
 
     def _werte(self, schl, kennung, von, bis):
-        return self._paare(self._sql(f"SELECT time, \"value\" {self._wo(schl, kennung, von, bis)} "
-                                     "ORDER BY time"))
+        tabelle = self._tabelle(schl, kennung)
+        return self._paare(self._fenster(
+            von, bis, lambda a, b, _: f"SELECT time, \"value\" {self._wo(tabelle, kennung, a, b)} "
+                                      "ORDER BY time"))
 
     def _stunden(self, schl, kennung, von, bis, aggregat):
+        tabelle = self._tabelle(schl, kennung)
         wert = ('last_value("value" ORDER BY time)' if aggregat == "last" else 'avg("value")')
-        return self._paare(self._sql(
-            f"SELECT date_bin(INTERVAL '1 hour', time) AS time, {wert} AS \"value\" "
-            f"{self._wo(schl, kennung, von, bis, ab_inkl=True)} GROUP BY 1 ORDER BY 1"))
+        return self._paare(self._fenster(
+            von, bis, lambda a, b, erstes:
+                f"SELECT date_bin(INTERVAL '1 hour', time) AS time, {wert} AS \"value\" "
+                f"{self._wo(tabelle, kennung, a, b, ab_inkl=erstes)} GROUP BY 1 ORDER BY 1"))
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

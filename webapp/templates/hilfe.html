@@ -253,7 +253,7 @@
   <tr><th style="width:30%">Datenbank</th><th style="width:22%">HA-Integration</th><th>Sensor-Zuordnung</th></tr>
   <tr><td>InfluxDB 1.x</td><td>InfluxDB (api_version 1)</td><td>Friendly Name (oder ein anderer Tag, z.B. <code>entity_id</code> ohne „sensor.“) im Measurement der Einheit</td></tr>
   <tr><td>InfluxDB 2.x</td><td>InfluxDB (api_version 2)</td><td>wie 1.x; Verbindung über URL, Organisation, Bucket und API-Token</td></tr>
-  <tr><td>InfluxDB 3.x (Core/Enterprise)</td><td>InfluxDB (api_version 2)</td><td>wie 1.x; Verbindung über URL, Datenbank (= Bucket aus der HA-Konfiguration) und Token, abgefragt per SQL</td></tr>
+  <tr><td>InfluxDB 3.x (Core/Enterprise)</td><td>InfluxDB (api_version 2)</td><td>wie 1.x; Verbindung über URL, Datenbank (= Bucket aus der HA-Konfiguration) und Token, abgefragt per SQL. Core liest je Abfrage nur begrenzt viele Dateien (etwa 72 Stunden) – die App fragt in Fenstern von höchstens 48 Stunden, die Suche findet Sensoren mit Werten aus den letzten zwei Tagen, und das Measurement wird über den Namen gefunden</td></tr>
   <tr><td>PostgreSQL / TimescaleDB</td><td>LTSS</td><td>Entity-ID wie bei HA; gelesen wird die Tabelle <code>ltss</code></td></tr>
   <tr><td>Prometheus / VictoriaMetrics</td><td>Prometheus</td><td>Entity-ID wie bei HA (Label <code>entity</code>); Aufbewahrung muss für Monatswerte reichen</td></tr>
 </table>

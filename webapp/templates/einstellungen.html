@@ -260,7 +260,10 @@
   <h2>InfluxDB 3.x Verbindung</h2>
   <p class="hint">InfluxDB 3 Core bzw. Enterprise, abgefragt per SQL. Die Datenbank ist der Name, den
     Home Assistant in seiner InfluxDB-Konfiguration als <code>bucket</code> einträgt.
-    Ein Token entsteht mit <code>influxdb3 create token --admin</code> oder in InfluxDB 3 Explorer.</p>
+    Ein Token entsteht mit <code>influxdb3 create token --admin</code> oder in InfluxDB 3 Explorer.
+    InfluxDB 3 Core liest je Abfrage nur begrenzt viele Dateien (etwa 72 Stunden) – die App fragt deshalb
+    in Fenstern von höchstens 48 Stunden ab, und die Sensorsuche findet Sensoren mit Werten aus den
+    letzten zwei Tagen.</p>
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
     <label class="feld">URL mit Port
       <input name="influx3_url" value="{{ ha.influx3_url }}" placeholder="http://192.168.0.59:8181" style="width:220px">
@@ -413,7 +416,8 @@ async function sucheDatenbank() {
           "</th><th>Name</th><th>Einheit</th><th>Daten</th><th></th></tr>";
   const vergeben = new Set();
   dbTreffer.forEach((t, i) => {
-    const zeitraum = t.von ? `${esc(t.von)} – ${esc(t.bis)}` : "<span class='muted'>–</span>";
+    const zeitraum = t.von ? `${esc(t.von)} – ${esc(t.bis)}`
+                   : t.bis ? `<span class='muted'>zuletzt</span> ${esc(t.bis)}` : "<span class='muted'>–</span>";
     html += `<tr><td>${esc(t.kennung)}</td><td>${t.name !== t.kennung ? esc(t.name) : ""}</td>` +
             `<td>${esc(t.einheit)}</td><td style="white-space:nowrap">${zeitraum}</td>` +
             `<td style="white-space:nowrap"><select id="db-ziel-${i}">${optionen(vorschlagZeile(t, vergeben))}</select> ` +

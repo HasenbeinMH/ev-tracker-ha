@@ -3,6 +3,12 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.5.4] - 2026-09-25
+### InfluxDB 3 Core: Abfragen in Zeitfenstern
+- InfluxDB 3 Core liest je Abfrage nur begrenzt viele Parquet-Dateien (Standard 432, etwa 72 Stunden). Die App fragt deshalb in Fenstern von hoechstens 48 Stunden ab und setzt sie zusammen; meldet die Datenbank die Grenze trotzdem, wird das Fenster halbiert. Vorher: "Query would scan 5000 Parquet files, exceeding the file limit"
+- Sensorsuche und Tabellenwahl schauen nur in die letzten zwei Tage; die Suche zeigt "zuletzt MM/JJJJ" statt des ganzen Datenzeitraums
+- Reicht selbst ein Fenster von einer Stunde nicht, erklaert die Meldung, wie man die Grenze in InfluxDB anhebt (--query-file-limit bzw. INFLUXDB3_QUERY_FILE_LIMIT)
+
 ## [2.5.3] - 2026-09-25
 ### InfluxDB 3.x: Sensor wird ueber den Friendly Name gefunden
 - InfluxDB 3.x: das Measurement (die Tabelle) eines Sensors muss nicht mehr stimmen – steht der Name nicht im eingestellten Measurement (z.B. "EUR/L", der Sensor liegt aber unter "€"), sucht die App ihn in den uebrigen Measurements. Vorher: "table 'public.iox.EUR/L' not found"
