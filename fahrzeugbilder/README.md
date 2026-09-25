@@ -86,4 +86,10 @@ oder Bilder aus dem Netz.
 
 | Datei | Fahrzeug |
 |-------|----------|
+| [`audi-a6-etron-schwarz.jpg`](audi-a6-etron-schwarz.jpg) | Audi A6 e-tron, Schwarz |
+| [`audi-q4-etron-sportback-grau.jpg`](audi-q4-etron-sportback-grau.jpg) | Audi Q4 e-tron Sportback, Grau |
+| [`audi-q6-etron-silber.jpg`](audi-q6-etron-silber.jpg) | Audi Q6 e-tron, Silber (Erlkönig-Folie) |
+| [`bmw-i5-schwarz.jpg`](bmw-i5-schwarz.jpg) | BMW i5, Schwarz |
+| [`bmw-ix1-grau.jpg`](bmw-ix1-grau.jpg) | BMW iX1, Grau |
+| [`bmw-ix3-blau.jpg`](bmw-ix3-blau.jpg) | BMW iX3, Blau |
 | [`kia-ev3-orange.jpg`](kia-ev3-orange.jpg) | Kia EV3, Orange (Standardbild der App) |
