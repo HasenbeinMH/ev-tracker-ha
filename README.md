@@ -9,7 +9,7 @@ Web-App zur Erfassung und Auswertung der Kosteneinsparungen eines Elektroautos
 gegenüber einem Benziner. Fahrzeugname und -bild sind in den Einstellungen frei wählbar –
 nicht auf ein bestimmtes Modell festgelegt.
 
-![Dashboard des EV Trackers](docs/screenshot-dashboard.png)
+![Dashboard des EV Trackers](https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-dashboard.png)
 
 ## Einblicke
 
@@ -17,19 +17,19 @@ nicht auf ein bestimmtes Modell festgelegt.
 
 <table>
 <tr>
-<td width="50%"><a href="docs/screenshot-diagramme.png"><img src="docs/screenshot-diagramme.png" alt="Diagramme: CO2, Verbrauch, Ladekosten nach Anbieter, Strommix"></a>
+<td width="50%"><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-diagramme.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-diagramme.png" alt="Diagramme: CO2, Verbrauch, Ladekosten nach Anbieter, Strommix"></a>
 <br><b>Alles auf einen Blick</b> – CO₂-Ersparnis, Verbrauch im Jahresverlauf, wohin das Geld fürs Laden geht und wie viel davon Solarstrom war.</td>
-<td width="50%"><a href="docs/screenshot-statistik.png"><img src="docs/screenshot-statistik.png" alt="Statistik: Sommer gegen Winter"></a>
+<td width="50%"><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-statistik.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-statistik.png" alt="Statistik: Sommer gegen Winter"></a>
 <br><b>Sommer gegen Winter</b> – zwei Zeiträume nebeneinander: Verbrauch, Kosten je 100 km, PV-Anteil, Ersparnis.</td>
 </tr>
 <tr>
-<td><a href="docs/screenshot-verbrauch.png"><img src="docs/screenshot-verbrauch.png" alt="Verbrauch je Monat und aus dem Akkustand"></a>
+<td><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-verbrauch.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-verbrauch.png" alt="Verbrauch je Monat und aus dem Akkustand"></a>
 <br><b>Echter Verbrauch</b> – je Monat aus den Ladungen und je Fahrt aus dem Akkustand. Die Differenz zeigt die Ladeverluste.</td>
-<td><a href="docs/screenshot-ladetarife.png"><img src="docs/screenshot-ladetarife.png" alt="Ladetarife mit Preisverlauf"></a>
+<td><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-ladetarife.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-ladetarife.png" alt="Ladetarife mit Preisverlauf"></a>
 <br><b>Ladetarife im Griff</b> – Abos mit Preisverlauf, Grundgebühr und Blockiergebühr, im Vergleich zum Heimstrom.</td>
 </tr>
 <tr>
-<td><a href="docs/screenshot-bericht.png"><img src="docs/screenshot-bericht.png" alt="Monatsbericht per Mail" width="70%"></a>
+<td><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-bericht.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-bericht.png" alt="Monatsbericht per Mail" width="70%"></a>
 <br><b>Monatsbericht per Mail</b> – kommt automatisch, sobald der Monat vollständig ist.</td>
 <td valign="top"><br><b>Und außerdem:</b> Import aus Home Assistant oder einer Datenbank (InfluxDB 1.x/2.x, PostgreSQL/TimescaleDB, Prometheus/VictoriaMetrics), jede Nacht automatisch · Rechnungs-PDFs einlesen · Ladeerkennung am Akkustand (meldet Ladungen unterwegs ohne Beleg) · THG-Quote und KFZ-Steuer · Instandhaltung und Versicherung · Backup und Wiederherstellen</td>
 </tr>
@@ -44,14 +44,14 @@ vorher in Home Assistant eingerichtet sein:
 | Was | Wozu | Hinweis |
 |-----|------|---------|
 | ⛽ **Tankerkönig-Integration** | Benzinpreis für den Vergleich mit einem Verbrenner | Kostenlosen API-Key bei [Tankerkönig](https://creativecommons.tankerkoenig.de/) holen, Integration in HA einrichten und die Tankstelle(n) wählen, an der man sonst tanken würde. Bis zu zwei Preis-Sensoren (€/L) können eingetragen werden, es wird der Monatsdurchschnitt gebildet. |
-| 🔌 **Geladene kWh aus dem Netz** | Stromkosten für das Laden zu Hause (Netzbezug) | Muss **außerhalb** des EV Trackers gezählt werden – z. B. durch den Energiezähler der Wallbox oder einen Zwischenzähler. Benötigt wird ein fortlaufender kWh-Zähler. Liefert die Wallbox nur die gesamte Ladeleistung: siehe [Vorlagen](vorlagen/README.md) unten. |
-| ☀️ **Geladene kWh aus der PV** | Anteil des Solarstroms am Laden (mit eigenem PV-Preis bewertet) | Ebenfalls **außerhalb** des Tools zu ermitteln, z. B. über die Wallbox-/PV-Steuerung (evcc, go-e, OpenWB …) oder einen Template-/Utility-Meter-Sensor. Fortlaufender oder täglich zurückgesetzter kWh-Zähler. Oder mit den [Vorlagen](vorlagen/README.md) aus Netz- und Wallbox-Leistung berechnen. |
+| 🔌 **Geladene kWh aus dem Netz** | Stromkosten für das Laden zu Hause (Netzbezug) | Muss **außerhalb** des EV Trackers gezählt werden – z. B. durch den Energiezähler der Wallbox oder einen Zwischenzähler. Benötigt wird ein fortlaufender kWh-Zähler. Liefert die Wallbox nur die gesamte Ladeleistung: siehe [Vorlagen](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/README.md) unten. |
+| ☀️ **Geladene kWh aus der PV** | Anteil des Solarstroms am Laden (mit eigenem PV-Preis bewertet) | Ebenfalls **außerhalb** des Tools zu ermitteln, z. B. über die Wallbox-/PV-Steuerung (evcc, go-e, OpenWB …) oder einen Template-/Utility-Meter-Sensor. Fortlaufender oder täglich zurückgesetzter kWh-Zähler. Oder mit den [Vorlagen](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/README.md) aus Netz- und Wallbox-Leistung berechnen. |
 | 🚗 **Kilometerstand** | Gefahrene km pro Monat | Z. B. über die Fahrzeug-Integration des Herstellers |
 | 🔋 *Batteriestand (optional)* | Ladeerkennung und Verbrauch aus dem Akkustand | Ebenfalls über die Fahrzeug-Integration |
 
 Die Entity-IDs werden anschließend in den **Einstellungen** des EV Trackers eingetragen.
 
-**PV/Netz ins Auto selbst berechnen:** Die [Vorlagen](vorlagen/README.md) – als Node-RED-Flow oder als Home-Assistant-Paket – teilen die Ladeleistung der Wallbox nach „Haus zuerst, das Auto bekommt den Überschuss“ in PV und Netz auf (ein Hausakku zählt als PV) und legen die beiden kWh-Zähler an. Es genügen die Netzleistung und die Ladeleistung der Wallbox.
+**PV/Netz ins Auto selbst berechnen:** Die [Vorlagen](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/README.md) – als Node-RED-Flow oder als Home-Assistant-Paket – teilen die Ladeleistung der Wallbox nach „Haus zuerst, das Auto bekommt den Überschuss“ in PV und Netz auf (ein Hausakku zählt als PV) und legen die beiden kWh-Zähler an. Es genügen die Netzleistung und die Ladeleistung der Wallbox.
 Die Aufteilung Netz/PV kann der EV Tracker nicht selbst berechnen – ohne diese beiden
 Zähler fehlen die Kosten fürs Laden zu Hause. Ladevorgänge unterwegs (öffentliche
 Ladesäulen) werden dagegen direkt in der App erfasst.
@@ -100,7 +100,7 @@ Standard-Referenzverbrauch: **15 kWh/100 km** (in den Einstellungen pro Fahrzeug
 
 Dieses Repo unterstützt zwei Deployments **derselben** App – das Home-Assistant-Add-on
 (oben) und einen eigenständigen Docker-Betrieb (Portainer o.ä., siehe
-[webapp/README.md](webapp/README.md)). Die eigentliche Anwendung (`webapp/app.py`,
+[webapp/README.md](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/webapp/README.md)). Die eigentliche Anwendung (`webapp/app.py`,
 `database.py`, `ha_client.py`, alle Templates usw.) ist bewusst **gemeinsamer Code** –
 Änderungen dort wirken sich immer auf beide Betriebsarten aus, das ist gewollt (gleiche
 Funktionen, nur anders verpackt). Nur diese Dateien sind jeweils exklusiv für eine
