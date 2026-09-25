@@ -19,10 +19,18 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.8.0"
+VERSION = "2.8.1"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.8.1",
+        "datum": "2026-09-25",
+        "titel": "Galerie eingeklappt",
+        "aenderungen": [
+            "Einstellungen → Fahrzeugbild: die Galerie ist eingeklappt und oeffnet sich per Klick auf \"Aus der Galerie wählen\" – die 30 Bilder machen die Seite nicht mehr voll; das gewaehlte Bild steht weiter darueber",
+        ],
+    },
     {
         "version": "2.8.0",
         "datum": "2026-09-25",

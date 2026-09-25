@@ -99,7 +99,9 @@
   {% endif %}
 
   {% if galerie %}
-  <h3 style="margin:16px 0 4px; font-size:13px">Aus der Galerie wählen</h3>
+  {# Eingeklappt, damit die Einstellungen nicht von 30 Bildern verdeckt werden #}
+  <details class="erweitert" id="galerie">
+  <summary>Aus der Galerie wählen ({{ galerie | length }} Bilder)</summary>
   <p class="hint" style="margin-top:0">Ein Klick übernimmt das Bild.</p>
   <div class="galerie">
     {% for b in galerie %}
@@ -115,6 +117,7 @@
     Lizenz stehen beim Überfahren und nach der Auswahl oben.
     Dein Auto fehlt? <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/fahrzeugbilder"
     target="_blank" rel="noopener">Anleitung und Prompt für ein eigenes Bild</a>.</p>
+  </details>
   {% endif %}
 </div>
 

@@ -3,6 +3,10 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.8.1] - 2026-09-25
+### Galerie eingeklappt
+- Einstellungen → Fahrzeugbild: die Galerie ist eingeklappt und oeffnet sich per Klick auf "Aus der Galerie wählen" – die 30 Bilder machen die Seite nicht mehr voll; das gewaehlte Bild steht weiter darueber
+
 ## [2.8.0] - 2026-09-25
 ### Dynamischer Stromtarif: tatsaechliche Kosten fuer Netz ins Auto
 - Neuer optionaler Sensor "Kosten Netz ins Auto (€)": ein fortlaufender Kostenzaehler aus HA. Der Import bewertet die Netz-Monatssumme dann mit Kosten ÷ kWh statt mit dem Stromtarif – passend fuer Tibber, aWATTar, Octopus & Co.
