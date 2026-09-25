@@ -71,7 +71,9 @@ Nach dem Start im Menü **❓ Hilfe → Einrichtung** öffnen: Die Seite führt 
 Grundeinstellungen und zeigt bei jedem Schritt, ob er schon erledigt ist.
 
 1. **Einstellungen → Berechnungsparameter** – Fahrzeugname, Vergleich mit Benziner, Diesel
-   oder Autogas, dessen Verbrauch, PV-Preis, KFZ-Steuer.
+   oder Autogas, dessen Verbrauch, PV-Preis, KFZ-Steuer. Dazu ein **Fahrzeugbild**: fertige
+   Bilder und ein Prompt für Bild-KIs unter
+   [fahrzeugbilder](https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/fahrzeugbilder).
 2. **Verbindung zu Home Assistant** – im Add-on automatisch.
 3. **Sensoren zuordnen** – Kilometerstand, PV und Netz ins Auto (kWh), Kraftstoffpreis,
    optional Batteriestand. Am einfachsten über „In HA suchen“ bzw. „In Datenbank suchen“.
@@ -153,6 +155,7 @@ suchen, wenn unklar ist, wo genau sich beide Wege unterscheiden.
 | `tests/funktionstest.py` | Funktions- und Plausibilitätstest mit eigener Test-DB: `python tests/funktionstest.py` (braucht zusätzlich `httpx`) |
 | `tests/datenquellen_test.py` | Test der Datenbank-Anbindungen gegen nachgebaute Server: `python tests/datenquellen_test.py` |
 | `vorlagen/` | Node-RED-Flow und HA-Paket: PV-/Netz-Anteil beim Laden (`node-red/quellen/flow_bauen.py` baut den Flow aus den `.js`-Quellen) |
+| `fahrzeugbilder/` | Fertige Fahrzeugbilder fürs Dashboard und der Prompt, mit dem eine Bild-KI weitere erzeugt |
 | `tests/vorlagen_test.py` | Test der Vorlagen (Node.js + Jinja2): `python tests/vorlagen_test.py` |
 | `tests/datenquellen_docker_test.py` | Dieselben Anbindungen gegen echte Server in Docker (InfluxDB 1.8/2.7, TimescaleDB, VictoriaMetrics, Prometheus): `python tests/datenquellen_docker_test.py` |
 | `version.py` | Versionsnummer und Änderungslog |

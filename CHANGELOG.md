@@ -3,6 +3,12 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.5.1] - 2026-09-25
+### Fahrzeugbilder: Ordner und Prompt fuer Bild-KIs
+- Neuer Ordner fahrzeugbilder/ im Repo mit fertigen Bildern (zunaechst Kia EV3 Orange) und einer Anleitung: Vorgaben (16:9, transparenter oder einfarbiger Hintergrund #14171E, Dreiviertelansicht) und Prompts fuer ChatGPT, Gemini & Co. – aus dem eigenen Foto oder neu erzeugt
+- Einrichtung, Einstellungen → Fahrzeugbild, Hilfe und README verlinken darauf
+- Datenquellen-Auswahl ohne den Zusatz "– neu"
+
 ## [2.5.0] - 2026-09-25
 ### InfluxDB 3.x als Datenquelle
 - Neue Datenquelle InfluxDB 3.x (Core/Enterprise): Verbindung ueber URL, Datenbank und Token, abgefragt per SQL (/api/v3/query_sql) – Flux gibt es in InfluxDB 3 nicht mehr

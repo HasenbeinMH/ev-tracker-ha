@@ -39,6 +39,9 @@
 <div class="card">
   <p class="hint" style="margin-top:0">
     Bild im Kopf des Dashboards, neben dem Fahrzeugnamen von oben. JPG, PNG oder WebP, max. 8 MB.
+    Am besten 16:9 mit transparentem oder einfarbigem Hintergrund <code>#14171E</code>.
+    Fertige Bilder und einen Prompt, mit dem eine Bild-KI eins aus deinem Foto macht:
+    <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/fahrzeugbilder" target="_blank" rel="noopener">Fahrzeugbilder</a>.
   </p>
   <div class="inline">
     <img id="auto-vorschau" src="api/auto-bild" alt="Aktuelles Fahrzeugbild"
@@ -117,7 +120,7 @@
       <select name="datasource" id="datasource" onchange="zeigeQuelle()">
         <option value="ha" {{ "selected" if ha.datasource not in quellen }}>Home Assistant API</option>
         {% for typ, name in quellen.items() %}
-        <option value="{{ typ }}" {{ "selected" if ha.datasource == typ }}>{{ name }}{{ " – neu" if typ != "influxdb" }}</option>
+        <option value="{{ typ }}" {{ "selected" if ha.datasource == typ }}>{{ name }}</option>
         {% endfor %}
       </select>
     </label>

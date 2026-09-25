@@ -19,10 +19,20 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.5.0"
+VERSION = "2.5.1"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.5.1",
+        "datum": "2026-09-25",
+        "titel": "Fahrzeugbilder: Ordner und Prompt fuer Bild-KIs",
+        "aenderungen": [
+            "Neuer Ordner fahrzeugbilder/ im Repo mit fertigen Bildern (zunaechst Kia EV3 Orange) und einer Anleitung: Vorgaben (16:9, transparenter oder einfarbiger Hintergrund #14171E, Dreiviertelansicht) und Prompts fuer ChatGPT, Gemini & Co. – aus dem eigenen Foto oder neu erzeugt",
+            "Einrichtung, Einstellungen → Fahrzeugbild, Hilfe und README verlinken darauf",
+            "Datenquellen-Auswahl ohne den Zusatz \"– neu\"",
+        ],
+    },
     {
         "version": "2.5.0",
         "datum": "2026-09-25",
