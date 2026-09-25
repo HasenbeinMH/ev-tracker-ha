@@ -67,6 +67,10 @@ Ladesäulen) werden dagegen direkt in der App erfasst.
 
 ## Erste Schritte
 
+**Noch kein E-Auto?** Der **Simulationsmodus** (Einstellungen) rechnet aus den km und dem
+Kraftstoffpreis des jetzigen Autos live, was ein E-Auto sparen würde – ohne etwas zu speichern.
+Nach dem Kauf bleibt die Simulation als Prognose neben den echten Werten.
+
 Nach dem Start im Menü **❓ Hilfe → Einrichtung** öffnen: Die Seite führt durch die
 Grundeinstellungen und zeigt bei jedem Schritt, ob er schon erledigt ist.
 

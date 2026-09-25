@@ -81,6 +81,58 @@ def heimladungen_neu_bewerten() -> int:
     return geaendert
 
 
+SIM_OEFFENTLICH = "Öffentlich (Simulation)"
+
+
+def simulierte_ladungen(cfg: dict | None = None, fahrten: list | None = None,
+                        tarife: list | None = None) -> list:
+    """Ladungen, die ein E-Auto fuer die gefahrenen km gebraucht haette – je Monat bis zu
+    drei Eintraege (PV, Netz, oeffentlich) nach den eingestellten Anteilen, datiert auf den
+    Monatsersten. Energie = km ÷ 100 × EV-Verbrauch × (1 + Ladeverluste). Die Eintraege
+    haben dieselben Felder wie gespeicherte Ladevorgaenge, werden aber nie gespeichert:
+    so rechnen alle Auswertungen unveraendert, und nach dem Kauf bleibt die Simulation
+    als Prognose zum Vergleich erhalten."""
+    cfg = cfg or db.get_config()
+    fahrten = db.get_fahrten_monate() if fahrten is None else fahrten
+    tarife = db.get_stromtarife() if tarife is None else tarife
+    anteile = [("Privat – PV", cfg["sim_anteil_pv"], lambda m: cfg["pv_preis_ct"], "AC"),
+               (NETZBEZUG, cfg["sim_anteil_netz"], lambda m: netzpreis_monat(m, tarife), "AC"),
+               (SIM_OEFFENTLICH, cfg["sim_anteil_oeffentlich"],
+                lambda m: cfg["sim_preis_oeffentlich"], "DC")]
+    summe = sum(max(a, 0) for _, a, _, _ in anteile)
+    if summe <= 0:                      # nichts eingestellt: alles zuhause aus dem Netz
+        anteile, summe = [(NETZBEZUG, 100.0, anteile[1][2], "AC")], 100.0
+    ladungen = []
+    for f in sorted(fahrten, key=lambda f: f["monat"]):
+        km = f.get("km") or 0.0
+        if km <= 0:
+            continue
+        kwh = km / 100 * cfg["ev_verbrauch"] * (1 + cfg["sim_ladeverlust"] / 100)
+        for anbieter, anteil, preis, typ in anteile:
+            if anteil <= 0:
+                continue
+            menge = kwh * anteil / summe
+            ct = preis(f["monat"])
+            ladungen.append({
+                "id": None, "datum": f"{f['monat']}-01", "menge_kwh": round(menge, 3),
+                "preis_kwh": ct, "gesamtpreis": round(menge * ct / 100, 2),
+                "anbieter": anbieter, "ladeleistung_kw": None, "ladetyp": typ,
+                "notiz": "Simulation", "blockiergebuehr": None, "simuliert": True})
+    return ladungen
+
+
+def ladevorgaenge(von: str | None = None, bis: str | None = None) -> list:
+    """Ladevorgaenge fuer die Auswertungen: im Simulationsmodus die aus den km
+    gerechneten, sonst die gespeicherten. von/bis 'YYYY-MM-DD' (inklusive)."""
+    cfg = db.get_config()
+    if not cfg["simulation"]:
+        if von is None and bis is None:
+            return db.get_ladevorgaenge(limit=100000)
+        return db.get_ladevorgaenge_zeitraum(von or "0000-00-00", bis or "9999-12-31")
+    return [l for l in simulierte_ladungen(cfg)
+            if (von is None or l["datum"] >= von) and (bis is None or l["datum"] <= bis)]
+
+
 def benzin_liter(km: float, benziner_verbrauch: float) -> float:
     """Liter Benzin, die ein Vergleichs-Benziner für km gebraucht hätte."""
     return (km / 100) * benziner_verbrauch
@@ -116,7 +168,7 @@ def verbrauch_pro_monat() -> list:
     Rueckgabe: [{"monat", "km", "kwh", "verbrauch"}] aufsteigend nach Monat."""
     fahrten = {f["monat"]: f["km"] for f in db.get_fahrten_monate()}
     kwh_je_monat = {}
-    for l in db.get_ladevorgaenge(limit=100000):
+    for l in ladevorgaenge():
         monat = (l["datum"] or "")[:7]
         kwh_je_monat[monat] = kwh_je_monat.get(monat, 0.0) + l["menge_kwh"]
 

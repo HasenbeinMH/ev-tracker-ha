@@ -72,6 +72,7 @@
   <a href="#kennzahlen">Kennzahlen im Detail</a>
   <a href="#diagramme">Diagramme</a>
   <a href="#sensorwerte">Sensorwerte aus HA</a>
+  <a href="#simulation">Simulationsmodus</a>
   <a href="#annahmen">Annahmen &amp; Grenzen</a>
   <a href="#faq">FAQ</a>
   <a href="#changelog">Änderungslog</a>
@@ -389,6 +390,20 @@
 </table>
 <div class="hb-info"><b>Zwei Wege je Wert:</b> Zuerst wird die Langzeitstatistik gelesen (genau, aber nur vorhanden, wenn der Sensor sie führt). Liefert sie nichts, greift die History-API und sucht den letzten Wert vor Monatsbeginn – bis zu zwölf Monate zurück. Das ist nötig für Sensoren, die selten aktualisieren.</div>
 <div class="hb-warn"><b>Wenn ein Wert leer bleibt:</b> Meist ist die Entity-ID falsch, der Sensor führt keine Langzeitstatistik, oder die History reicht nicht weit genug zurück. Das Protokoll auf der Seite HA Import zeigt, welche Werte gelesen wurden; die Diagnose in den Einstellungen prüft einen Sensor über drei Monate.</div>
+
+<h2 id="simulation">Simulationsmodus <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<p>Für alle, die noch einen {{ kf.fahrzeug }} fahren: Die App zeigt live, was ein E-Auto mit denselben Kilometern sparen würde. Einschalten unter <a href="einstellungen#simulation">Einstellungen → Simulationsmodus</a>.</p>
+<table>
+  <tr><th style="width:26%">Wert</th><th>Woher</th></tr>
+  <tr><td>Kilometer</td><td>echt – Kilometerstand des jetzigen Autos, wie gewohnt aus Home Assistant bzw. der Datenbank</td></tr>
+  <tr><td>{{ kf.name }}preis</td><td>echt – z.B. Tankerkönig; damit sind die {{ kf.name }}kosten keine Hochrechnung mehr, sondern die tatsächlichen</td></tr>
+  <tr><td>Strombedarf</td><td>simuliert – km ÷ 100 × EV Referenz (kWh/100 km) × (1 + Ladeverluste)</td></tr>
+  <tr><td>Stromkosten</td><td>simuliert – aufgeteilt nach den Anteilen PV (PV-Preis), Netz (Stromtarif des Monats) und öffentlich (eingestellter ct/kWh-Preis)</td></tr>
+</table>
+<div class="hb-formel"><span class="lbl">Simulierte Ladung je Monat</span>kWh = km ÷ 100 × EV-Verbrauch × (1 + Ladeverluste) · Kosten = Σ kWh × Anteil × Preis</div>
+<p>Dashboard, Statistik, Diagramme und Mail-Bericht rechnen damit wie mit echten Ladungen; oben auf jeder Seite steht ein Hinweis, der Mail-Bericht trägt „(Simulation)“ im Titel. <b>Gespeichert wird nichts</b> – die Liste unter Laden bleibt leer bzw. zeigt nur echte Ladungen.</p>
+<div class="hb-info"><b>Nach dem Kauf:</b> Simulation ausschalten. Ab dann zählen die echten Ladungen. Die Statistik zeigt zusätzlich <b>„Prognose gegen tatsächlich“</b>: was die Simulation für dieselben km vorhergesagt hätte, neben den echten Werten – so sieht man, wie gut die Annahmen waren.</div>
+<div class="hb-warn"><b>Annahmen:</b> Der EV-Verbrauch ist über das Jahr konstant – im Winter liegt er real 20–30 % höher. Wer die Simulation über Sommer und Winter laufen lässt, bekommt trotzdem ein gutes Jahresbild, wenn der eingestellte Wert dem Jahresmittel entspricht.</div>
 
 <h2 id="annahmen">Annahmen &amp; Grenzen <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <table>

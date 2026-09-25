@@ -233,7 +233,9 @@ def set_einstellung(key, value):
 def get_config() -> dict:
     """Gibt alle häufig genutzten Konfigurationswerte als dict zurück (eine DB-Abfrage)."""
     keys = ["benziner_verbrauch", "ev_verbrauch_default", "pv_preis_ct",
-            "co2_faktor_benzin", "co2_strommix", "ha_aktiv", "kraftstoff"]
+            "co2_faktor_benzin", "co2_strommix", "ha_aktiv", "kraftstoff",
+            "simulation", "sim_anteil_pv", "sim_anteil_netz", "sim_anteil_oeffentlich",
+            "sim_preis_oeffentlich", "sim_ladeverlust"]
     with closing(get_connection()) as conn:
         rows = conn.execute(
             f"SELECT key, value FROM einstellungen WHERE key IN ({','.join('?'*len(keys))})", keys
@@ -249,7 +251,23 @@ def get_config() -> dict:
         # Vergleichsfahrzeug: "benzin", "diesel" oder "autogas" (nur Beschriftung und
         # CO2-Standard; die Liste steht in berechnung.KRAFTSTOFFE)
         "kraftstoff":         m.get("kraftstoff") or "benzin",
+        # Simulationsmodus: noch kein E-Auto – Ladungen werden aus den km gerechnet
+        # (berechnung.simulierte_ladungen), nichts davon wird gespeichert
+        "simulation":             m.get("simulation") == "1",
+        "sim_anteil_pv":          _zahl(m.get("sim_anteil_pv"), 30.0),
+        "sim_anteil_netz":        _zahl(m.get("sim_anteil_netz"), 60.0),
+        "sim_anteil_oeffentlich": _zahl(m.get("sim_anteil_oeffentlich"), 10.0),
+        "sim_preis_oeffentlich":  _zahl(m.get("sim_preis_oeffentlich"), 55.0),
+        "sim_ladeverlust":        _zahl(m.get("sim_ladeverlust"), 10.0),
     }
+
+
+def _zahl(wert, standard: float) -> float:
+    """Gespeicherte Zahl oder Standard – 0 ist ein gueltiger Wert (z.B. 0 % PV)."""
+    try:
+        return float(wert)
+    except (TypeError, ValueError):
+        return standard
 
 
 def get_alle_einstellungen() -> dict:

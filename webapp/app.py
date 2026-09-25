@@ -69,8 +69,11 @@ templates.env.filters["de"] = lambda wert, stellen=0: berichte.fmt(wert, stellen
 
 def render(request, template, **ctx):
     ctx["now"] = datetime.now()
-    # Benzin oder Diesel – fuer Menue und Beschriftungen auf allen Seiten
-    ctx.setdefault("kf", berechnung.kraftstoff())
+    # Benzin oder Diesel – fuer Menue und Beschriftungen auf allen Seiten;
+    # im Simulationsmodus zeigt base.html ein Banner
+    cfg = db.get_config()
+    ctx.setdefault("kf", berechnung.kraftstoff(cfg["kraftstoff"]))
+    ctx.setdefault("simulation", cfg["simulation"])
     return templates.TemplateResponse(request, template, ctx)
 
 
@@ -207,6 +210,11 @@ def statistik(request: Request, a: str | None = None, b: str | None = None):
     wb = zeitraum_mod.monatswerte(zb, daten)
     verlauf = {m: charts.chart_vergleich(wa, wb, za["titel"], zb["titel"], m)
                for m in charts.VERGLEICH_METRIKEN}
+    # Nach dem Kauf: die Simulation aus den km als Prognose neben den echten Ladungen
+    prognose = None
+    if not daten["cfg"]["simulation"] and ka["ladevorgaenge"] and daten["lade_sim"]:
+        kp = zeitraum_mod.kennzahlen(za, {**daten, "lade": daten["lade_sim"]})
+        prognose = zeitraum_mod.vergleich_zeilen(ka, kp, nur=zeitraum_mod.PROGNOSE_ZEILEN)
     return render(request, "statistik.html", aktiv="statistik",
                   za=za, zb=zb, ka=ka, kb=kb,
                   zeilen=zeitraum_mod.vergleich_zeilen(ka, kb),
@@ -214,6 +222,7 @@ def statistik(request: Request, a: str | None = None, b: str | None = None):
                   vorlagen=zeitraum_mod.vorlagen(),
                   metriken=charts.VERGLEICH_METRIKEN, verlauf=verlauf,
                   akku_zeilen=zeitraum_mod.akku_monatszeilen(wa, wb),
+                  prognose=prognose,
                   akku_min_km=akkuverbrauch.MIN_KM)
 
 
@@ -245,12 +254,15 @@ def _sensor_stand(ha: dict, ha_key: str, fn_key: str, influx: bool) -> tuple[str
 def einrichtung(request: Request):
     ha = db.get_ha_settings()
     mail = db.get_mail_settings()
+    simulation = db.get_config()["simulation"]
     influx = ha.get("datasource") in ("influxdb", "influxdb2", "influxdb3")
     preis = berechnung.kraftstoff()["name"] + "preis"
     sensoren = [(label.replace("Benzinpreis", preis), *_sensor_stand(ha, h, f, influx))
                 for h, f, label in SENSOR_FELDER]
     # Zweiter Preis-Sensor und Akkustand sind optional – leer ist dort kein Mangel
     optional = {"ha_tankerkoenig_2", "ha_ev_battery"}
+    if simulation:              # ohne E-Auto gibt es keine Ladezaehler
+        optional |= {"ha_pv_production", "ha_wallbox_energy"}
     sensoren = [(l, "optional" if st == "fehlt" and h in optional else st, t)
                 for (l, st, t), (h, _, _) in zip(sensoren, SENSOR_FELDER)]
     return render(request, "einrichtung.html", aktiv="einrichtung",
@@ -1108,7 +1120,7 @@ def _monat_pruefen(jahr: int, monat: int) -> dict:
 
     fahrten = {f["monat"]: f["km"] for f in db.get_fahrten_monate()}
     preise = {b["monat"] for b in db.get_benzinpreise()}
-    lade = db.get_ladevorgaenge_zeitraum(f"{schluessel}-01", f"{schluessel}-{letzter:02d}")
+    lade = berechnung.ladevorgaenge(f"{schluessel}-01", f"{schluessel}-{letzter:02d}")
 
     offen = []
     if not fahrten.get(schluessel):
@@ -1697,6 +1709,18 @@ def einstellungen_parameter(benziner_verbrauch: str = Form(...),
             db.set_einstellung(key, v)
     db.set_einstellung("fahrzeug_name", fahrzeug_name.strip())
     return RedirectResponse("../einstellungen", status_code=303)
+
+
+@app.post("/einstellungen/simulation")
+async def einstellungen_simulation(request: Request):
+    form = await request.form()
+    db.set_einstellung("simulation", "1" if form.get("simulation") else "0")
+    for key in ("sim_anteil_pv", "sim_anteil_netz", "sim_anteil_oeffentlich",
+                "sim_preis_oeffentlich", "sim_ladeverlust"):
+        v = parse_de(form.get(key))
+        if v is not None and v >= 0:
+            db.set_einstellung(key, v)
+    return RedirectResponse("../einstellungen#simulation", status_code=303)
 
 
 @app.post("/einstellungen/anbieter")

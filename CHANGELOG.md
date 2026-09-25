@@ -3,6 +3,14 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.6.0] - 2026-09-25
+### Simulationsmodus: Ersparnis testen, bevor man ein E-Auto kauft
+- Einstellungen → Simulationsmodus: aus den echten km des jetzigen Autos und dem echten Kraftstoffpreis rechnet die App, was ein E-Auto gekostet haette – km ÷ 100 × EV Referenz × (1 + Ladeverluste), aufgeteilt nach einstellbaren Anteilen PV, Netz (Stromtarif des Monats) und oeffentlich (ct/kWh)
+- Nichts wird gespeichert: Dashboard, Statistik, Diagramme und Mail-Bericht rechnen live mit den simulierten Ladungen; oben auf jeder Seite steht ein Hinweis, der Bericht traegt "(Simulation)" im Titel
+- Nach dem Kauf: Simulation aus – die Statistik zeigt zusaetzlich "Prognose gegen tatsaechlich" fuer dieselben km
+- Einrichtung: Hinweis fuer alle ohne E-Auto; die Sensoren PV/Netz ins Auto gelten dann als optional
+- Hilfe: neuer Abschnitt Simulationsmodus
+
 ## [2.5.4] - 2026-09-25
 ### InfluxDB 3 Core: Abfragen in Zeitfenstern
 - InfluxDB 3 Core liest je Abfrage nur begrenzt viele Parquet-Dateien (Standard 432, etwa 72 Stunden). Die App fragt deshalb in Fenstern von hoechstens 48 Stunden ab und setzt sie zusammen; meldet die Datenbank die Grenze trotzdem, wird das Fenster halbiert. Vorher: "Query would scan 5000 Parquet files, exceeding the file limit"

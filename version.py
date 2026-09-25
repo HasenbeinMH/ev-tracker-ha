@@ -19,10 +19,22 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.5.4"
+VERSION = "2.6.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.6.0",
+        "datum": "2026-09-25",
+        "titel": "Simulationsmodus: Ersparnis testen, bevor man ein E-Auto kauft",
+        "aenderungen": [
+            "Einstellungen → Simulationsmodus: aus den echten km des jetzigen Autos und dem echten Kraftstoffpreis rechnet die App, was ein E-Auto gekostet haette – km ÷ 100 × EV Referenz × (1 + Ladeverluste), aufgeteilt nach einstellbaren Anteilen PV, Netz (Stromtarif des Monats) und oeffentlich (ct/kWh)",
+            "Nichts wird gespeichert: Dashboard, Statistik, Diagramme und Mail-Bericht rechnen live mit den simulierten Ladungen; oben auf jeder Seite steht ein Hinweis, der Bericht traegt \"(Simulation)\" im Titel",
+            "Nach dem Kauf: Simulation aus – die Statistik zeigt zusaetzlich \"Prognose gegen tatsaechlich\" fuer dieselben km",
+            "Einrichtung: Hinweis fuer alle ohne E-Auto; die Sensoren PV/Netz ins Auto gelten dann als optional",
+            "Hilfe: neuer Abschnitt Simulationsmodus",
+        ],
+    },
     {
         "version": "2.5.4",
         "datum": "2026-09-25",

@@ -313,6 +313,9 @@ button:disabled { background: var(--border); color: #555; cursor: default; }
    Hintergrund kaum lesbar. Links mit eigener Klasse (Knoepfe, Tabs …) bleiben unberuehrt. */
 main a:not([class]), main a:not([class]):visited { color: var(--blau-hell); text-underline-offset: 2px; }
 main a:not([class]):hover { color: #a9c4e2; }
+.sim-banner { background: #c4963a14; border: 1px solid #c4963a66; border-radius: 8px;
+  padding: 8px 14px; margin-bottom: 14px; font-size: 13px; }
+.sim-banner b { color: var(--gelb); }
 details.erweitert { margin: 18px 0 6px; }
 details.erweitert > summary { cursor: pointer; color: var(--muted); font-size: 13px; }
 details.erweitert > summary:hover { color: var(--text); }

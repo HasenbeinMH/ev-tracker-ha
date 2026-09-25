@@ -35,6 +35,42 @@
   </form>
 </div>
 
+<h2 id="simulation">🧪 Simulationsmodus – noch kein E-Auto</h2>
+<div class="card">
+  <p class="hint" style="margin-top:0">
+    Für alle, die noch einen {{ kf.fahrzeug }} fahren und wissen wollen, was ein E-Auto sparen würde.
+    Die <b>km</b> und der <b>{{ kf.name }}preis</b> kommen wie gewohnt aus Home Assistant – vom jetzigen Auto.
+    Die Ladungen rechnet die App daraus: km ÷ 100 × <b>EV Referenz</b>
+    ({{ '%.1f'|format(cfg.ev_verbrauch)|replace('.', ',') }} kWh/100 km, oben einstellbar) plus Ladeverluste,
+    aufgeteilt nach den Anteilen unten. Gespeichert wird davon nichts – nach dem Kauf bleibt die Simulation
+    als <b>Prognose</b> in der Statistik neben den echten Werten stehen.
+  </p>
+  <form class="inline" method="post" action="einstellungen/simulation">
+    <label class="feld" style="flex-direction:row; align-items:center; gap:6px">
+      <input type="checkbox" name="simulation" value="1" {% if cfg.simulation %}checked{% endif %}> Simulation aktiv
+    </label>
+    <label class="feld">Anteil PV %
+      <input name="sim_anteil_pv" value="{{ '%.0f'|format(cfg.sim_anteil_pv) }}" style="width:60px">
+    </label>
+    <label class="feld">Anteil Netz %
+      <input name="sim_anteil_netz" value="{{ '%.0f'|format(cfg.sim_anteil_netz) }}" style="width:60px">
+    </label>
+    <label class="feld">Anteil öffentlich %
+      <input name="sim_anteil_oeffentlich" value="{{ '%.0f'|format(cfg.sim_anteil_oeffentlich) }}" style="width:60px">
+    </label>
+    <label class="feld">Öffentlich ct/kWh
+      <input name="sim_preis_oeffentlich" value="{{ '%.1f'|format(cfg.sim_preis_oeffentlich)|replace('.', ',') }}" style="width:70px">
+    </label>
+    <label class="feld">Ladeverluste %
+      <input name="sim_ladeverlust" value="{{ '%.0f'|format(cfg.sim_ladeverlust) }}" style="width:60px">
+    </label>
+    <button type="submit">💾 Speichern</button>
+  </form>
+  <p class="hint">PV zum PV-Preis ({{ '%.1f'|format(cfg.pv_preis_ct)|replace('.', ',') }} ct/kWh), Netz zum
+    <a href="stromtarif">Stromtarif</a> des Monats. Die Anteile müssen nicht 100 ergeben – sie werden
+    im Verhältnis aufgeteilt. KFZ-Steuer und THG-Prämie wie gewohnt eintragen.</p>
+</div>
+
 <h2>Fahrzeugbild</h2>
 <div class="card">
   <p class="hint" style="margin-top:0">

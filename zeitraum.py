@@ -123,7 +123,10 @@ def laden() -> dict:
     import akkuverbrauch
     return {
         "fahrten": db.get_fahrten_alle_als_liste(),
-        "lade": db.get_ladevorgaenge(limit=100000),
+        # im Simulationsmodus aus den km gerechnet; "lade_sim" ist die Simulation immer –
+        # nach dem Kauf die Prognose, gegen die die echten Werte verglichen werden
+        "lade": berechnung.ladevorgaenge(),
+        "lade_sim": berechnung.simulierte_ladungen(),
         "benzin": db.get_benzinpreise(),
         "thg": sorted(db.get_thg_eintraege(), key=lambda t: t["datum"]),
         "stromtarife": db.get_stromtarife(),
@@ -140,6 +143,7 @@ def filtern(z: dict, daten: dict) -> dict:
         **daten,
         "fahrten": [f for f in daten["fahrten"] if enthaelt(z, f["datum"])],
         "lade": [l for l in daten["lade"] if enthaelt(z, l["datum"])],
+        "lade_sim": [l for l in daten.get("lade_sim", []) if enthaelt(z, l["datum"])],
         "benzin": [b for b in daten["benzin"] if enthaelt(z, b["monat"])],
         "thg": [t for t in daten["thg"] if enthaelt(z, t["datum"])],
         "akku": [a for a in daten["akku"] if enthaelt(z, a["monat"])],
@@ -259,12 +263,20 @@ VERGLEICH_ZEILEN = [
 ]
 
 
-def vergleich_zeilen(ka: dict, kb: dict) -> list:
-    """Tabellenzeilen A gegen B mit Differenz und Wertung (fuer das Template)."""
+# Zeilen fuer "Prognose gegen tatsaechlich" – nur was vom Laden abhaengt
+PROGNOSE_ZEILEN = ("gesamt_kwh", "verbrauch", "strom_kosten", "kosten_pro_100km",
+                   "strompreis_ct", "ersparnis_kraft")
+
+
+def vergleich_zeilen(ka: dict, kb: dict, nur: tuple | None = None) -> list:
+    """Tabellenzeilen A gegen B mit Differenz und Wertung (fuer das Template).
+    nur: nur diese Schluessel aus VERGLEICH_ZEILEN."""
     from berichte import fmt
     kf = berechnung.kraftstoff()
     zeilen = []
     for text, schluessel, stellen, einheit, besser in VERGLEICH_ZEILEN:
+        if nur is not None and schluessel not in nur:
+            continue
         if isinstance(schluessel, tuple):
             a, b = ka[schluessel[0]][schluessel[1]], kb[schluessel[0]][schluessel[1]]
         else:

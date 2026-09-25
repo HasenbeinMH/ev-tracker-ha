@@ -49,7 +49,7 @@ def _delta_text(aktuell, vorher, nachkommastellen=0, einheit="", besser=None):
 def _zeitraum_kennzahlen(von: str, bis: str, monate: list) -> dict:
     """Kennzahlen für einen Zeitraum. `monate` sind die enthaltenen 'YYYY-MM'."""
     cfg = db.get_config()
-    lade = db.get_ladevorgaenge_zeitraum(von, bis)
+    lade = berechnung.ladevorgaenge(von, bis)
     thg = db.get_thg_zeitraum(von, bis)
 
     fahrten = {f["monat"]: f["km"] for f in db.get_fahrten_monate()}
@@ -99,6 +99,11 @@ def _zeitraum_kennzahlen(von: str, bis: str, monate: list) -> dict:
     }
 
 
+def _sim_zusatz() -> str:
+    """Im Simulationsmodus steht das im Titel – auch im Betreff der Mail."""
+    return " (Simulation)" if db.get_config()["simulation"] else ""
+
+
 def monatsbericht(jahr: int, monat: int) -> dict:
     """Kennzahlen eines Monats inklusive Vergleich zum Vormonat."""
     letzter = calendar.monthrange(jahr, monat)[1]
@@ -112,7 +117,7 @@ def monatsbericht(jahr: int, monat: int) -> dict:
     vormonat = _zeitraum_kennzahlen(f"{v_schluessel}-01",
                                     f"{v_schluessel}-{v_letzter:02d}", [v_schluessel])
 
-    return {"typ": "monat", "titel": f"{MONATE[monat-1]} {jahr}",
+    return {"typ": "monat", "titel": f"{MONATE[monat-1]} {jahr}" + _sim_zusatz(),
             "jahr": jahr, "monat": monat,
             "daten": daten, "vergleich": vormonat,
             "vergleich_titel": f"{MONATE[v_monat-1]} {v_jahr}"}
@@ -134,7 +139,7 @@ def jahresbericht(jahr: int) -> dict:
         if werte["km"] or werte["kwh"]:
             monatsliste.append(dict(name=MONATE[m-1], **werte))
 
-    return {"typ": "jahr", "titel": f"Jahresbericht {jahr}", "jahr": jahr,
+    return {"typ": "jahr", "titel": f"Jahresbericht {jahr}" + _sim_zusatz(), "jahr": jahr,
             "daten": daten, "vergleich": vorjahr,
             "vergleich_titel": str(jahr - 1), "monate": monatsliste}
 

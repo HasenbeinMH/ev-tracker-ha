@@ -54,6 +54,10 @@
   <a href="hilfe#changelog" class="version" title="Änderungslog anzeigen">v{{ VERSION }}</a>
 </nav>
 <main>
+{% if simulation %}
+<div class="sim-banner">🧪 <b>Simulationsmodus</b> – die Ladungen sind aus den gefahrenen km gerechnet,
+  so als wäre es ein E-Auto. <a href="einstellungen#simulation">Einstellungen</a></div>
+{% endif %}
 {% block inhalt %}{% endblock %}
 </main>
 <script>

@@ -58,6 +58,26 @@
   Verbrauch, Kosten je 100 km und Strompreis. Die KFZ-Steuer ist nach Monaten anteilig gerechnet.
 </p>
 
+{% if prognose %}
+<h2>Prognose gegen tatsächlich · {{ za.titel }}</h2>
+<div class="tabelle-scroll"><table class="vergleich">
+  <tr><th>Kennzahl</th><th class="zahl">Tatsächlich</th><th class="zahl">Prognose</th>
+      <th class="zahl">Differenz</th><th class="zahl"></th></tr>
+  {% for z in prognose %}
+  <tr>
+    <td>{{ z.text }}</td>
+    <td class="zahl">{{ z.a }}</td>
+    <td class="zahl">{{ z.b }}</td>
+    <td class="zahl {{ z.wertung }}">{{ z.diff }}</td>
+    <td class="zahl {{ z.wertung }}">{{ z.prozent }}</td>
+  </tr>
+  {% endfor %}
+</table></div>
+<p class="hint">Prognose = was der Simulationsmodus aus denselben km errechnet
+  (<a href="einstellungen#simulation">EV-Verbrauch, Lademix und Ladeverluste</a> nach heutiger Einstellung).
+  <span class="gruen">Grün</span>: in Wirklichkeit besser als vorhergesagt.</p>
+{% endif %}
+
 <h2>Verlauf Monat für Monat</h2>
 <div class="kennzahl-tabs">
   {% for schluessel, metrik in metriken.items() %}
