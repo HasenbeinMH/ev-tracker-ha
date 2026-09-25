@@ -58,7 +58,7 @@
   <a href="#fahrten">Fahrten</a>
   <a href="#laden">Laden</a>
   <a href="#ladetarife">Ladetarife</a>
-  <a href="#benzin">Benzin</a>
+  <a href="#benzin">{{ kf.name }}</a>
   <a href="#stromtarif">Stromtarif</a>
   <a href="#steuer">Steuer &amp; THG</a>
   <a href="#instandhaltung">Instandhaltung</a>
@@ -80,7 +80,7 @@
 <h2 id="start">Schnellstart <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p>In dieser Reihenfolge einrichten, dann stimmen alle Auswertungen von Anfang an:</p>
 <ol>
-  <li><b>Einstellungen → Berechnungsparameter</b>: Benziner-Verbrauch (7,0 L/100 km), EV-Referenz (15,0 kWh/100 km), PV-Preis (13 ct/kWh), CO2-Faktor (2,37 kg/L) und KFZ-Steuer prüfen.</li>
+  <li><b>Einstellungen → Berechnungsparameter</b>: Vergleich mit Benziner oder Diesel wählen, dann Verbrauch des Vergleichsfahrzeugs (7,0 L/100 km), EV-Referenz (15,0 kWh/100 km), PV-Preis (13 ct/kWh), CO2-Faktor ({{ '%.2f'|format(kf.co2_standard)|replace('.', ',') }} kg/L) und KFZ-Steuer prüfen.</li>
   <li><b>Einstellungen → Home Assistant &amp; Datenbank</b>: URL und Token eintragen (im Add-on nicht nötig), Verbindung testen, dann die Sensoren zuordnen. Optional eine Datenbank als Quelle wählen (InfluxDB, PostgreSQL, Prometheus).</li>
   <li><b>Stromtarif</b>: aktuellen Haushaltsstrompreis in ct/kWh anlegen.</li>
   <li><b>HA Import</b>: einmalig den gewünschten Zeitraum rückwirkend abrufen, Vorschau prüfen, übernehmen.</li>
@@ -88,17 +88,17 @@
   <li><b>Steuer &amp; THG</b>: THG-Auszahlungen eintragen, sobald sie kommen.</li>
   <li><b>Berichte</b>: Mailversand einrichten, wenn gewünscht.</li>
 </ol>
-<div class="hb-info"><b>Danach läuft es weitgehend allein:</b> Der nächtliche Abruf holt km, PV-/Netz-kWh und Benzinpreis für den laufenden Monat und den Vormonat automatisch nach.</div>
+<div class="hb-info"><b>Danach läuft es weitgehend allein:</b> Der nächtliche Abruf holt km, PV-/Netz-kWh und {{ kf.name }}preis für den laufenden Monat und den Vormonat automatisch nach.</div>
 
 <h2 id="konzept">Grundkonzept <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
-<p>Der EV Tracker stellt deine <b>tatsächlichen</b> Stromkosten den <b>hochgerechneten</b> Kosten eines gedachten Benziners gegenüber, der dieselben Kilometer gefahren wäre. Die Differenz ist die Ersparnis.</p>
+<p>Der EV Tracker stellt deine <b>tatsächlichen</b> Stromkosten den <b>hochgerechneten</b> Kosten eines gedachten {{ kf.fahrzeug_gen }} gegenüber, der dieselben Kilometer gefahren wäre. Die Differenz ist die Ersparnis.</p>
 <table>
   <tr><th style="width:26%">Seite</th><th>Datenquelle</th></tr>
   <tr><td><b>E-Auto (real)</b></td><td>Summe aller erfassten Ladevorgänge – aus HA-Import, Rechnungsimport oder manueller Eingabe.</td></tr>
-  <tr><td><b>Benziner (fiktiv)</b></td><td>Je Monat gefahrene km × Benziner-Verbrauch × Benzinpreis des Monats, aufsummiert.</td></tr>
+  <tr><td><b>{{ kf.fahrzeug }} (fiktiv)</b></td><td>Je Monat gefahrene km × {{ kf.fahrzeug }}-Verbrauch × {{ kf.name }}preis des Monats, aufsummiert.</td></tr>
 </table>
 <p>Dazu zwei Bonusposten: die entfallende <b>KFZ-Steuer</b> und die <b>THG-Quote</b>. Zusätzlich wird das vermiedene <b>CO2</b> ausgewiesen.</p>
-<div class="hb-warn"><b>Monatsraster:</b> Kilometer und Benzinpreise werden <b>pro Monat</b> geführt – ein Wert je Monat, keine Einzelfahrten. Ladevorgänge dagegen haben ein <b>Tagesdatum</b>. Automatisch importierte Ladungen werden deshalb auf den <b>Monatsersten</b> gebucht.</div>
+<div class="hb-warn"><b>Monatsraster:</b> Kilometer und {{ kf.name }}preise werden <b>pro Monat</b> geführt – ein Wert je Monat, keine Einzelfahrten. Ladevorgänge dagegen haben ein <b>Tagesdatum</b>. Automatisch importierte Ladungen werden deshalb auf den <b>Monatsersten</b> gebucht.</div>
 
 <h2 id="dashboard">Dashboard <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„Übersicht"</b> · Einzige Eingabe ist die Zeitraumauswahl.</p>
@@ -107,10 +107,10 @@
   <tr><td>Gesamt-Ersparnis (Kopfzeile)</td><td>Kraftstoff + Steuer + THG (ohne CO2 – das ist kein Geldwert).</td></tr>
   <tr><td>Gesamtstrecke</td><td>Summe der Monats-km im Zeitraum.</td></tr>
   <tr><td>Geladene Energie</td><td>Summe der kWh aller Ladevorgänge im Zeitraum.</td></tr>
-  <tr><td>Kraftstoff-Ersparnis</td><td>Hochgerechnete Benzinkosten − tatsächliche Stromkosten.</td></tr>
-  <tr><td>Steuer-Ersparnis</td><td>KFZ-Steuer des Benziners (Jahresbetrag), anteilig nach Monaten im Zeitraum.</td></tr>
+  <tr><td>Kraftstoff-Ersparnis</td><td>Hochgerechnete {{ kf.name }}kosten − tatsächliche Stromkosten.</td></tr>
+  <tr><td>Steuer-Ersparnis</td><td>KFZ-Steuer des {{ kf.fahrzeug_gen }} (Jahresbetrag), anteilig nach Monaten im Zeitraum.</td></tr>
   <tr><td>THG-Ertrag</td><td>Summe der THG-Auszahlungen im Zeitraum.</td></tr>
-  <tr><td>CO2 gespart</td><td>Benzin-Äquivalent in Litern × CO2-Faktor.</td></tr>
+  <tr><td>CO2 gespart</td><td>{{ kf.name }}-Äquivalent in Litern × CO2-Faktor.</td></tr>
 </table>
 <h3 id="zeitraum">Zeitraum wählen</h3>
 <p>Das Auswahlfeld unter der Kopfzeile schränkt <b>alle Kennzahlen und Diagramme</b> auf einen Zeitraum ein: gesamter Zeitraum, ein Kalenderjahr, ein Quartal des laufenden oder letzten Jahres, oder ein Sommer- bzw. Winterhalbjahr. Die Wahl wird im Browser gemerkt und gilt beim nächsten Aufruf weiter; „✕ Gesamter Zeitraum“ setzt zurück. Die Schieberegler in den einzelnen Diagrammen grenzen innerhalb des gewählten Zeitraums weiter ein.</p>
@@ -126,7 +126,7 @@
 
 <h2 id="statistik">Statistik <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p>Vergleicht zwei Zeiträume nebeneinander – etwa ein Jahr mit dem Vorjahr oder <b>Sommer gegen Winter</b>. Die Schnellauswahl oben bietet die häufigsten Paare; mit „⇄ tauschen“ wechseln die Seiten.</p>
-<p><b>Tabelle:</b> alle Kennzahlen beider Zeiträume, dazu die Differenz (erster minus zweiter Zeitraum) absolut und in Prozent. Grün heißt besser, orange schlechter: Bei Verbrauch, Kosten, Strompreis sowie Netz- und öffentlichem Anteil ist ein Minus gut, bei Ersparnis, PV-Anteil, THG-Ertrag und vermiedenem CO<sub>2</sub> ein Plus. Ohne Farbe bleiben Werte ohne Besser oder Schlechter, etwa km, geladene kWh oder der Benzinpreis. Anteile (PV, Netz, öffentlich) werden in Prozentpunkten verglichen.</p>
+<p><b>Tabelle:</b> alle Kennzahlen beider Zeiträume, dazu die Differenz (erster minus zweiter Zeitraum) absolut und in Prozent. Grün heißt besser, orange schlechter: Bei Verbrauch, Kosten, Strompreis sowie Netz- und öffentlichem Anteil ist ein Minus gut, bei Ersparnis, PV-Anteil, THG-Ertrag und vermiedenem CO<sub>2</sub> ein Plus. Ohne Farbe bleiben Werte ohne Besser oder Schlechter, etwa km, geladene kWh oder der {{ kf.name }}preis. Anteile (PV, Netz, öffentlich) werden in Prozentpunkten verglichen.</p>
 <div class="hb-warn"><b>Summen hängen von der Länge ab:</b> Ein Jahr hat mehr km und höhere Kosten als ein Quartal. Für faire Vergleiche unterschiedlich langer Zeiträume taugen Verbrauch, Kosten je 100 km und Ø Strompreis.</div>
 <p><b>Verlauf Monat für Monat:</b> Diagramm mit wählbarer Kennzahl. Der erste Monat des einen Zeitraums steht neben dem ersten des anderen; bei Sommer gegen Winter also April neben Oktober („Apr · Okt“).</p>
 <p><b>Verbrauch aus dem Akkustand je Monat:</b> Dieselbe Paarung als Tabelle mit den Zahlen dahinter – je Monat und Zeitraum die gewerteten km, die kWh aus dem Akku und der Verbrauch. Die Summenzeile ist über Σ kWh ÷ Σ km gewichtet und entspricht der Zeile „Verbrauch laut Akku“ in der Tabelle oben.</p>
@@ -139,7 +139,7 @@
   <li>Kommt normalerweise automatisch aus HA (Differenz des Kilometerstands) – manuelles Nachtragen ist jederzeit möglich.</li>
   <li>Komma und Punkt sind beide als Dezimaltrenner erlaubt. Bei km und Euro-Beträgen wird ein Tausenderpunkt erkannt („1.234“ = 1234 km, „1.234,50“ €).</li>
 </ul>
-<div class="hb-formel"><span class="lbl">Benzin-Äquivalent</span>Liter = km ÷ 100 × Benziner-Verbrauch [L/100km]</div>
+<div class="hb-formel"><span class="lbl">{{ kf.name }}-Äquivalent</span>Liter = km ÷ 100 × {{ kf.fahrzeug }}-Verbrauch [L/100km]</div>
 <div class="hb-formel"><span class="lbl">CO2</span>CO2 [kg] = Liter × CO2-Faktor [kg/L]</div>
 <div class="hb-bsp"><b>Beispiel</b> – 791 km bei 7,0 L/100 km und 2,37 kg/L:
   <span class="rechnung">791 ÷ 100 × 7,0 = 55,37 L</span>
@@ -184,13 +184,13 @@
 <div class="hb-formel"><span class="lbl">Effektiver Preis</span>effektiv [ct/kWh] = (Σ Ladekosten des Monats + Grundgebühr) ÷ Σ kWh × 100</div>
 <div class="hb-info"><b>Nur zur Kontrolle:</b> Die Grundgebühr fließt nicht in die Ersparnis auf dem Dashboard ein. Bei wenig Ladungen im Monat liegt der effektive Preis deutlich über dem Tarifpreis – dann lohnt vielleicht ein kleinerer Tarif.</div>
 
-<h2 id="benzin">Benzin <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
-<p class="hint">Überschrift: <b>„⛽ Benzinpreise (Monatsdurchschnitt)"</b></p>
+<h2 id="benzin">{{ kf.name }} <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<p class="hint">Überschrift: <b>„⛽ {{ kf.name }}preise (Monatsdurchschnitt)"</b></p>
 <ul>
   <li>Ein Preis in €/L je Monat – Referenz für die gesamte Ersparnisrechnung.</li>
   <li>Kommt normalerweise automatisch aus HA (Tankerkönig-Monatsmittel), ist aber überschreibbar.</li>
 </ul>
-<div class="hb-formel"><span class="lbl">Ø-Benzinpreis (Dashboard)</span>Ø = Σ aller Monatspreise ÷ Anzahl Monate</div>
+<div class="hb-formel"><span class="lbl">Ø-{{ kf.name }}preis (Dashboard)</span>Ø = Σ aller Monatspreise ÷ Anzahl Monate</div>
 <div class="hb-warn"><b>Ungewichtet:</b> Jeder erfasste Monat zählt gleich viel, unabhängig von der Fahrleistung. Ist noch <b>kein</b> Preis erfasst, rechnet die App ersatzweise mit <b>1,80 €/L</b>.</div>
 <div class="hb-info"><b>In Berichten anders:</b> Dort wird nur über die Monate des Berichtszeitraums gemittelt – ein Monatsbericht nutzt also genau den Preis dieses Monats.</div>
 
@@ -205,7 +205,7 @@
 
 <h2 id="steuer">Steuer &amp; THG <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„💶 KFZ-Steuer &amp; THG-Quote"</b></p>
-<div class="hb-formel"><span class="lbl">Steuer-Ersparnis</span>Ersparnis [€] = KFZ-Steuer Benziner − 0 € (E-Auto)</div>
+<div class="hb-formel"><span class="lbl">Steuer-Ersparnis</span>Ersparnis [€] = KFZ-Steuer {{ kf.fahrzeug }} − 0 € (E-Auto)</div>
 <div class="hb-warn"><b>Jahreswert ohne Zeitanteilung:</b> Der Betrag geht ungekürzt in die Gesamt-Ersparnis ein – unabhängig davon, wie lange du schon trackst. Bei kürzerer Laufzeit anteilig eintragen.</div>
 <div class="hb-formel"><span class="lbl">THG-Ertrag</span>THG-Ertrag [€] = Σ aller erfassten Beträge</div>
 <p>Jede Auszahlung als eigener Eintrag mit Datum – so landet sie im richtigen Monats- und Jahresbericht.</p>
@@ -214,7 +214,7 @@
 <p class="hint">Überschrift: <b>„🔧 Instandhaltung"</b> – im Menü unter Kosten</p>
 <p>Ein Eintrag je Rechnung: Inspektion, Reifen, Bremsen, Verschleißteile, Reparatur, HU/AU, Pflege oder Sonstiges. Der km-Stand ist optional und dient nur der Übersicht.</p>
 <div class="hb-formel"><span class="lbl">€ pro 100 km</span>Instandhaltung [€/100 km] = Σ Kosten ÷ gefahrene km × 100</div>
-<p>Die km kommen aus den Monatswerten der Seite <a href="#fahrten">Fahrten</a>, je Jahr bzw. insgesamt. Ein Vergleich mit einem Benziner gibt es bewusst nicht – dafür fehlen realistische Referenzdaten.</p>
+<p>Die km kommen aus den Monatswerten der Seite <a href="#fahrten">Fahrten</a>, je Jahr bzw. insgesamt. Ein Vergleich mit einem {{ kf.fahrzeug }} gibt es bewusst nicht – dafür fehlen realistische Referenzdaten.</p>
 <div class="hb-warn"><b>km vom Vorgängerauto:</b> Stehen auf der Seite Fahrten noch km des alten Autos, fällt der Wert zu niedrig aus. Beim Fahrzeugwechsel die Fahrten über „Messdaten zurücksetzen“ (Backup) leeren. Instandhaltung und Versicherung fließen nicht in die Ersparnis auf dem Dashboard ein.</div>
 
 <h2 id="versicherung">Versicherung <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
@@ -232,7 +232,7 @@
 <table>
   <tr><th style="width:24%">Wert</th><th style="width:30%">Ziel</th><th>Verhalten</th></tr>
   <tr><td>Kilometer</td><td>Monats-km</td><td>Überschreibt den Monatswert</td></tr>
-  <tr><td>Benzinpreis</td><td>Monatspreis</td><td>Überschreibt den Monatswert</td></tr>
+  <tr><td>{{ kf.name }}preis</td><td>Monatspreis</td><td>Überschreibt den Monatswert</td></tr>
   <tr><td>PV-kWh</td><td>Ladung „Privat – PV"</td><td>Legt an oder aktualisiert</td></tr>
   <tr><td>Netz-kWh</td><td>Ladung „Privat – Netzbezug"</td><td>Legt an oder aktualisiert</td></tr>
 </table>
@@ -259,7 +259,7 @@
 <p><b>Sensor umbenannt?</b> Hat sich der Name eines Sensors geändert (z.B. nach einem Wechsel der Fahrzeug-Integration), beide Namen mit <code>|</code> getrennt eintragen, den alten zuerst: <code>Ceed Kilometerstand | Neuer Name</code>. Die Werte beider Namen werden zusammengeführt – beim Kilometerstand stimmt so auch der Monat der Umbenennung (Stand unter dem neuen minus Stand unter dem alten Namen). Das geht in beiden Spalten; für die HA-API gilt bei mehreren Entity-IDs die jeweils erste, die Werte liefert.</p>
 <p><b>Woher kommt ein Wert?</b> Die Import-Vorschau markiert jeden Wert mit <b>DB</b> (Datenbank) oder <b>HA</b> (Home Assistant). Liefert die Datenbank nichts, steht grau darunter der Grund – etwa „keine Werte im Monat“, „kein Wert vor dem Monat“ (die Differenz braucht den Stand davor), „Lücke“ (der letzte Stand davor liegt über 45 Tage zurück – die Differenz wäre die Strecke mehrerer Monate; dann springt die HA-API ein, sonst die km der Lücke von Hand auf die Monate verteilen) oder die Fehlermeldung der Datenbank. Dasselbe steht im Importprotokoll.</p>
 <div class="hb-warn"><b>Neu seit 2.1.0:</b> InfluxDB 2.x, PostgreSQL/TimescaleDB und Prometheus/VictoriaMetrics sind getestet, aber noch nicht mit vielen echten Installationen. Wenn etwas nicht passt, zeigt der Knopf „… testen“ in den Einstellungen die Fehlermeldung der Datenbank – bitte mit dieser Meldung als Issue auf GitHub melden.</div>
-<div class="hb-info"><b>So wird gerechnet:</b> km und kWh als Differenz des Zählerstands (letzter Wert im Monat minus letzter Wert davor, bis ein Jahr zurück); liefert das nichts, bei kWh die Summe der Tageshöchstwerte (für täglich zurückgesetzte Zähler). Benzinpreis als Mittel aller Werte über 0. Akkustand und km-Stand für den Akkuverbrauch als Stundenwerte.</div>
+<div class="hb-info"><b>So wird gerechnet:</b> km und kWh als Differenz des Zählerstands (letzter Wert im Monat minus letzter Wert davor, bis ein Jahr zurück); liefert das nichts, bei kWh die Summe der Tageshöchstwerte (für täglich zurückgesetzte Zähler). {{ kf.name }}preis als Mittel aller Werte über 0. Akkustand und km-Stand für den Akkuverbrauch als Stundenwerte.</div>
 
 <h2 id="rechnungen">Rechnungen <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„📄 Rechnungsimport"</b> · Für auswärtige Ladungen.</p>
@@ -273,7 +273,7 @@
 <h2 id="berichte">Berichte <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„📊 Berichte per E-Mail"</b></p>
 <h3>Monatsabschluss</h3>
-<p><b>„Monat prüfen"</b> meldet, ob der Monat auswertbar ist. Geprüft wird: sind Kilometer erfasst, ist ein Benzinpreis hinterlegt, sind Ladevorgänge vorhanden – und gibt es am Batterieverlauf erkannte Ladungen <b>ohne</b> passenden Beleg?</p>
+<p><b>„Monat prüfen"</b> meldet, ob der Monat auswertbar ist. Geprüft wird: sind Kilometer erfasst, ist ein {{ kf.name }}preis hinterlegt, sind Ladevorgänge vorhanden – und gibt es am Batterieverlauf erkannte Ladungen <b>ohne</b> passenden Beleg?</p>
 <div class="hb-info"><b>Ladeerkennung:</b> Ein Anstieg des Batteriestands um mindestens 5 Prozentpunkte gilt als Ladevorgang. Die Energiemenge schätzt die App als <code>Anstieg [%] ÷ 100 × Akkukapazität</code> (Standard 58,3 kWh). Zuerst werden Belege von unterwegs über das Datum zugeordnet (± 1 Tag). Die übrigen Ladungen werden gegen die zuhause geladenen kWh des Monats verrechnet – die kommen aus HA nur als Monatssumme (+5 % Spielraum für die Schätzung). Eine fehlende Ladung fällt deshalb erst auf, wenn sie größer ist als die Ladeverluste zuhause im Monat (etwa 10 % der Heimladung).. Was dann noch übrig bleibt, war vermutlich eine auswärtige Ladung – der Beleg fehlt noch.</div>
 <h3>Inhalt der Berichte</h3>
 <p>Monats- und Jahresbericht enthalten Kennzahlen mit Vergleich zur Vorperiode, die Aufstellung nach Anbieter und – beim Jahresbericht – den Monatsverlauf.</p>
@@ -295,26 +295,27 @@
 <div class="hb-warn"><b>Wiederherstellen ersetzt die laufende Datenbank.</b> Die bisherige wird vorher automatisch als <code>vor_restore_….db</code> gesichert. Die hochgeladene Datei wird geprüft – nur echte EV-Tracker-Datenbanken werden akzeptiert.</div>
 <p class="hint"><b>Messdaten zurücksetzen</b> – für den Fahrzeugwechsel oder zum Entfernen von Testdaten:</p>
 <ul>
-  <li>Je Bereich einzeln wählbar: gefahrene Kilometer, Ladevorgänge, Benzinpreise, Akku-Abschnitte, THG-Einträge. Leere Bereiche lassen sich nicht anhaken.</li>
+  <li>Je Bereich einzeln wählbar: gefahrene Kilometer, Ladevorgänge, {{ kf.name }}preise, Akku-Abschnitte, THG-Einträge. Leere Bereiche lassen sich nicht anhaken.</li>
   <li>Der Knopf löscht noch nichts – er klappt eine <b>Rückfrage</b> auf, die jeden Bereich mit der genauen Anzahl auflistet. Erst <b>„Ja, endgültig löschen"</b> führt es aus.</li>
   <li>Einstellungen, Stromtarife, Lade-Anbieter und die HA-Konfiguration bleiben immer erhalten.</li>
   <li>Vorher wird die Datenbank als <code>vor_reset_….db</code> im Datenordner gesichert.</li>
 </ul>
-<div class="hb-warn">Der <b>nächtliche Abruf</b> schreibt Kilometer, Benzinpreise und Akku-Abschnitte aus Home Assistant neu. Nach dem Zurücksetzen zuerst die Sensoren in den Einstellungen auf das neue Fahrzeug umstellen – sonst sind die alten Werte am nächsten Morgen wieder da.</div>
+<div class="hb-warn">Der <b>nächtliche Abruf</b> schreibt Kilometer, {{ kf.name }}preise und Akku-Abschnitte aus Home Assistant neu. Nach dem Zurücksetzen zuerst die Sensoren in den Einstellungen auf das neue Fahrzeug umstellen – sonst sind die alten Werte am nächsten Morgen wieder da.</div>
 
 <h2 id="einstellungen">Einstellungen <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <table>
   <tr><th style="width:26%">Parameter</th><th style="width:18%">Standard</th><th>Wirkung</th></tr>
-  <tr><td>Benziner-Verbrauch</td><td>7,0 L/100 km</td><td>Basis jeder Ersparnis- und CO2-Rechnung. Wirkt rückwirkend.</td></tr>
+  <tr><td>Vergleich mit</td><td>Benziner</td><td>Benziner oder Diesel. Gerechnet wird gleich (Liter × Preis); es ändern sich die Beschriftungen und der Standard-CO2-Faktor. Als Preis-Sensor dann den Dieselpreis wählen, z.B. von Tankerkönig.</td></tr>
+  <tr><td>{{ kf.fahrzeug }}-Verbrauch</td><td>7,0 L/100 km</td><td>Basis jeder Ersparnis- und CO2-Rechnung. Wirkt rückwirkend.</td></tr>
   <tr><td>EV-Referenz</td><td>15,0 kWh/100 km</td><td>Nur Ziellinie im Verbrauchsdiagramm – keine Kostenwirkung.</td></tr>
   <tr><td>PV-Preis</td><td>13 ct/kWh</td><td>Bewertung des PV-Eigenverbrauchs.</td></tr>
-  <tr><td>CO2-Faktor Benzin</td><td>2,37 kg/L</td><td>Verbrennungs- plus Vorkettenemission je Liter.</td></tr>
-  <tr><td>KFZ-Steuer</td><td>0 €</td><td>Jahressteuer des Vergleichs-Benziners.</td></tr>
+  <tr><td>CO2-Faktor</td><td>2,37 kg/L (Diesel 2,65)</td><td>Verbrennungs- plus Vorkettenemission je Liter. Beim Wechsel Benziner ↔ Diesel springt der Standardwert mit um; ein eigener Wert bleibt stehen.</td></tr>
+  <tr><td>KFZ-Steuer</td><td>0 €</td><td>Jahressteuer des Vergleichs-{{ kf.fahrzeug_gen }}.</td></tr>
 </table>
 <ul>
   <li><b>Einstellungen sichern / laden</b> – Export als JSON, wahlweise mit oder ohne Zugangsdaten.</li>
   <li><b>Lade-Anbieter</b> – eigene Anbieter anlegen, Grünstrom markieren.</li>
-  <li><b>Sensoren</b> – fünf Zuordnungen: Kilometerstand, PV ins Auto, Netz ins Auto, Benzinpreis 1 und 2. Je Sensor eine Entity-ID (HA, PostgreSQL, Prometheus) bzw. ein Friendly Name (InfluxDB).</li>
+  <li><b>Sensoren</b> – fünf Zuordnungen: Kilometerstand, PV ins Auto, Netz ins Auto, {{ kf.name }}preis 1 und 2. Je Sensor eine Entity-ID (HA, PostgreSQL, Prometheus) bzw. ein Friendly Name (InfluxDB).</li>
   <li><b>Keine Zähler für „PV ins Auto“ / „Netz ins Auto“?</b> Liefert die Wallbox nur die gesamte Ladeleistung, erzeugen die <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen" target="_blank" rel="noopener">Vorlagen</a> beide Zähler – als Node-RED-Flow (<a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen/node-red" target="_blank" rel="noopener">Import-Anleitung</a> – importiert wird nur <code>ev_pv_anteil_flow.json</code>, nicht die <code>.js</code>-Dateien) oder als Home-Assistant-Paket. Regel: Haus zuerst, das Auto bekommt den Überschuss (Netz ins Auto = min(Netzbezug, Wallbox-Leistung), der Rest ist PV; ein Hausakku zählt als PV). Danach <code>sensor.ev_ladung_pv</code> und <code>sensor.ev_ladung_netz</code> hier eintragen.</li>
 </ul>
 <div class="hb-info"><b>Token bleiben gespeichert:</b> Lässt du das Token- oder Passwortfeld leer, wird der gespeicherte Wert beibehalten und nicht überschrieben.</div>
@@ -322,19 +323,19 @@
 <h2 id="formeln">Alle Formeln auf einen Blick <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <table>
   <tr><th style="width:34%">Wert</th><th>Formel</th></tr>
-  <tr><td>Benzin-Äquivalent</td><td><code>km ÷ 100 × Benziner-Verbrauch</code></td></tr>
+  <tr><td>{{ kf.name }}-Äquivalent</td><td><code>km ÷ 100 × {{ kf.fahrzeug }}-Verbrauch</code></td></tr>
   <tr><td>CO2 gespart</td><td><code>Liter × CO2-Faktor</code></td></tr>
   <tr><td>Ladekosten je Vorgang</td><td><code>kWh × ct/kWh ÷ 100</code></td></tr>
-  <tr><td>Benzinkosten hochgerechnet</td><td><code>Σ Monat: km ÷ 100 × Verbrauch × Monatspreis</code></td></tr>
-  <tr><td>Ø Benzinpreis (km-gewichtet)</td><td><code>Benzinkosten ÷ Liter</code></td></tr>
-  <tr><td>Kraftstoff-Ersparnis</td><td><code>Benzinkosten − Σ Ladekosten</code></td></tr>
-  <tr><td>Steuer-Ersparnis</td><td><code>KFZ-Steuer Benziner × Monate ÷ 12</code></td></tr>
+  <tr><td>{{ kf.name }}kosten hochgerechnet</td><td><code>Σ Monat: km ÷ 100 × Verbrauch × Monatspreis</code></td></tr>
+  <tr><td>Ø {{ kf.name }}preis (km-gewichtet)</td><td><code>{{ kf.name }}kosten ÷ Liter</code></td></tr>
+  <tr><td>Kraftstoff-Ersparnis</td><td><code>{{ kf.name }}kosten − Σ Ladekosten</code></td></tr>
+  <tr><td>Steuer-Ersparnis</td><td><code>KFZ-Steuer {{ kf.fahrzeug }} × Monate ÷ 12</code></td></tr>
   <tr><td>THG-Ertrag</td><td><code>Σ THG-Beträge</code></td></tr>
   <tr><td><b>Gesamt-Ersparnis</b></td><td><code>Kraftstoff + Steuer + THG</code></td></tr>
   <tr><td>Verbrauch je Monat</td><td><code>kWh (Monat) ÷ km (Monat) × 100</code></td></tr>
   <tr><td>Ø Verbrauch (gewichtet)</td><td><code>Σ kWh ÷ Σ km × 100</code></td></tr>
   <tr><td>Kosten je 100 km</td><td><code>Stromkosten ÷ km × 100</code></td></tr>
-  <tr><td>Monatliche Ersparnis</td><td><code>Benzinkosten (Monat) − Ladekosten (Monat)</code></td></tr>
+  <tr><td>Monatliche Ersparnis</td><td><code>{{ kf.name }}kosten (Monat) − Ladekosten (Monat)</code></td></tr>
   <tr><td>Erkannte Lademenge</td><td><code>Batterieanstieg [%] ÷ 100 × Akkukapazität</code></td></tr>
   <tr><td>Verbrauch laut Akku</td><td><code>Akku-Abfall [%] ÷ 100 × Akkukapazität ÷ km × 100</code></td></tr>
   <tr><td>Anteil Stromquelle</td><td><code>kWh der Quelle ÷ Σ geladene kWh</code></td></tr>
@@ -342,20 +343,20 @@
 
 <h2 id="kennzahlen">Kennzahlen im Detail <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <h3>Kraftstoff-Ersparnis</h3>
-<div class="hb-formel"><span class="lbl">Schritt 1 – fiktive Benzinkosten</span>Benzinkosten = Σ je Monat ( km ÷ 100 × Verbrauch × Benzinpreis des Monats )</div>
-<div class="hb-formel"><span class="lbl">Schritt 2 – Ersparnis</span>Kraftstoff-Ersparnis = Benzinkosten − Σ aller Ladekosten</div>
+<div class="hb-formel"><span class="lbl">Schritt 1 – fiktive {{ kf.name }}kosten</span>{{ kf.name }}kosten = Σ je Monat ( km ÷ 100 × Verbrauch × {{ kf.name }}preis des Monats )</div>
+<div class="hb-formel"><span class="lbl">Schritt 2 – Ersparnis</span>Kraftstoff-Ersparnis = {{ kf.name }}kosten − Σ aller Ladekosten</div>
 <div class="hb-bsp"><b>Beispiel</b> – zwei Monate, 7,0 L/100 km, noch keine Ladekosten erfasst:
   <span class="rechnung">Monat 1: 1.500 ÷ 100 × 7,0 = 105,00 L × 1,80 €/L = 189,00 €</span>
   <span class="rechnung">Monat 2: 1.788 ÷ 100 × 7,0 = 125,16 L × 1,75 €/L = 219,03 €</span>
   <span class="rechnung">189,00 + 219,03 − 0,00 = <span class="erg">408,03 €</span></span></div>
-<div class="hb-info"><b>Ø Benzinpreis</b> ist damit km-gewichtet: Benzinkosten ÷ Liter (im Beispiel 408,03 ÷ 230,16 = 1,773 €/L). Ein Monat mit 3.000 km zählt mehr als einer mit 100 km. Monate ohne erfassten Preis bekommen den Durchschnitt aller erfassten Monatspreise.</div>
-<div class="hb-warn"><b>Solange Ladekosten fehlen, ist die Ersparnis zu hoch.</b> Sie entspricht dann den vollen Benzinkosten. Erst mit erfassten Ladungen wird der Wert realistisch.</div>
+<div class="hb-info"><b>Ø {{ kf.name }}preis</b> ist damit km-gewichtet: {{ kf.name }}kosten ÷ Liter (im Beispiel 408,03 ÷ 230,16 = 1,773 €/L). Ein Monat mit 3.000 km zählt mehr als einer mit 100 km. Monate ohne erfassten Preis bekommen den Durchschnitt aller erfassten Monatspreise.</div>
+<div class="hb-warn"><b>Solange Ladekosten fehlen, ist die Ersparnis zu hoch.</b> Sie entspricht dann den vollen {{ kf.name }}kosten. Erst mit erfassten Ladungen wird der Wert realistisch.</div>
 <h3>Gesamt-Ersparnis</h3>
 <div class="hb-formel"><span class="lbl">Gesamt</span>Gesamt-Ersparnis = Kraftstoff-Ersparnis + KFZ-Steuer + THG-Ertrag</div>
 <p>Nicht enthalten: Anschaffung, Versicherung, Wartung, Reifen, Wertverlust. Verglichen werden ausschließlich <b>Energie- und Steuerkosten</b>.</p>
 <h3>CO2-Ersparnis</h3>
-<div class="hb-formel"><span class="lbl">Vermiedenes CO2</span>CO2 [kg] = km ÷ 100 × Benziner-Verbrauch × CO2-Faktor [kg/L]</div>
-<div class="hb-warn"><b>Bruttowert:</b> Gerechnet wird, was der Benziner ausgestoßen hätte. Die Emissionen des geladenen Stroms werden <b>nicht abgezogen</b> – der reale Vorteil liegt also niedriger, sofern nicht ausschließlich PV-Strom geladen wurde.</div>
+<div class="hb-formel"><span class="lbl">Vermiedenes CO2</span>CO2 [kg] = km ÷ 100 × {{ kf.fahrzeug }}-Verbrauch × CO2-Faktor [kg/L]</div>
+<div class="hb-warn"><b>Bruttowert:</b> Gerechnet wird, was der {{ kf.fahrzeug }} ausgestoßen hätte. Die Emissionen des geladenen Stroms werden <b>nicht abgezogen</b> – der reale Vorteil liegt also niedriger, sofern nicht ausschließlich PV-Strom geladen wurde.</div>
 <h3>Verbrauch kWh/100 km</h3>
 <div class="hb-warn"><b>Ladeverluste inklusive:</b> Gerechnet wird mit der geladenen Energie ab Säule, nicht ab Batterie – der Wert liegt typischerweise 5–15 % über der Bordcomputer-Anzeige. Da importierte Ladungen auf den Monatsersten gebucht werden, können einzelne Monate zudem verzerrt wirken; über mehrere Monate gleicht sich das aus.</div>
 
@@ -363,17 +364,17 @@
 <p class="hint">Reihenfolge wie im Dashboard. Unter den Verlaufs-Charts lässt sich der Zeitraum mit dem Schieberegler eingrenzen (ab drei Monaten); oben rechts wechselt ein Symbol zwischen Balken und Linie, ein weiteres setzt die Ansicht zurück.</p>
 <table>
   <tr><th style="width:28%">Diagramm</th><th>Inhalt</th></tr>
-  <tr><td>Monatliche Kosten &amp; Ersparnis</td><td>Balken Benziner und Strom je Monat, Linie (rechte Achse) die Differenz. Monate ohne Benzinpreis werden mit dem Ø aller erfassten Preise gerechnet; die Summe der Linie ergibt die Kachel „Kraftstoff-Ersparnis“.</td></tr>
-  <tr><td>Kraftstoffkosten Vergleich</td><td>Zwei liegende Balken über den Gesamtzeitraum: Benziner hochgerechnet gegen E-Auto tatsächlich.</td></tr>
+  <tr><td>Monatliche Kosten &amp; Ersparnis</td><td>Balken {{ kf.fahrzeug }} und Strom je Monat, Linie (rechte Achse) die Differenz. Monate ohne {{ kf.name }}preis werden mit dem Ø aller erfassten Preise gerechnet; die Summe der Linie ergibt die Kachel „Kraftstoff-Ersparnis“.</td></tr>
+  <tr><td>Kraftstoffkosten Vergleich</td><td>Zwei liegende Balken über den Gesamtzeitraum: {{ kf.fahrzeug }} hochgerechnet gegen E-Auto tatsächlich.</td></tr>
   <tr><td>CO2-Ersparnis</td><td>Balken je Monat plus kumulierte Linie.</td></tr>
   <tr><td>Verbrauch kWh/100km</td><td>Zwei Linien: <b>laut Ladung</b> (geladene kWh ÷ km, inkl. Ladeverluste) und <b>laut Akku</b> (aus dem Batteriestand, siehe <a href="#akkuverbrauch">Verbrauch aus dem Akkustand</a>). Gestrichelt die Referenz aus den Einstellungen.</td></tr>
-  <tr><td>Benzinpreisentwicklung</td><td>Verlauf der erfassten Monatspreise.</td></tr>
+  <tr><td>{{ kf.name }}preisentwicklung</td><td>Verlauf der erfassten Monatspreise.</td></tr>
   <tr><td>Stromtarifverlauf</td><td>Treppenkurve – ein Tarif gilt bis zum nächsten Eintrag, der letzte bis heute.</td></tr>
   <tr><td>Ladekosten nach Anbieter</td><td>Ringdiagramm der Kosten in €, nicht der kWh.</td></tr>
   <tr><td>Geladene kWh nach Stromquelle</td><td>Ringdiagramm der geladenen <b>kWh</b>: PV-Strom (Anbieter „Privat – PV“), Netzbezug zuhause („Privat – Netzbezug“) und öffentlich (alle übrigen Anbieter).</td></tr>
   <tr><td>THG-Quote Erträge</td><td>Balken je Auszahlung.</td></tr>
 </table>
-<div class="hb-info"><b>Statt eines Diagramms nur ein Hinweistext?</b> Dann fehlen die nötigen Daten – meist der Benzinpreis oder die Ladungen des betreffenden Monats.</div>
+<div class="hb-info"><b>Statt eines Diagramms nur ein Hinweistext?</b> Dann fehlen die nötigen Daten – meist der {{ kf.name }}preis oder die Ladungen des betreffenden Monats.</div>
 
 <h2 id="sensorwerte">Sensorwerte aus HA <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p>Wie aus einem Sensor ein Monatswert wird – das erklärt die meisten Abweichungen beim Import.</p>
@@ -382,7 +383,7 @@
   <tr><td>Kilometerstand</td><td><b>Differenz</b></td><td>Letzter Stand des Monats minus letzter Stand des Vormonats.</td></tr>
   <tr><td>PV ins Auto</td><td><b>Summe</b></td><td>Für Zähler, die täglich zurückgesetzt werden; sonst ebenfalls Differenz.</td></tr>
   <tr><td>Netz ins Auto</td><td><b>Differenz</b></td><td>Wie beim Kilometerstand.</td></tr>
-  <tr><td>Benzinpreis</td><td><b>Mittelwert</b></td><td>Monatsmittel; Nullwerte (Tankstelle geschlossen) werden ignoriert. Bei zwei Sensoren über beide gemittelt.</td></tr>
+  <tr><td>{{ kf.name }}preis</td><td><b>Mittelwert</b></td><td>Monatsmittel; Nullwerte (Tankstelle geschlossen) werden ignoriert. Bei zwei Sensoren über beide gemittelt.</td></tr>
 </table>
 <div class="hb-info"><b>Zwei Wege je Wert:</b> Zuerst wird die Langzeitstatistik gelesen (genau, aber nur vorhanden, wenn der Sensor sie führt). Liefert sie nichts, greift die History-API und sucht den letzten Wert vor Monatsbeginn – bis zu zwölf Monate zurück. Das ist nötig für Sensoren, die selten aktualisieren.</div>
 <div class="hb-warn"><b>Wenn ein Wert leer bleibt:</b> Meist ist die Entity-ID falsch, der Sensor führt keine Langzeitstatistik, oder die History reicht nicht weit genug zurück. Das Protokoll auf der Seite HA Import zeigt, welche Werte gelesen wurden; die Diagnose in den Einstellungen prüft einen Sensor über drei Monate.</div>
@@ -390,10 +391,10 @@
 <h2 id="annahmen">Annahmen &amp; Grenzen <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <table>
   <tr><th style="width:34%">Annahme</th><th>Konsequenz</th></tr>
-  <tr><td>Fehlender Benzinpreis</td><td>Monate ohne erfassten Preis werden mit dem Durchschnitt aller erfassten Monatspreise gerechnet.</td></tr>
+  <tr><td>Fehlender {{ kf.name }}preis</td><td>Monate ohne erfassten Preis werden mit dem Durchschnitt aller erfassten Monatspreise gerechnet.</td></tr>
   <tr><td>KFZ-Steuer anteilig</td><td>Der Jahresbetrag wird nach Monaten verteilt – im Gesamtzeitraum vom ersten bis zum letzten Monat mit Daten, in Jahren bis zum laufenden Monat.</td></tr>
-  <tr><td>CO2 ohne Strom-Emissionen</td><td>Ausgewiesen wird der Bruttovorteil gegenüber dem Benziner.</td></tr>
-  <tr><td>Konstanter Benziner-Verbrauch</td><td>Keine Sommer-/Winter- oder Streckenabhängigkeit beim Vergleichsfahrzeug.</td></tr>
+  <tr><td>CO2 ohne Strom-Emissionen</td><td>Ausgewiesen wird der Bruttovorteil gegenüber dem {{ kf.fahrzeug }}.</td></tr>
+  <tr><td>Konstanter {{ kf.fahrzeug }}-Verbrauch</td><td>Keine Sommer-/Winter- oder Streckenabhängigkeit beim Vergleichsfahrzeug.</td></tr>
   <tr><td>Nur Energie- und Steuerkosten</td><td>Wartung, Versicherung, Wertverlust bleiben außen vor.</td></tr>
   <tr><td>Importierte Ladungen am Monatsersten</td><td>Die Monatssumme stimmt, die Tagesverteilung nicht.</td></tr>
   <tr><td>Auswärtige Ladungen nicht automatisch</td><td>Nur Heimladen kommt aus HA – fremde Ladungen müssen nachgetragen werden, sonst erscheint die Ersparnis zu hoch.</td></tr>
@@ -401,15 +402,15 @@
 
 <h2 id="faq">FAQ <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <h3>Die Kraftstoff-Ersparnis wirkt zu hoch.</h3>
-<p>Vermutlich fehlen Ladekosten. Solange keine Ladungen erfasst sind, entspricht die Ersparnis den vollen Benzinkosten. Prüfe den HA-Import und trage auswärtige Ladungen nach.</p>
+<p>Vermutlich fehlen Ladekosten. Solange keine Ladungen erfasst sind, entspricht die Ersparnis den vollen {{ kf.name }}kosten. Prüfe den HA-Import und trage auswärtige Ladungen nach.</p>
 <h3>Im Monatsdiagramm fehlt ein Monat.</h3>
-<p>Für diesen Monat fehlt der Benzinpreis oder die Kilometer. Das Diagramm zeigt nur Monate, die in beiden Datensätzen vorkommen.</p>
+<p>Für diesen Monat fehlt der {{ kf.name }}preis oder die Kilometer. Das Diagramm zeigt nur Monate, die in beiden Datensätzen vorkommen.</p>
 <h3>Der Verbrauch ist höher als im Bordcomputer.</h3>
 <p>Korrekt – gerechnet wird mit der geladenen Energie inklusive Ladeverlusten.</p>
 <h3>Der nächtliche Abruf liefert keine Werte.</h3>
 <p>Zuerst ins Protokoll auf der Seite HA Import schauen: Steht dort bei „gelesen" überall <code>—</code>, kommt nichts an. Dann Verbindung in den Einstellungen testen und die Sensor-Diagnose aufrufen. Häufigste Ursachen: falsche Entity-ID oder fehlende Langzeitstatistik.</p>
-<h3>Ich habe den Benziner-Verbrauch geändert – warum ändern sich alte Werte?</h3>
-<p>Benzin-Äquivalent und CO2 werden nie gespeichert, sondern bei jeder Anzeige neu gerechnet. Der Parameter wirkt deshalb auf die gesamte Historie.</p>
+<h3>Ich habe den {{ kf.fahrzeug }}-Verbrauch geändert – warum ändern sich alte Werte?</h3>
+<p>{{ kf.name }}-Äquivalent und CO2 werden nie gespeichert, sondern bei jeder Anzeige neu gerechnet. Der Parameter wirkt deshalb auf die gesamte Historie.</p>
 <h3>Wo liegen meine Daten?</h3>
 <p>In einer SQLite-Datei im Datenverzeichnis des Containers, gesichert per Cronjob nach OneDrive. Über die Seite Backup lässt sie sich jederzeit herunterladen.</p>
 

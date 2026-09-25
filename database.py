@@ -233,7 +233,7 @@ def set_einstellung(key, value):
 def get_config() -> dict:
     """Gibt alle häufig genutzten Konfigurationswerte als dict zurück (eine DB-Abfrage)."""
     keys = ["benziner_verbrauch", "ev_verbrauch_default", "pv_preis_ct",
-            "co2_faktor_benzin", "co2_strommix", "ha_aktiv"]
+            "co2_faktor_benzin", "co2_strommix", "ha_aktiv", "kraftstoff"]
     with closing(get_connection()) as conn:
         rows = conn.execute(
             f"SELECT key, value FROM einstellungen WHERE key IN ({','.join('?'*len(keys))})", keys
@@ -246,6 +246,8 @@ def get_config() -> dict:
         "co2_faktor_benzin":  float(m.get("co2_faktor_benzin") or 2.37),
         "co2_strommix":       float(m.get("co2_strommix") or 401.0),
         "ha_aktiv":           m.get("ha_aktiv") == "1",
+        # Vergleichsfahrzeug: "benzin" oder "diesel" (nur Beschriftung und CO2-Standard)
+        "kraftstoff":         m.get("kraftstoff") if m.get("kraftstoff") == "diesel" else "benzin",
     }
 
 

@@ -10,6 +10,23 @@ BENZINPREIS_FALLBACK = 1.80  # €/L wenn keine Monatspreise erfasst sind
 NETZPREIS_FALLBACK = 30.0    # ct/kWh wenn noch kein Stromtarif erfasst ist
 NETZBEZUG = "Privat – Netzbezug"
 
+# Vergleichsfahrzeug. Gerechnet wird fuer beide gleich (Liter × Preis, Liter × CO2-Faktor);
+# es unterscheiden sich nur die Beschriftung und der Standard-CO2-Faktor.
+# Intern heissen Tabellen und Schluessel weiter "benzin" – sie meinen den Kraftstoff.
+KRAFTSTOFFE = {
+    "benzin": {"art": "benzin", "name": "Benzin", "fahrzeug": "Benziner",
+               "fahrzeug_gen": "Benziners", "co2_standard": 2.37},
+    "diesel": {"art": "diesel", "name": "Diesel", "fahrzeug": "Diesel",
+               "fahrzeug_gen": "Diesels", "co2_standard": 2.65},
+}
+
+
+def kraftstoff(art: str | None = None) -> dict:
+    """Beschriftungen des Vergleichsfahrzeugs; ohne `art` aus den Einstellungen."""
+    if art is None:
+        art = db.get_config()["kraftstoff"]
+    return KRAFTSTOFFE.get(art, KRAFTSTOFFE["benzin"])
+
 # Stromquelle je Ladevorgang, abgeleitet aus dem Anbieter (Namen aus database.py).
 # Alle uebrigen Anbieter gelten als oeffentliches Laden.
 STROMQUELLEN = {"Privat – PV": "PV-Strom", "Privat – Netzbezug": "Netzbezug"}

@@ -3,6 +3,13 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.3.0] - 2026-09-25
+### Vergleich mit einem Diesel statt einem Benziner
+- Einstellungen → Berechnungsparameter: neues Feld "Vergleich mit" – Benziner oder Diesel
+- Mit Diesel heissen Menue, Seiten, Diagramme, Statistik, Mailbericht und Hilfe entsprechend (Dieselpreise, Diesel-Kosten, Ersparnis vs. Diesel …); gerechnet wird wie bisher Liter × Preis des Monats
+- CO2-Faktor: beim Wechsel springt der Standardwert mit um (Benzin 2,37, Diesel 2,65 kg/L); ein selbst eingetragener Wert bleibt stehen
+- Vorhandene Preise und Sensoren bleiben erhalten – fuer Diesel den Dieselpreis-Sensor (z.B. Tankerkoenig) eintragen
+
 ## [2.2.1] - 2026-09-25
 ### Farben bei Veraenderungen, Anleitung fuer den Node-RED-Import
 - Statistik: Anteil Netzbezug und Anteil oeffentlich werden jetzt gewertet – weniger ist besser (gruen), mehr schlechter (orange), wie bei Verbrauch und Kosten

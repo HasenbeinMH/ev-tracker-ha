@@ -19,10 +19,21 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.2.1"
+VERSION = "2.3.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.3.0",
+        "datum": "2026-09-25",
+        "titel": "Vergleich mit einem Diesel statt einem Benziner",
+        "aenderungen": [
+            "Einstellungen → Berechnungsparameter: neues Feld \"Vergleich mit\" – Benziner oder Diesel",
+            "Mit Diesel heissen Menue, Seiten, Diagramme, Statistik, Mailbericht und Hilfe entsprechend (Dieselpreise, Diesel-Kosten, Ersparnis vs. Diesel …); gerechnet wird wie bisher Liter × Preis des Monats",
+            "CO2-Faktor: beim Wechsel springt der Standardwert mit um (Benzin 2,37, Diesel 2,65 kg/L); ein selbst eingetragener Wert bleibt stehen",
+            "Vorhandene Preise und Sensoren bleiben erhalten – fuer Diesel den Dieselpreis-Sensor (z.B. Tankerkoenig) eintragen",
+        ],
+    },
     {
         "version": "2.2.1",
         "datum": "2026-09-25",

@@ -216,6 +216,12 @@ def _leer(msg):
 #  Charts
 # ─────────────────────────────────────────────────────────────
 
+def _kf() -> dict:
+    """Beschriftungen des Vergleichsfahrzeugs (Benzin oder Diesel)."""
+    from berechnung import kraftstoff
+    return kraftstoff()
+
+
 def chart_monatliche_ersparnis(fahrten_daten, benzinpreise_daten, lade_daten,
                                benziner_l=7.0, ersatzpreis=None):
     """Benziner- und Stromkosten je Monat. Alle Monate mit km oder Ladungen, damit die
@@ -253,7 +259,7 @@ def chart_monatliche_ersparnis(fahrten_daten, benzinpreise_daten, lade_daten,
                            axisLabel={"color": COLORS["subtext"], "fontSize": 10,
                                       "formatter": "fn:euro0"})],
         series=[
-            _balken("Benziner", "orange", benzin_k, "fn:euro2"),
+            _balken(_kf()["fahrzeug"], "orange", benzin_k, "fn:euro2"),
             _balken("Strom", "blue", strom_k, "fn:euro2"),
             _linie("Ersparnis", "green", ersparnis, "fn:euro2", yAxisIndex=1, z=3),
         ],
@@ -272,7 +278,7 @@ def chart_kosten_vergleich(benzin_kosten, strom_kosten):
         grid={"left": 8, "right": 70, "top": 16, "bottom": 8, "containLabel": True},
         xAxis=_achse_wert(axisLabel={"color": COLORS["subtext"], "fontSize": 10,
                                      "formatter": "fn:euro0"}),
-        yAxis=_achse_kategorie(["E-Auto (tatsächlich)", "Benziner (hochgerechnet)"],
+        yAxis=_achse_kategorie(["E-Auto (tatsächlich)", f"{_kf()['fahrzeug']} (hochgerechnet)"],
                                formatter=None,
                                axisLabel={"color": COLORS["text"], "fontSize": 11}),
         series=[{
@@ -467,8 +473,8 @@ def chart_strommix(lade_daten):
 
 def chart_benzinpreise(daten):
     if not daten:
-        return _leer("Keine Benzinpreisdaten")
-    serie = _linie("Benzinpreis", "orange", [d["preis_liter"] for d in daten],
+        return _leer(f"Keine {_kf()['name']}preisdaten")
+    serie = _linie(f"{_kf()['name']}preis", "orange", [d["preis_liter"] for d in daten],
                    "fn:euroLiter", flaeche=True)
     # Flaeche bis zum unteren Achsenende statt bis 0 – sonst wirken Schwankungen platt
     serie["areaStyle"]["origin"] = "start"

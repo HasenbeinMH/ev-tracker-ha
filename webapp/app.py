@@ -69,6 +69,8 @@ templates.env.filters["de"] = lambda wert, stellen=0: berichte.fmt(wert, stellen
 
 def render(request, template, **ctx):
     ctx["now"] = datetime.now()
+    # Benzin oder Diesel – fuer Menue und Beschriftungen auf allen Seiten
+    ctx.setdefault("kf", berechnung.kraftstoff())
     return templates.TemplateResponse(request, template, ctx)
 
 
@@ -1069,7 +1071,7 @@ def _monat_pruefen(jahr: int, monat: int) -> dict:
     if not fahrten.get(schluessel):
         offen.append("Gefahrene Kilometer fehlen")
     if schluessel not in preise:
-        offen.append("Benzinpreis fehlt")
+        offen.append(f"{berechnung.kraftstoff()['name']}preis fehlt")
     if not lade:
         offen.append("Keine Ladevorgänge erfasst")
 
@@ -1618,7 +1620,8 @@ def einstellungen(request: Request):
                   supervisor_aktiv=IST_ADDON
                                    and not (ha_settings.get("ha_url") and ha_settings.get("ha_token")),
                   anbieter=db.get_lade_anbieter(),
-                  sensor_felder=SENSOR_FELDER,
+                  sensor_felder=[(h, f, l.replace("Benzinpreis", berechnung.kraftstoff()["name"] + "preis"))
+                                 for h, f, l in SENSOR_FELDER],
                   quellen=datenquellen.QUELLEN,
                   prom_standard=datenquellen.PROM_SELEKTOR_STANDARD,
                   aktiv="einstellungen")
@@ -1630,7 +1633,16 @@ def einstellungen_parameter(benziner_verbrauch: str = Form(...),
                             pv_preis: str = Form(...),
                             co2_benzin: str = Form(...),
                             kfz_steuer: str = Form(...),
-                            fahrzeug_name: str = Form("")):
+                            fahrzeug_name: str = Form(""),
+                            kraftstoff: str = Form("")):
+    # Beim Wechsel Benzin <-> Diesel den CO2-Faktor mitziehen, solange noch der
+    # Standardwert der alten Art eingetragen ist – ein eigener Wert bleibt stehen
+    alt = berechnung.kraftstoff()
+    neu = berechnung.KRAFTSTOFFE.get(kraftstoff)
+    if neu and neu["art"] != alt["art"]:
+        db.set_einstellung("kraftstoff", neu["art"])
+        if parse_de(co2_benzin) == alt["co2_standard"]:
+            co2_benzin = str(neu["co2_standard"])
     for key, raw in [("benziner_verbrauch", benziner_verbrauch),
                      ("ev_verbrauch_default", ev_verbrauch),
                      ("pv_preis_ct", pv_preis),

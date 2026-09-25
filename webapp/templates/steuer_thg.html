@@ -4,7 +4,7 @@
 <h1>💶 KFZ-Steuer & THG-Quote</h1>
 
 <div class="card">
-  <h2 style="margin-top:0">KFZ-Steuer Benziner</h2>
+  <h2 style="margin-top:0">KFZ-Steuer {{ kf.fahrzeug }}</h2>
   <form class="inline" method="post" action="steuer/kfz">
     <label class="feld">€/Jahr
       <input name="betrag" value="{{ '%.2f'|format(kfz)|replace('.', ',') }}" required>

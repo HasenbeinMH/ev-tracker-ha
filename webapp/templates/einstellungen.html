@@ -9,7 +9,13 @@
     <label class="feld">Fahrzeugname
       <input name="fahrzeug_name" value="{{ fahrzeug_name }}" placeholder="z.B. Mein Elektroauto" style="width:160px">
     </label>
-    <label class="feld">Benziner L/100km
+    <label class="feld">Vergleich mit
+      <select name="kraftstoff">
+        <option value="benzin" {% if kf.art == "benzin" %}selected{% endif %}>Benziner</option>
+        <option value="diesel" {% if kf.art == "diesel" %}selected{% endif %}>Diesel</option>
+      </select>
+    </label>
+    <label class="feld">{{ kf.fahrzeug }} L/100km
       <input name="benziner_verbrauch" value="{{ '%.1f'|format(cfg.benziner_verbrauch)|replace('.', ',') }}" style="width:80px">
     </label>
     <label class="feld">EV Referenz kWh/100km
@@ -18,7 +24,7 @@
     <label class="feld">PV-Preis ct/kWh
       <input name="pv_preis" value="{{ '%.1f'|format(cfg.pv_preis_ct)|replace('.', ',') }}" style="width:80px">
     </label>
-    <label class="feld">CO2 kg/L Benzin
+    <label class="feld">CO2 kg/L {{ kf.name }}
       <input name="co2_benzin" value="{{ '%.3f'|format(cfg.co2_faktor_benzin)|replace('.', ',') }}" style="width:80px">
     </label>
     <label class="feld">KFZ-Steuer €/Jahr
@@ -421,7 +427,7 @@ async function pruefeSensor() {
     const f = v => v === null ? "<span class='muted'>–</span>" : v;
     html += `<tr><td>${m.monat}</td><td>${f(m.delta)}</td><td>${f(m.summe)}</td><td>${f(m.mittel)}</td></tr>`;
   }
-  html += "</table><div class='hint'>km und Netz/PV-Laden nutzen <em>Delta</em>, Benzinpreis den <em>Mittelwert</em>. Überall „–“ = keine Daten für diesen Zeitraum.</div>";
+  html += "</table><div class='hint'>km und Netz/PV-Laden nutzen <em>Delta</em>, {{ kf.name }}preis den <em>Mittelwert</em>. Überall „–“ = keine Daten für diesen Zeitraum.</div>";
   box.innerHTML = html;
 }
 

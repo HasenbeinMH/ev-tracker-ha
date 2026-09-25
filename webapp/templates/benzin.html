@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block titel %}Benzinpreise{% endblock %}
+{% block titel %}{{ kf.name }}preise{% endblock %}
 {% block inhalt %}
-<h1>⛽ Benzinpreise (Monatsdurchschnitt)</h1>
+<h1>⛽ {{ kf.name }}preise (Monatsdurchschnitt)</h1>
 
 <div class="card">
   <form class="inline" method="post" action="benzin">
@@ -31,7 +31,7 @@
     </td>
     <td>
       <form method="post" action="benzin/delete"
-            onsubmit="return confirm('Benzinpreis {{ d.monat }} löschen?')">
+            onsubmit="return confirm('{{ kf.name }}preis {{ d.monat }} löschen?')">
         <input type="hidden" name="monat" value="{{ d.monat }}">
         <button class="danger">🗑</button>
       </form>

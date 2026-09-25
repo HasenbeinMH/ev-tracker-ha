@@ -235,7 +235,7 @@ def vorlagen() -> list:
 
 
 # Zeilen der Vergleichstabelle:
-# (Beschriftung, Schluessel in kennzahlen(), Nachkommastellen, Einheit, besser wenn …)
+# (Beschriftung – {name}/{fahrzeug} aus berechnung.KRAFTSTOFFE –, Schluessel in kennzahlen(), Nachkommastellen, Einheit, besser wenn …)
 # besser: "hoch", "niedrig" oder None (neutral, keine Wertung)
 VERGLEICH_ZEILEN = [
     ("Gefahrene Strecke", "gesamt_km", 0, "km", None),
@@ -249,8 +249,8 @@ VERGLEICH_ZEILEN = [
     ("Anteil PV-Strom", ("anteile", "PV-Strom"), 0, "%", "hoch"),
     ("Anteil Netzbezug", ("anteile", "Netzbezug"), 0, "%", "niedrig"),
     ("Anteil öffentlich", ("anteile", berechnung.OEFFENTLICH), 0, "%", "niedrig"),
-    ("Ø Benzinpreis", "avg_benzin", 3, "€/L", None),
-    ("Benziner-Kosten (fiktiv)", "benzin_kosten", 2, "€", None),
+    ("Ø {name}preis", "avg_benzin", 3, "€/L", None),
+    ("{fahrzeug}-Kosten (fiktiv)", "benzin_kosten", 2, "€", None),
     ("Kraftstoff-Ersparnis", "ersparnis_kraft", 2, "€", "hoch"),
     ("KFZ-Steuer-Ersparnis (anteilig)", "kfz_steuer", 2, "€", None),
     ("THG-Ertrag", "thg_gesamt", 2, "€", "hoch"),
@@ -262,6 +262,7 @@ VERGLEICH_ZEILEN = [
 def vergleich_zeilen(ka: dict, kb: dict) -> list:
     """Tabellenzeilen A gegen B mit Differenz und Wertung (fuer das Template)."""
     from berichte import fmt
+    kf = berechnung.kraftstoff()
     zeilen = []
     for text, schluessel, stellen, einheit, besser in VERGLEICH_ZEILEN:
         if isinstance(schluessel, tuple):
@@ -283,7 +284,7 @@ def vergleich_zeilen(ka: dict, kb: dict) -> list:
         ist_anteil = einheit == "%"
         diff_einheit = "%-Pkt." if ist_anteil else einheit
         zeilen.append({
-            "text": text,
+            "text": text.format(**kf),
             "a": fmt(a, stellen, einheit),
             "b": fmt(b, stellen, einheit),
             "diff": (("+" if diff > 0 else "−" if diff < 0 else "±")

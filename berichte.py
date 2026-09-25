@@ -174,12 +174,13 @@ def _kachel(wert, label, farbe="#2d6a9f"):
 def als_html(bericht: dict) -> str:
     d = bericht["daten"]
     v = bericht["vergleich"]
+    kf = berechnung.kraftstoff()
 
     kacheln = (
         _kachel(fmt(d["km"], 0, "km"), "Gefahrene Strecke")
         + _kachel(fmt(d["kwh"], 1, "kWh"), "Geladene Energie")
         + _kachel(fmt(d["strom_kosten"], 2, "&euro;"), "Stromkosten")
-        + _kachel(fmt(d["ersparnis"], 2, "&euro;"), "Ersparnis vs. Benziner",
+        + _kachel(fmt(d["ersparnis"], 2, "&euro;"), f"Ersparnis vs. {kf['fahrzeug']}",
                   "#2f7d4f" if d["ersparnis"] >= 0 else "#aa3333")
     )
 
@@ -195,7 +196,7 @@ def als_html(bericht: dict) -> str:
         ("Stromkosten", fmt(d["strom_kosten"], 2, "&euro;"),
          _delta_text(d["strom_kosten"], v["strom_kosten"], 2, "&euro;", "niedrig")),
         ("Kosten je 100 km", pro100, ""),
-        ("Benziner hätte gekostet", fmt(d["benzin_kosten"], 2, "&euro;"),
+        (f"{kf['fahrzeug']} hätte gekostet", fmt(d["benzin_kosten"], 2, "&euro;"),
          "bei &Oslash; " + fmt(d["avg_benzin"], 3, "&euro;/L")),
         ("Ersparnis", fmt(d["ersparnis"], 2, "&euro;"),
          _delta_text(d["ersparnis"], v["ersparnis"], 2, "&euro;", "hoch")),
@@ -256,6 +257,7 @@ def als_html(bericht: dict) -> str:
 def als_text(bericht: dict) -> str:
     """Textfassung als Rückfallebene für Mailprogramme ohne HTML."""
     d = bericht["daten"]
+    kf = berechnung.kraftstoff()
     return "\n".join([
         f"EV Tracker – {bericht['titel']}",
         "=" * 40,
@@ -263,7 +265,7 @@ def als_text(bericht: dict) -> str:
         f"Geladene Energie:   {fmt(d['kwh'], 1, 'kWh')} "
         f"in {d['ladevorgaenge']} Vorgaengen",
         f"Stromkosten:        {fmt(d['strom_kosten'], 2, 'EUR')}",
-        f"Benziner-Vergleich: {fmt(d['benzin_kosten'], 2, 'EUR')}",
+        f"{(kf['fahrzeug'] + '-Vergleich:'):<19} {fmt(d['benzin_kosten'], 2, 'EUR')}",
         f"Ersparnis:          {fmt(d['ersparnis'], 2, 'EUR')}",
         f"THG-Ertrag:         {fmt(d['thg'], 2, 'EUR')}",
         f"CO2 gespart:        {fmt(d['co2'], 1, 'kg')}",

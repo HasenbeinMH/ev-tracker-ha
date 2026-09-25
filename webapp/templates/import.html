@@ -14,7 +14,7 @@
     <span id="auto-meldung" style="align-self:center; font-size:12px"></span>
   </div>
   <p class="hint" style="margin-bottom:0">
-    Jede Nacht um 0:00 Uhr holt die App km, geladene kWh und Benzinpreis für den
+    Jede Nacht um 0:00 Uhr holt die App km, geladene kWh und {{ kf.name }}preis für den
     laufenden Monat und den Vormonat automatisch aus der eingestellten Datenquelle (Home Assistant oder Datenbank) – bereits
     importierte Werte werden aktualisiert, manuelle Einträge bleiben unberührt.
     {% if mail.auto_import != "1" %}<br><span class="gelb">Derzeit deaktiviert
@@ -70,11 +70,11 @@
   <p class="hint">
     <strong>km</strong> → Monatskilometer · <strong>PV kWh</strong> → Ladevorgang „Privat – PV" (PV-Preis) ·
     <strong>Wallbox kWh</strong> → Ladevorgang „Privat – Netzbezug" (Stromtarif des Monats) ·
-    <strong>Benzin €/L</strong> → Monats-Benzinpreis
+    <strong>{{ kf.name }} €/L</strong> → Monats-{{ kf.name }}preis
   </p>
   <p class="hint" id="vorschau-quelle"></p>
   <div class="tabelle-scroll"><table id="vorschau-tabelle">
-    <tr><th>Monat</th><th>km</th><th>PV kWh</th><th>Wallbox kWh</th><th>Benzin €/L</th></tr>
+    <tr><th>Monat</th><th>km</th><th>PV kWh</th><th>Wallbox kWh</th><th>{{ kf.name }} €/L</th></tr>
   </table></div>
   <div style="margin-top:12px">
     <button id="btn-apply" style="background:#3a7a3a">✓ Alle Werte in DB übernehmen</button>

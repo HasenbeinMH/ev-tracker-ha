@@ -6,7 +6,7 @@
     <div class="hero-kicker">{{ fahrzeug_name }}</div>
     <h1>Übersicht</h1>
     <div class="hero-wert">{{ kz.ersparnis_gesamt | de(2) }}<span> €</span></div>
-    <div class="hero-label">Gesamt-Ersparnis gegenüber einem Benziner{% if zeitraum.von %} · {{ zeitraum.titel }}{% endif %}</div>
+    <div class="hero-label">Gesamt-Ersparnis gegenüber einem {{ kf.fahrzeug }}{% if zeitraum.von %} · {{ zeitraum.titel }}{% endif %}</div>
   </div>
   <img class="hero-auto" src="api/auto-bild" alt="Fahrzeugbild">
 </section>
@@ -111,7 +111,7 @@
       ('kosten', 'Kraftstoffkosten Vergleich'),
       ('co2', 'CO2-Ersparnis'),
       ('verbrauch', 'Verbrauch kWh/100km'),
-      ('benzin', 'Benzinpreisentwicklung'),
+      ('benzin', kf.name ~ 'preisentwicklung'),
       ('strom', 'Stromtarifverlauf'),
       ('anbieter', 'Ladekosten nach Anbieter'),
       ('strommix', 'Geladene kWh nach Stromquelle'),
