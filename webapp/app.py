@@ -227,6 +227,49 @@ def hilfe(request: Request):
 
 
 # ─────────────────────────────────────────────────────────────
+#  Einrichtung: Schnellstart mit Stand je Schritt
+# ─────────────────────────────────────────────────────────────
+
+def _sensor_stand(ha: dict, ha_key: str, fn_key: str, influx: bool) -> tuple[str, str]:
+    """(stand, text) einer Sensorzeile: "ok", "pruefen" (noch der Beispielwert
+    aus der Erstinstallation) oder "fehlt"."""
+    wert = (ha.get(fn_key) if influx else ha.get(ha_key)) or ""
+    if not wert.strip():
+        return "fehlt", "nicht eingetragen"
+    if wert == db.HA_ENTITY_DEFAULTS.get(fn_key if influx else ha_key):
+        return "pruefen", f"{wert} – Beispielwert, bitte prüfen"
+    return "ok", wert
+
+
+@app.get("/einrichtung", response_class=HTMLResponse)
+def einrichtung(request: Request):
+    ha = db.get_ha_settings()
+    mail = db.get_mail_settings()
+    influx = ha.get("datasource") in ("influxdb", "influxdb2")
+    preis = berechnung.kraftstoff()["name"] + "preis"
+    sensoren = [(label.replace("Benzinpreis", preis), *_sensor_stand(ha, h, f, influx))
+                for h, f, label in SENSOR_FELDER]
+    # Zweiter Preis-Sensor und Akkustand sind optional – leer ist dort kein Mangel
+    optional = {"ha_tankerkoenig_2", "ha_ev_battery"}
+    sensoren = [(l, "optional" if st == "fehlt" and h in optional else st, t)
+                for (l, st, t), (h, _, _) in zip(sensoren, SENSOR_FELDER)]
+    return render(request, "einrichtung.html", aktiv="einrichtung",
+                  fahrzeug_name=db.get_einstellung_str("fahrzeug_name") or "",
+                  verbunden=_ha_verbindung(ha) is not None,
+                  add_on_modus=IST_ADDON,
+                  datenquelle=datenquellen.QUELLEN.get(ha.get("datasource")),
+                  influx=influx,
+                  sensoren=sensoren,
+                  tarife=len(db.get_stromtarife()),
+                  monate_km=len(db.get_fahrten_monate()),
+                  ladungen=len(db.get_ladevorgaenge(limit=100000)),
+                  preise=len(db.get_benzinpreise()),
+                  kfz=db.get_einstellung("kfz_steuer_benziner") or 0.0,
+                  mail_aktiv=mail.get("mail_aktiv") == "1",
+                  auto_import=mail.get("auto_import") == "1")
+
+
+# ─────────────────────────────────────────────────────────────
 #  Fahrten
 # ─────────────────────────────────────────────────────────────
 

@@ -149,6 +149,8 @@
     <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen" target="_blank" rel="noopener">Vorlagen</a> (<a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen/node-red" target="_blank" rel="noopener">Node-RED</a> oder HA-Paket)
     berechnen sie aus Netz- und Wallbox-Leistung – dann <code>sensor.ev_ladung_pv</code> und
     <code>sensor.ev_ladung_netz</code> eintragen.
+    <strong>Einheit:</strong> kWh-Zähler in <b>kWh</b> anlegen, nicht in Wh – die App rechnet
+    nicht um, Wh-Werte wären 1000-fach zu hoch.
     <strong>Umbenannter Sensor?</strong> Mehrere Namen mit <code>|</code> trennen, alten zuerst –
     z.B. <code>Ceed Kilometerstand | Neuer Name</code>. Die Werte beider Namen werden zusammengeführt.
   </p>
@@ -183,10 +185,13 @@
   </table>
 
   <div data-quelle="influxdb influxdb2">
-  <h2>InfluxDB – Sensor finden</h2>
-  <p class="hint">HA schreibt je Einheit ein Measurement (km, kWh, EUR/L, %) mit dem Feld „value“.
-    Gesucht wird über einen Tag: <code>friendly_name</code> (Spalte Friendly Name) oder
-    <code>entity_id</code> – dann dort die Entity-ID <em>ohne</em> „sensor.“ eintragen.</p>
+  <details class="erweitert">
+  <summary>Erweitert: InfluxDB-Measurements</summary>
+  <p class="hint">Füllt die <b>Sensorsuche</b> beim „Übernehmen“ automatisch aus – nur ändern, wenn du
+    weißt warum. HA schreibt je Einheit ein Measurement (km, kWh, EUR/L, %) mit dem Feld „value“;
+    alle Sensoren einer Einheit liegen darin und werden über den Tag unterschieden:
+    <code>friendly_name</code> (Standard) oder <code>entity_id</code> – dann in der Spalte
+    Friendly Name die Entity-ID <em>ohne</em> „sensor.“ eintragen.</p>
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
     <label class="feld">Tag
       <input name="influx_tag" value="{{ ha.influx_tag }}" style="width:120px">
@@ -204,6 +209,7 @@
       <input name="influx_measurement_prozent" value="{{ ha.influx_measurement_prozent }}" style="width:70px">
     </label>
   </div>
+  </details>
   </div>
 
   <div data-quelle="influxdb">
@@ -353,9 +359,20 @@ function feld(haKey) {
   return dbSpalte === "name" && zeile && zeile[1] ? zeile[1] : haKey;
 }
 
+// Test und Datenbanksuche arbeiten mit den GESPEICHERTEN Zugangsdaten. Wurde eine
+// Verbindungsangabe geaendert, aber noch nicht gespeichert, wuerde der Test die alten
+// Werte pruefen und scheinbar grundlos scheitern – deshalb vorher darauf hinweisen.
+let verbindungGeaendert = false;
+document.querySelector('form[action="einstellungen/ha"]').addEventListener("input", e => {
+  if (/^(datasource|ha_url|ha_token|influx|pg_|prom_)/.test(e.target.name || "")) verbindungGeaendert = true;
+});
+const ERST_SPEICHERN = "Verbindungsdaten geändert, aber noch nicht gespeichert – bitte zuerst " +
+                       "„Alle Einstellungen speichern“, dann testen bzw. suchen.";
+
 async function sucheDatenbank() {
   const q = document.getElementById("sensor-suche").value.trim();
   const box = document.getElementById("sensor-ergebnis");
+  if (verbindungGeaendert) { box.innerHTML = `<span class="gelb">${ERST_SPEICHERN}</span>`; return; }
   box.innerHTML = "<span class='muted'>Suche in der Datenbank …</span>";
   let d;
   try {
@@ -399,6 +416,8 @@ function dbEintragen(i) {
     eingabe.value = neu;          // leer oder "ersetzen" gewaehlt
   }
   eingabe.style.outline = "2px solid #5aaa78";
+  const kwhZeile = haKey === "ha_pv_production" || haKey === "ha_wallbox_energy";
+  const warnWh = kwhZeile && /^wh$/i.test((dbTreffer[i].einheit || "").trim());
   // InfluxDB: das Measurement des Treffers fuer diese Einheit uebernehmen
   const MEAS_FELD = {ha_odometer: "influx_measurement_km", ha_pv_production: "influx_measurement_kwh",
                      ha_wallbox_energy: "influx_measurement_kwh", ha_tankerkoenig: "influx_measurement_eur_l",
@@ -410,8 +429,11 @@ function dbEintragen(i) {
   }
   eingabe.scrollIntoView({block: "center", behavior: "smooth"});
   const hinweis = document.getElementById("test-ergebnis");
-  hinweis.textContent = "Eingetragen – zum Übernehmen „Alle Einstellungen speichern“ klicken.";
-  hinweis.className = "gelb";
+  hinweis.textContent = warnWh
+      ? "Achtung: dieser Sensor zählt in Wh – die App erwartet kWh (Werte wären 1000-fach zu hoch). " +
+        "Besser in HA einen kWh-Sensor anlegen, z.B. mit den Vorlagen."
+      : "Eingetragen – zum Übernehmen „Alle Einstellungen speichern“ klicken.";
+  hinweis.className = warnWh ? "rot" : "gelb";
 }
 
 async function pruefeSensor() {
@@ -461,6 +483,7 @@ zeigeQuelle();
 
 async function testeVerbindung(art, btn) {
   const span = document.getElementById("test-ergebnis");
+  if (verbindungGeaendert) { span.textContent = ERST_SPEICHERN; span.className = "gelb"; return; }
   btn.disabled = true;
   span.textContent = "Teste …";
   span.className = "muted";

@@ -34,7 +34,8 @@
       ('Verwaltung', [('import', 'import', 'HA Import'),
                       ('backup', 'backup', 'Backup'),
                       ('einstellungen', 'einstellungen', 'Einstellungen')]),
-      ('❓ Hilfe', [('hilfe', 'hilfe', 'Hilfe')])] %}
+      ('❓ Hilfe', [('hilfe', 'hilfe', 'Hilfe'),
+                   ('einrichtung', 'einrichtung', 'Einrichtung')])] %}
     {% set ist_aktiv = aktiv in eintraege | map('first') | list %}
     {% if eintraege | length == 1 %}
     <a href="{{ eintraege[0][1] }}" class="{{ 'aktiv' if ist_aktiv else '' }}">{{ label }}</a>

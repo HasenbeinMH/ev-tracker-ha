@@ -309,6 +309,10 @@ button:disabled { background: var(--border); color: #555; cursor: default; }
 .gruen { color: var(--gruen); }
 .gelb { color: var(--gelb); }
 .orange { color: var(--orange); }
+details.erweitert { margin: 18px 0 6px; }
+details.erweitert > summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+details.erweitert > summary:hover { color: var(--text); }
+details.erweitert[open] > summary { margin-bottom: 8px; }
 .rot { color: #aa5a5a; }
 .muted { color: var(--muted); }
 .log {

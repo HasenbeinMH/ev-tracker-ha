@@ -78,16 +78,16 @@
 </div>
 
 <h2 id="start">Schnellstart <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
-<p>In dieser Reihenfolge einrichten, dann stimmen alle Auswertungen von Anfang an:</p>
+<p>Die Seite <a href="einrichtung"><b>🚀 Einrichtung</b></a> führt Schritt für Schritt durch die Grundeinstellungen und zeigt bei jedem Schritt, ob er schon erledigt ist. Kurzfassung:</p>
 <ol>
-  <li><b>Einstellungen → Berechnungsparameter</b>: Vergleich mit Benziner, Diesel oder Autogas wählen, dann Verbrauch des Vergleichsfahrzeugs (7,0 L/100 km), EV-Referenz (15,0 kWh/100 km), PV-Preis (13 ct/kWh), CO2-Faktor ({{ '%.2f'|format(kf.co2_standard)|replace('.', ',') }} kg/L) und KFZ-Steuer prüfen.</li>
-  <li><b>Einstellungen → Home Assistant &amp; Datenbank</b>: URL und Token eintragen (im Add-on nicht nötig), Verbindung testen, dann die Sensoren zuordnen. Optional eine Datenbank als Quelle wählen (InfluxDB, PostgreSQL, Prometheus).</li>
-  <li><b>Stromtarif</b>: aktuellen Haushaltsstrompreis in ct/kWh anlegen.</li>
-  <li><b>HA Import</b>: einmalig den gewünschten Zeitraum rückwirkend abrufen, Vorschau prüfen, übernehmen.</li>
-  <li><b>Laden</b> bzw. <b>Rechnungen</b>: auswärtige Ladungen ergänzen – die kommen nicht aus HA.</li>
-  <li><b>Steuer &amp; THG</b>: THG-Auszahlungen eintragen, sobald sie kommen.</li>
-  <li><b>Berichte</b>: Mailversand einrichten, wenn gewünscht.</li>
+  <li><b>Einstellungen → Berechnungsparameter</b>: Fahrzeugname, Vergleich mit Benziner, Diesel oder Autogas, dessen Verbrauch, PV-Preis und KFZ-Steuer.</li>
+  <li><b>Verbindung zu Home Assistant</b>: im Add-on automatisch, sonst URL und langlebiges Token.</li>
+  <li><b>Sensoren</b>: Kilometerstand, PV und Netz ins Auto (kWh), {{ kf.name }}preis, optional Batteriestand – am einfachsten über die Suche.</li>
+  <li><b>Datenbank</b> (optional): nur wenn sie weiter zurückreicht als HA.</li>
+  <li><b>Stromtarif</b> anlegen, dann unter <b>HA Import</b> die vergangenen Monate holen.</li>
+  <li><b>Laden</b> bzw. <b>Rechnungen</b>: Ladungen unterwegs ergänzen; <b>Steuer &amp; THG</b> und <b>Berichte</b> nach Bedarf.</li>
 </ol>
+<div class="hb-warn"><b>Erst speichern, dann testen:</b> Verbindungstest und Datenbanksuche arbeiten mit den <b>gespeicherten</b> Zugangsdaten. Nach dem Eintragen also zuerst „Alle Einstellungen speichern“ – sonst wird noch mit den alten Werten getestet.</div>
 <div class="hb-info"><b>Danach läuft es weitgehend allein:</b> Der nächtliche Abruf holt km, PV-/Netz-kWh und {{ kf.name }}preis für den laufenden Monat und den Vormonat automatisch nach.</div>
 
 <h2 id="konzept">Grundkonzept <a class="hb-oben" href="#oben">↑ nach oben</a></h2>

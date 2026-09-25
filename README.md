@@ -65,6 +65,23 @@ Ladesäulen) werden dagegen direkt in der App erfasst.
 5. Läuft komplett per Ingress (eigener Menüpunkt in der Seitenleiste) – kein offener Port,
    kein manuelles Access-Token nötig
 
+## Erste Schritte
+
+Nach dem Start im Menü **❓ Hilfe → Einrichtung** öffnen: Die Seite führt durch die
+Grundeinstellungen und zeigt bei jedem Schritt, ob er schon erledigt ist.
+
+1. **Einstellungen → Berechnungsparameter** – Fahrzeugname, Vergleich mit Benziner, Diesel
+   oder Autogas, dessen Verbrauch, PV-Preis, KFZ-Steuer.
+2. **Verbindung zu Home Assistant** – im Add-on automatisch.
+3. **Sensoren zuordnen** – Kilometerstand, PV und Netz ins Auto (kWh), Kraftstoffpreis,
+   optional Batteriestand. Am einfachsten über „In HA suchen“ bzw. „In Datenbank suchen“.
+4. **Datenbank** (optional) – nur wenn sie weiter zurückreicht als Home Assistant.
+   **Erst speichern, dann testen:** Verbindungstest und Suche nutzen die gespeicherten Zugangsdaten.
+5. **Stromtarif** anlegen, dann unter **HA Import** die vergangenen Monate holen.
+6. **Ladungen unterwegs** unter Laden bzw. Rechnungen ergänzen, THG-Prämien unter Steuer & THG.
+
+Danach holt der nächtliche Abruf km, kWh und Kraftstoffpreis jeden Monat von selbst.
+
 ## Funktionen
 
 | Seite | Beschreibung |

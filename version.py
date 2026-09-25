@@ -19,10 +19,32 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.3.1"
+VERSION = "2.4.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.4.0",
+        "datum": "2026-09-25",
+        "titel": "Einrichtung: Schnellstart mit Stand je Schritt",
+        "aenderungen": [
+            "Neue Seite Hilfe → Einrichtung: zehn Schritte von Fahrzeug und Vergleich ueber Verbindung, Sensoren, Datenbank, Stromtarif und Import bis Bericht und Backup – mit Link zur jeweiligen Seite",
+            "Bei jedem Schritt steht, ob er erledigt ist (z.B. Stromtarif fehlt, 12 Monate mit km); Sensoren, in denen noch der Beispielwert der Erstinstallation steht, sind als \"pruefen\" markiert",
+            "Verbindungstest direkt auf der Seite",
+            "Einstellungen: Verbindungstest und Datenbanksuche melden ungespeicherte Verbindungsdaten, statt mit den alten Werten zu scheitern – erst speichern, dann testen",
+            "Hilfe und README: Schnellstart verweist auf die Einrichtung",
+        ],
+    },
+    {
+        "version": "2.3.2",
+        "datum": "2026-09-25",
+        "titel": "InfluxDB-Measurements eingeklappt, Hinweis auf kWh",
+        "aenderungen": [
+            "Einstellungen: der Abschnitt \"InfluxDB – Sensor finden\" ist jetzt ein zugeklappter Bereich \"Erweitert: InfluxDB-Measurements\" – die Sensorsuche fuellt ihn beim Uebernehmen aus; die Werte bleiben wirksam",
+            "Sensoren: Hinweis, kWh-Zaehler in kWh anzulegen, nicht in Wh (die App rechnet nicht um)",
+            "Sensorsuche: Warnung, wenn fuer PV oder Netz ins Auto ein Treffer in Wh uebernommen wird",
+        ],
+    },
     {
         "version": "2.3.1",
         "datum": "2026-09-25",
