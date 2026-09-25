@@ -587,6 +587,8 @@ class InfluxDB3(_Influx):
         self.base = _url(cfg.get("influx3_url") or "http://localhost:8181")
         self.db = (cfg.get("influx3_database") or "home_assistant").strip()
         self.token = (cfg.get("influx3_token") or "").strip()
+        self._tabellen_cache = None     # Tabellen mit Tag und Feld "value"
+        self._tabelle_je = {}           # (schl, kennung) -> Tabelle, in der der Sensor liegt
 
     def _sql(self, q: str, timeout: int = TIMEOUT) -> list:
         """Zeilen als dicts (Spaltenname -> Wert)."""
@@ -622,8 +624,46 @@ class InfluxDB3(_Influx):
                 continue
         return sorted(werte, key=lambda x: x[0])
 
+    def _tabellen(self, timeout: int = TIMEOUT) -> list:
+        """Measurements (Tabellen), die den Tag und das Feld "value" haben."""
+        if self._tabellen_cache is None:
+            spalten = self._sql("SELECT table_name, column_name FROM information_schema.columns "
+                                f"WHERE table_schema = 'iox' AND column_name IN "
+                                f"({_sql_str(self.tag)}, 'value')", timeout)
+            je = {}
+            for z in spalten:
+                je.setdefault(z["table_name"], set()).add(z["column_name"])
+            self._tabellen_cache = sorted(t for t, s in je.items() if s == {self.tag, "value"})
+        return self._tabellen_cache
+
+    def _hat(self, tabelle: str, kennung: str) -> bool:
+        return bool(self._sql(f"SELECT 1 AS x FROM {_sql_ident(tabelle)} "
+                              f"WHERE {_sql_ident(self.tag)} = {_sql_str(kennung)} LIMIT 1"))
+
+    def _tabelle(self, schl: str, kennung: str) -> str:
+        """Tabelle, in der der Sensor liegt. HA legt jeden Sensor im Measurement seiner
+        Einheit ab – die steht nicht immer so in den Einstellungen (z.B. "€" statt
+        "EUR/L", wenn der Name von Hand eingetragen wurde). Dann wird der Sensor ueber
+        seinen Namen in den uebrigen Tabellen gesucht; das Ergebnis gilt fuer diesen Abruf."""
+        schluessel = (schl, kennung)
+        if schluessel not in self._tabelle_je:
+            tabellen = self._tabellen()
+            eingestellt = self.measurement(schl)
+            kandidaten = ([eingestellt] if eingestellt in tabellen else []) +                          [t for t in tabellen if t != eingestellt]
+            gefunden = next((t for t in kandidaten if self._hat(t, kennung)), None)
+            if gefunden is None:
+                raise ConnectionError(
+                    f"„{kennung}“ steht in keinem Measurement mit dem Tag {self.tag} "
+                    f"(vorhanden: {', '.join(tabellen) or 'keine'}) – Namen mit der "
+                    f"Datenbanksuche prüfen")
+            self._tabelle_je[schluessel] = gefunden
+        return self._tabelle_je[schluessel]
+
+    def beschreibung(self, schluessel: str) -> str:
+        return f"{Datenquelle.beschreibung(self, schluessel)} (Measurement wird über den Namen gefunden)"
+
     def _wo(self, schl, kennung, von, bis, ab_inkl=False) -> str:
-        return (f"FROM {_sql_ident(self.measurement(schl))} "
+        return (f"FROM {_sql_ident(self._tabelle(schl, kennung))} "
                 f"WHERE {_sql_ident(self.tag)} = {_sql_str(kennung)} AND \"value\" IS NOT NULL "
                 f"AND time {'>=' if ab_inkl else '>'} {_sql_str(_iso(von))} "
                 f"AND time <= {_sql_str(_iso(bis))}")
@@ -640,14 +680,7 @@ class InfluxDB3(_Influx):
 
     def suche(self, begriff):
         tag = self.tag
-        # Nur Tabellen (Measurements), die sowohl den Tag als auch das Feld "value" haben
-        spalten = self._sql("SELECT table_name, column_name FROM information_schema.columns "
-                            f"WHERE table_schema = 'iox' AND column_name IN ({_sql_str(tag)}, 'value')",
-                            TIMEOUT_SUCHE)
-        je_tabelle = {}
-        for z in spalten:
-            je_tabelle.setdefault(z["table_name"], set()).add(z["column_name"])
-        tabellen = sorted(t for t, s in je_tabelle.items() if s == {tag, "value"})
+        tabellen = self._tabellen(TIMEOUT_SUCHE)
         begriff = (begriff or "").strip().lower()
         treffer = []
         for tabelle in tabellen:

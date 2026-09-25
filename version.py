@@ -19,10 +19,27 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.5.1"
+VERSION = "2.5.3"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.5.3",
+        "datum": "2026-09-25",
+        "titel": "InfluxDB 3.x: Sensor wird ueber den Friendly Name gefunden",
+        "aenderungen": [
+            "InfluxDB 3.x: das Measurement (die Tabelle) eines Sensors muss nicht mehr stimmen – steht der Name nicht im eingestellten Measurement (z.B. \"EUR/L\", der Sensor liegt aber unter \"€\"), sucht die App ihn in den uebrigen Measurements. Vorher: \"table 'public.iox.EUR/L' not found\"",
+            "Steht der Name in keinem Measurement, nennt die Meldung die vorhandenen Measurements",
+        ],
+    },
+    {
+        "version": "2.5.2",
+        "datum": "2026-09-25",
+        "titel": "Lesbare Links",
+        "aenderungen": [
+            "Textlinks in der ganzen App in Hellblau statt im Standard-Blau/-Lila des Browsers, das auf dem dunklen Hintergrund kaum lesbar war (Kontrast 5,9 : 1 statt 1,8 : 1); Knoepfe und Tabs unveraendert",
+        ],
+    },
     {
         "version": "2.5.1",
         "datum": "2026-09-25",

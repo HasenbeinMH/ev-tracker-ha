@@ -3,6 +3,15 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.5.3] - 2026-09-25
+### InfluxDB 3.x: Sensor wird ueber den Friendly Name gefunden
+- InfluxDB 3.x: das Measurement (die Tabelle) eines Sensors muss nicht mehr stimmen – steht der Name nicht im eingestellten Measurement (z.B. "EUR/L", der Sensor liegt aber unter "€"), sucht die App ihn in den uebrigen Measurements. Vorher: "table 'public.iox.EUR/L' not found"
+- Steht der Name in keinem Measurement, nennt die Meldung die vorhandenen Measurements
+
+## [2.5.2] - 2026-09-25
+### Lesbare Links
+- Textlinks in der ganzen App in Hellblau statt im Standard-Blau/-Lila des Browsers, das auf dem dunklen Hintergrund kaum lesbar war (Kontrast 5,9 : 1 statt 1,8 : 1); Knoepfe und Tabs unveraendert
+
 ## [2.5.1] - 2026-09-25
 ### Fahrzeugbilder: Ordner und Prompt fuer Bild-KIs
 - Neuer Ordner fahrzeugbilder/ im Repo mit fertigen Bildern (zunaechst Kia EV3 Orange) und einer Anleitung: Vorgaben (16:9, transparenter oder einfarbiger Hintergrund #14171E, Dreiviertelansicht) und Prompts fuer ChatGPT, Gemini & Co. – aus dem eigenen Foto oder neu erzeugt
