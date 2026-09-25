@@ -32,6 +32,7 @@ CHANGELOG = [
             "Neue Vorlage vorlagen/homeassistant/ev_netzkosten.yaml: addiert zu jeder kWh aus dem Netz den Preis in diesem Moment (€/kWh, ct/kWh oder €/MWh wird erkannt; Aufschlag und MwSt. fuer reine Boersenpreise einstellbar); funktioniert mit dem HA-Paket, dem Node-RED-Flow und eigenen Zaehlern",
             "Solche Monate tragen die Notiz \"dynamischer Tarif\" und bleiben beim Anlegen oder Loeschen eines Stromtarifs unveraendert. Fehlt der Kostenwert oder ist der Preis unplausibel (ueber 150 ct/kWh), gilt wie bisher der Stromtarif – das Importprotokoll nennt den Grund",
             "HA-Import: Spalte \"Netz €\" in der Vorschau, sobald ein Kostenzaehler eingetragen ist; InfluxDB: Measurement \"EUR\" einstellbar",
+            "Einrichtung: Kostenzaehler bei Schritt 3 (Sensoren) und Hinweis zum dynamischen Tarif bei Schritt 5 (Stromtarif) erklaert",
             "Hilfe: Abschnitt Dynamischer Stromtarif; der Hinweis zur Neubewertung der importierten Monatssummen beim Tarifwechsel ist korrigiert",
         ],
     },

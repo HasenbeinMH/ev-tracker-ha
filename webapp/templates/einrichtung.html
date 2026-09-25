@@ -109,6 +109,11 @@
         Liefert die Wallbox nur die Gesamtleistung, legen die
         <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen" target="_blank" rel="noopener">Vorlagen</a>
         (Node-RED oder HA-Paket) beide Zähler an.</li>
+      <li><b>Kosten Netz ins Auto</b> (optional) – nur bei einem <b>dynamischen Stromtarif</b>
+        (Tibber, aWATTar, Octopus …): ein fortlaufender €-Zähler, der zu jeder kWh aus dem Netz den Preis
+        in diesem Moment addiert. Die Vorlage
+        <a href="https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/homeassistant/ev_netzkosten.yaml" target="_blank" rel="noopener">ev_netzkosten.yaml</a>
+        legt ihn aus deinem Preissensor an (<code>sensor.ev_ladung_netz_kosten</code>). Mit festem Tarif leer lassen.</li>
       <li><b>{{ kf.name }}preis</b> – €/L, z.B. aus der Tankerkönig-Integration;
         ein zweiter Sensor wird mitgemittelt.{% if kf.art == "autogas" %} Tankerkönig kennt kein Autogas –
         dann den Preis je Monat von Hand eintragen.{% endif %}</li>
@@ -148,8 +153,12 @@
     {{ stand("ok", tarife ~ " Tarif" ~ ("e" if tarife != 1 else "")) if tarife else stand("fehlt", "fehlt") }}</h2>
   <div>
     <p>Dein Haushaltsstrompreis in ct/kWh mit dem Datum, ab dem er gilt. Mit ihm werden die Ladungen
-      aus dem Netz bewertet. Bei einem Tarifwechsel einen neuen Eintrag anlegen – alte Monate
-      behalten ihren Preis.</p>
+      aus dem Netz bewertet. Bei einem Tarifwechsel einen neuen Eintrag anlegen – importierte Monate
+      werden dann mit dem Tarif bewertet, der in ihrem Monat galt.</p>
+    <div class="warn"><b>Dynamischer Tarif?</b> Trotzdem einen Tarif mit deinem ungefähren Durchschnittspreis
+      anlegen. Mit dem Sensor „Kosten Netz ins Auto“ (Schritt 3) zählen je Monat die tatsächlichen Kosten;
+      der Tarif gilt nur für Monate ohne Kostenwert – etwa vor der Einrichtung des Zählers –, als
+      Preisvorschlag beim Erfassen von Hand und in der Simulation.</div>
   </div>
   <div class="aktion"><a class="knopf" href="stromtarif">Stromtarif öffnen</a></div>
 </div>
@@ -223,7 +232,7 @@
 
 <div class="card">
   {% if auto_import %}<span class="gruen">✓ Danach läuft es von selbst:</span>{% else %}<span class="gelb">Der nächtliche Abruf ist ausgeschaltet.</span>{% endif %}
-  Der nächtliche Abruf holt km, PV-/Netz-kWh und {{ kf.name }}preis für den laufenden Monat und
+  Der nächtliche Abruf holt km, PV-/Netz-kWh (mit Kostenzähler auch die Kosten) und {{ kf.name }}preis für den laufenden Monat und
   den Vormonat. Von Hand bleiben nur Ladungen unterwegs und THG-Prämien.
 </div>
 
