@@ -19,10 +19,19 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.4.0"
+VERSION = "2.4.1"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.4.1",
+        "datum": "2026-09-25",
+        "titel": "Verstaendliche Fehlermeldungen bei InfluxDB 2.x",
+        "aenderungen": [
+            "InfluxDB 2.x: bei HTTP 401 nennt die App die Ursache – das Token wird nicht angenommen – mit den letzten vier Zeichen des gespeicherten Tokens zum Abgleich und dem Hinweis, dass bei mehreren InfluxDB-Instanzen jede eigene Tokens hat",
+            "Ebenso bei unbekannter Organisation oder nicht lesbarem Bucket; gilt fuer Verbindungstest, Datenbanksuche und Import, die Rohmeldung der Datenbank steht weiter dahinter",
+        ],
+    },
     {
         "version": "2.4.0",
         "datum": "2026-09-25",

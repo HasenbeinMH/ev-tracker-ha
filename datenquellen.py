@@ -448,10 +448,13 @@ class InfluxDB2(_Influx):
     def _roh(self, flux: str, timeout: int = TIMEOUT) -> list:
         """Zeilen der CSV-Antwort als dicts (Spaltenname -> Text)."""
         url = f"{self.base}/api/v2/query?{urllib.parse.urlencode({'org': self.org})}"
-        roh = _http(url, daten=flux.encode(), timeout=timeout, kopf={
-            "Authorization": f"Token {self.token}",
-            "Content-Type": "application/vnd.flux",
-            "Accept": "application/csv"}).decode("utf-8", errors="replace")
+        try:
+            roh = _http(url, daten=flux.encode(), timeout=timeout, kopf={
+                "Authorization": f"Token {self.token}",
+                "Content-Type": "application/vnd.flux",
+                "Accept": "application/csv"}).decode("utf-8", errors="replace")
+        except ConnectionError as e:
+            raise ConnectionError(self._fehlertext(str(e))) from None
         return self._csv_zeilen(roh)
 
     def _query(self, flux: str) -> list:
@@ -502,6 +505,22 @@ class InfluxDB2(_Influx):
         except Exception as e:
             return False, str(e)
         return True, f"Verbunden · Bucket '{self.bucket}' gefunden"
+
+    def _fehlertext(self, text: str) -> str:
+        """Haeufige Antworten von InfluxDB 2 in Klartext – die Rohmeldung bleibt dahinter stehen."""
+        if "HTTP 401" in text:
+            # Die letzten Zeichen reichen zum Abgleich mit der InfluxDB-Oberflaeche
+            ende = self.token[-4:] if len(self.token) > 12 else "…"
+            return (f"Token wird nicht angenommen (gespeichertes Token endet auf …{ende}). "
+                    f"Gehört es zu genau dieser InfluxDB unter {self.base}? Bei mehreren "
+                    f"Instanzen hat jede eigene Tokens. Neues Token dort unter Load Data → "
+                    f"API Tokens anlegen, mit Lesezugriff auf den Bucket '{self.bucket}'. — {text}")
+        if "HTTP 404" in text and "organization" in text.lower():
+            return (f"Organisation '{self.org}' gibt es in dieser InfluxDB nicht – den Namen "
+                    f"unter Profil → About bzw. im Menü oben links prüfen. — {text}")
+        if "HTTP 404" in text and "bucket" in text.lower():
+            return f"Bucket '{self.bucket}' nicht gefunden oder das Token darf ihn nicht lesen. — {text}"
+        return text
 
     def suche(self, begriff):
         tag = _flux_str(self.tag)

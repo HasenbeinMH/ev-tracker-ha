@@ -3,6 +3,11 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.4.1] - 2026-09-25
+### Verstaendliche Fehlermeldungen bei InfluxDB 2.x
+- InfluxDB 2.x: bei HTTP 401 nennt die App die Ursache – das Token wird nicht angenommen – mit den letzten vier Zeichen des gespeicherten Tokens zum Abgleich und dem Hinweis, dass bei mehreren InfluxDB-Instanzen jede eigene Tokens hat
+- Ebenso bei unbekannter Organisation oder nicht lesbarem Bucket; gilt fuer Verbindungstest, Datenbanksuche und Import, die Rohmeldung der Datenbank steht weiter dahinter
+
 ## [2.4.0] - 2026-09-25
 ### Einrichtung: Schnellstart mit Stand je Schritt
 - Neue Seite Hilfe → Einrichtung: zehn Schritte von Fahrzeug und Vergleich ueber Verbindung, Sensoren, Datenbank, Stromtarif und Import bis Bericht und Backup – mit Link zur jeweiligen Seite
