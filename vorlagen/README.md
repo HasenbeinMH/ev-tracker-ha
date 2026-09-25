@@ -7,7 +7,7 @@ gleichwertige Wege, **nur einen davon** verwenden:
 
 | Weg | Für wen | Datei |
 |-----|---------|-------|
-| **Node-RED** | wer Node-RED nutzt – nur ein Knoten auszufüllen, Einheiten werden erkannt | [`node-red/ev_pv_anteil_flow.json`](node-red/ev_pv_anteil_flow.json) |
+| **Node-RED** | wer Node-RED nutzt – nur ein Knoten auszufüllen, Einheiten werden erkannt | [`node-red/ev_pv_anteil_flow.json`](node-red/ev_pv_anteil_flow.json) · [Anleitung](node-red/README.md) |
 | **Home Assistant** (ohne Node-RED) | alle anderen – ein Paket mit Template-Sensoren | [`homeassistant/ev_pv_anteil.yaml`](homeassistant/ev_pv_anteil.yaml) bzw. [`…_mit_zaehler.yaml`](homeassistant/ev_pv_anteil_mit_zaehler.yaml) |
 
 Beide legen dieselben Sensoren an:
@@ -46,17 +46,17 @@ immer genau den Zähler der Wallbox.
 
 ## Node-RED
 
-1. Node-RED → Menü ☰ → **Importieren** → Datei `ev_pv_anteil_flow.json` auswählen
-   (oder Inhalt einfügen) → **Importieren**. Es entsteht ein neuer Reiter
-   „EV Tracker – PV-Anteil beim Laden“.
-2. Knoten **„⚙ Einstellungen – hier Sensoren eintragen“** öffnen und ausfüllen:
-   - `netz`: Netzleistung, `netz_bezug_positiv`: Vorzeichen (siehe unten)
-   - `wallbox`: Ladeleistung der Wallbox
-   - optional `wallbox_zaehler`: Energiezähler der Wallbox (kWh)
-   - im **Node-RED-Add-on** von Home Assistant `ha_url`/`ha_token` leer lassen –
-     der Zugang kommt automatisch. Sonst HA-Adresse und ein
-     [langlebiges Zugriffstoken](https://www.home-assistant.io/docs/authentication/#your-account-profile).
-3. **Übernehmen** (Deploy). Unter den Knoten erscheint der Status, z.B.
+**Ausführliche Anleitung mit allen Feldern und Status-Anzeigen: [node-red/README.md](node-red/README.md).**
+
+Kurzfassung:
+
+1. [Flow-Datei als Rohtext öffnen](https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/vorlagen/node-red/ev_pv_anteil_flow.json),
+   alles kopieren – **nur diese JSON-Datei**, nicht die `.js`-Dateien aus `quellen/`.
+2. Node-RED → Menü ☰ → **Importieren** → einfügen → **Neuen Flow** → **Importieren**.
+3. Knoten **„⚙ Einstellungen – hier Sensoren eintragen“** öffnen, `netz`, `wallbox`
+   und optional `wallbox_zaehler` eintragen. Im **Node-RED-Add-on** `ha_url`/`ha_token`
+   leer lassen.
+4. **Übernehmen** (Deploy). Unter den Knoten erscheint der Status, z.B.
    `PV 5200 W · Netz 5800 W (PV-Anteil 47 %) · 12.40 / 30.15 kWh`.
 
 Es werden nur Standard-Knoten verwendet, keine Zusatzpalette. Die Zählerstände

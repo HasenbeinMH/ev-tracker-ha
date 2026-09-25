@@ -164,8 +164,8 @@ check("Node-RED", "Flow nutzt nur Standardknoten",
 quellen = {"⚙": "einstellungen.js", "PV / Netz berechnen": "berechnen.js"}
 for anfang, datei in quellen.items():
     fn = next(k for k in knoten if k["type"] == "function" and k["name"].startswith(anfang))
-    quelltext = open(os.path.join(REPO, "vorlagen", "node-red", datei), encoding="utf-8").read()
-    check("Node-RED", f"Flow-JSON ist aktuell ({datei}) – sonst flow_bauen.py ausführen",
+    quelltext = open(os.path.join(REPO, "vorlagen", "node-red", "quellen", datei), encoding="utf-8").read()
+    check("Node-RED", f"Flow-JSON ist aktuell ({datei}) – sonst quellen/flow_bauen.py ausführen",
           fn["func"] == quelltext)
 ids = {k["id"] for k in knoten}
 check("Node-RED", "Alle Verbindungen zeigen auf vorhandene Knoten",

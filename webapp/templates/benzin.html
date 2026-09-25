@@ -24,7 +24,7 @@
     <td>
       {% if loop.index0 > 0 %}
         {% set diff = d.preis_liter - rows[loop.index0 - 1].preis_liter %}
-        {% if diff > 0.005 %}<span style="color:#ff6b35">▲ +{{ "%.3f"|format(diff)|replace(".", ",") }}</span>
+        {% if diff > 0.005 %}<span class="orange">▲ +{{ "%.3f"|format(diff)|replace(".", ",") }}</span>
         {% elif diff < -0.005 %}<span class="gruen">▼ {{ "%.3f"|format(diff)|replace(".", ",") }}</span>
         {% else %}<span class="muted">→ stabil</span>{% endif %}
       {% else %}—{% endif %}

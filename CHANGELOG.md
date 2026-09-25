@@ -3,6 +3,14 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.2.1] - 2026-09-25
+### Farben bei Veraenderungen, Anleitung fuer den Node-RED-Import
+- Statistik: Anteil Netzbezug und Anteil oeffentlich werden jetzt gewertet – weniger ist besser (gruen), mehr schlechter (orange), wie bei Verbrauch und Kosten
+- Monats- und Jahresbericht per Mail: die Veraenderung zur Vorperiode ist farbig – Stromkosten mit Minus gruen, Ersparnis und CO2 mit Plus gruen; km und kWh bleiben grau
+- Mailbericht: Prozent der Veraenderung stimmt jetzt auch, wenn die Ersparnis der Vorperiode negativ war
+- Benzinpreise: steigender Preis im selben Orange wie auf der Statistikseite
+- Vorlagen: Schritt-fuer-Schritt-Anleitung zum Import des Node-RED-Flows (vorlagen/node-red/README.md); die .js-Quellen liegen jetzt in quellen/, damit nur die importierbare JSON-Datei im Ordner steht – eingefuegter .js-Code fuehrte zu "is not valid JSON"
+
 ## [2.2.0] - 2026-09-24
 ### Vorlagen: PV- und Netz-Anteil beim Laden selbst berechnen
 - Neu im Repo unter vorlagen/: ein Node-RED-Flow und ein Home-Assistant-Paket, die die Ladeleistung der Wallbox in PV und Netz aufteilen und die Zaehler sensor.ev_ladung_pv / sensor.ev_ladung_netz anlegen – fuer "PV ins Auto" und "Netz ins Auto" im EV Tracker und fuers Energie-Dashboard

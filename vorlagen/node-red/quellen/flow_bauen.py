@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Baut den importierbaren Node-RED-Flow ev_pv_anteil_flow.json aus
+Baut den importierbaren Node-RED-Flow ../ev_pv_anteil_flow.json aus
 einstellungen.js und berechnen.js (die Quelltexte bleiben so lesbar und testbar).
+Die .js-Dateien sind nur Quellen – importiert wird die JSON-Datei.
 
-    python vorlagen/node-red/flow_bauen.py
+    python vorlagen/node-red/quellen/flow_bauen.py
 
 Der Flow nutzt nur Standard-Knoten (inject, function, http request, join, comment,
 debug) – keine Zusatzpalette noetig.
@@ -64,7 +65,7 @@ knoten = [
      "x": 900, "y": 180, "wires": []},
 ]
 
-ziel = os.path.join(HIER, "ev_pv_anteil_flow.json")
+ziel = os.path.join(os.path.dirname(HIER), "ev_pv_anteil_flow.json")
 with open(ziel, "w", encoding="utf-8", newline="\n") as f:
     json.dump(knoten, f, ensure_ascii=False, indent=2)
     f.write("\n")

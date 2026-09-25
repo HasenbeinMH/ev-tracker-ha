@@ -24,16 +24,24 @@ def fmt(wert, nachkommastellen=0, einheit=""):
     return f"{s} {einheit}".strip()
 
 
-def _delta_text(aktuell, vorher, nachkommastellen=0, einheit=""):
-    """Veränderung gegenüber der Vorperiode als Text mit Pfeil."""
+def _delta_text(aktuell, vorher, nachkommastellen=0, einheit="", besser=None):
+    """Veränderung gegenüber der Vorperiode als Text mit Pfeil.
+
+    besser: "hoch", "niedrig" oder None – färbt die Veränderung grün (besser)
+    oder orange (schlechter) wie auf der Statistikseite; None bleibt grau.
+    """
     if not vorher or aktuell is None:
         return ""
     diff = aktuell - vorher
     if abs(diff) < 10 ** -nachkommastellen / 2:
         return "→ unverändert"
     pfeil = "▲" if diff > 0 else "▼"
-    prozent = diff / vorher * 100
-    return f"{pfeil} {fmt(abs(diff), nachkommastellen, einheit)} ({prozent:+.0f} %)"
+    prozent = diff / abs(vorher) * 100
+    text = f"{pfeil} {fmt(abs(diff), nachkommastellen, einheit)} ({prozent:+.0f} %)"
+    if besser:
+        klasse = "gruen" if (diff > 0) == (besser == "hoch") else "orange"
+        text = f'<span class="{klasse}">{text}</span>'
+    return text
 
 
 # ── Datensammlung ────────────────────────────────────────────────────────────
@@ -152,6 +160,7 @@ td.z{text-align:right;white-space:nowrap}
 .kachel .l{font-size:11px;color:#6b7280;margin-top:2px}
 .gruen{color:#2f7d4f}
 .rot{color:#aa3333}
+.orange{color:#b86a2a}
 .grau{color:#6b7280;font-size:12px}
 .fuss{padding:14px 24px;background:#f7f9fb;color:#6b7280;font-size:11px;border-top:1px solid #e3e6ea}
 """
@@ -184,15 +193,15 @@ def als_html(bericht: dict) -> str:
         ("Ladevorgänge", str(d["ladevorgaenge"]), ""),
         ("Verbrauch", verbrauch, ""),
         ("Stromkosten", fmt(d["strom_kosten"], 2, "&euro;"),
-         _delta_text(d["strom_kosten"], v["strom_kosten"], 2, "&euro;")),
+         _delta_text(d["strom_kosten"], v["strom_kosten"], 2, "&euro;", "niedrig")),
         ("Kosten je 100 km", pro100, ""),
         ("Benziner hätte gekostet", fmt(d["benzin_kosten"], 2, "&euro;"),
          "bei &Oslash; " + fmt(d["avg_benzin"], 3, "&euro;/L")),
         ("Ersparnis", fmt(d["ersparnis"], 2, "&euro;"),
-         _delta_text(d["ersparnis"], v["ersparnis"], 2, "&euro;")),
+         _delta_text(d["ersparnis"], v["ersparnis"], 2, "&euro;", "hoch")),
         ("THG-Ertrag", fmt(d["thg"], 2, "&euro;"), ""),
         ("CO&#8322; gespart",fmt(d["co2"], 1, "kg"),
-         _delta_text(d["co2"], v["co2"], 1, "kg")),
+         _delta_text(d["co2"], v["co2"], 1, "kg", "hoch")),
     ]
     tabelle = "".join(
         f'<tr><td>{name}</td><td class="z"><strong>{wert}</strong></td>'

@@ -10,6 +10,7 @@
   --gruen: #5aaa78;
   --rot: #8b3333;
   --gelb: #c4963a;
+  --orange: #c47a3a;
 }
 * { box-sizing: border-box; }
 body {
@@ -193,7 +194,7 @@ table.vergleich tr.summenzeile td { border-top: 1px solid var(--border2); font-w
    scrollt stattdessen waagerecht (.tabelle-scroll) */
 table.akku-monate td:first-child { white-space: nowrap; }
 td.besser { color: var(--gruen); }
-td.schlechter { color: #c47a3a; }
+td.schlechter { color: var(--orange); }
 .kennzahl-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .kennzahl-tabs .tab {
   background: var(--card);
@@ -307,6 +308,7 @@ button.secondary:hover { background: var(--border2); }
 button:disabled { background: var(--border); color: #555; cursor: default; }
 .gruen { color: var(--gruen); }
 .gelb { color: var(--gelb); }
+.orange { color: var(--orange); }
 .rot { color: #aa5a5a; }
 .muted { color: var(--muted); }
 .log {
