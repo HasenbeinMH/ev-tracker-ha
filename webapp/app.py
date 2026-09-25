@@ -245,7 +245,7 @@ def _sensor_stand(ha: dict, ha_key: str, fn_key: str, influx: bool) -> tuple[str
 def einrichtung(request: Request):
     ha = db.get_ha_settings()
     mail = db.get_mail_settings()
-    influx = ha.get("datasource") in ("influxdb", "influxdb2")
+    influx = ha.get("datasource") in ("influxdb", "influxdb2", "influxdb3")
     preis = berechnung.kraftstoff()["name"] + "preis"
     sensoren = [(label.replace("Benzinpreis", preis), *_sensor_stand(ha, h, f, influx))
                 for h, f, label in SENSOR_FELDER]

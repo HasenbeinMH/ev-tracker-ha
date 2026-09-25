@@ -19,7 +19,7 @@ try:
 except Exception:
     pass
 
-GEHEIM_KEYS = {"ha_token", "influx_password", "influx2_token", "pg_password", "prom_password"}
+GEHEIM_KEYS = {"ha_token", "influx_password", "influx2_token", "influx3_token", "pg_password", "prom_password"}
 
 
 def exportieren(pfad, mit_secrets=True):

@@ -758,6 +758,10 @@ HA_ENTITY_DEFAULTS = {
     "influx2_org":               "",
     "influx2_bucket":            "home_assistant",
     "influx2_token":             "",
+    # InfluxDB 3.x (Core/Enterprise): Datenbank = der Bucket aus der HA-Konfiguration
+    "influx3_url":               "http://localhost:8181",
+    "influx3_database":          "home_assistant",
+    "influx3_token":             "",
     # PostgreSQL / TimescaleDB (HA-Integration LTSS)
     "pg_host":                   "localhost",
     "pg_port":                   "5432",
@@ -770,7 +774,7 @@ HA_ENTITY_DEFAULTS = {
     "prom_user":                 "",
     "prom_password":             "",
     "prom_selektor":             "",
-    # Datenquelle: "ha", "influxdb", "influxdb2", "postgres" oder "prometheus"
+    # Datenquelle: "ha", "influxdb", "influxdb2", "influxdb3", "postgres" oder "prometheus"
     "datasource":                "ha",
 }
 

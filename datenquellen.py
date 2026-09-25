@@ -5,6 +5,7 @@ Externe Datenquellen fuer Monatswerte und Stundenverlaeufe – Alternative zur H
 Unterstuetzt (Einstellung "datasource"):
     "influxdb"    InfluxDB 1.x          (InfluxQL, Benutzer/Passwort)
     "influxdb2"   InfluxDB 2.x          (Flux, Organisation/Bucket/Token)
+    "influxdb3"   InfluxDB 3.x          (SQL, Datenbank/Token)
     "postgres"    PostgreSQL/TimescaleDB mit der HA-Integration LTSS
     "prometheus"  Prometheus oder VictoriaMetrics (HA-Integration prometheus)
 
@@ -37,12 +38,13 @@ from datetime import datetime, timedelta, timezone
 QUELLEN = {
     "influxdb":   "InfluxDB 1.x",
     "influxdb2":  "InfluxDB 2.x",
+    "influxdb3":  "InfluxDB 3.x",
     "postgres":   "PostgreSQL / TimescaleDB (LTSS)",
     "prometheus": "Prometheus / VictoriaMetrics",
 }
 
 # Zugangsdaten – nicht im Export ohne Zugangsdaten, leeres Feld behaelt den alten Wert
-GEHEIM = {"influx_password", "influx2_token", "pg_password", "prom_password"}
+GEHEIM = {"influx_password", "influx2_token", "influx3_token", "pg_password", "prom_password"}
 
 # schluessel: (Entity-ID-Felder, Friendly-Name-Felder, Measurement-Feld, Measurement-Standard)
 SENSOREN = {
@@ -80,7 +82,7 @@ def namen_liste(wert: str) -> list:
 
 def aus_einstellungen(cfg: dict):
     """Die eingestellte Datenquelle, oder None bei "ha" (nur HA-API)."""
-    klasse = {"influxdb": InfluxDB1, "influxdb2": InfluxDB2,
+    klasse = {"influxdb": InfluxDB1, "influxdb2": InfluxDB2, "influxdb3": InfluxDB3,
               "postgres": PostgresLTSS, "prometheus": Prometheus}.get(cfg.get("datasource"))
     return klasse(cfg) if klasse else None
 
@@ -560,6 +562,119 @@ class InfluxDB2(_Influx):
         return self._query(self._basis(schl, kennung, von, bis)
                            + f"  |> aggregateWindow(every: 1h, fn: {fn}, createEmpty: false,"
                              f" timeSrc: \"_start\")")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  InfluxDB 3.x (Core/Enterprise) – SQL ueber POST /api/v3/query_sql, Antwort als JSON
+#  HA schreibt ueber die v2-Schnittstelle wie bei InfluxDB 2: Measurement = Tabelle
+#  (Einheit), Feld "value" und die Tags werden zu Spalten, der Bucket ist die Datenbank.
+#  Flux gibt es in InfluxDB 3 nicht mehr.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _sql_str(s: str) -> str:
+    return "'" + s.replace("'", "''") + "'"
+
+
+def _sql_ident(s: str) -> str:
+    return '"' + s.replace('"', '""') + '"'
+
+
+class InfluxDB3(_Influx):
+    typ = "influxdb3"
+
+    def __init__(self, cfg):
+        super().__init__(cfg)
+        self.base = _url(cfg.get("influx3_url") or "http://localhost:8181")
+        self.db = (cfg.get("influx3_database") or "home_assistant").strip()
+        self.token = (cfg.get("influx3_token") or "").strip()
+
+    def _sql(self, q: str, timeout: int = TIMEOUT) -> list:
+        """Zeilen als dicts (Spaltenname -> Wert)."""
+        daten = json.dumps({"db": self.db, "q": q, "format": "json"}).encode()
+        try:
+            roh = _http(f"{self.base}/api/v3/query_sql", daten=daten, timeout=timeout, kopf={
+                "Authorization": f"Bearer {self.token}",
+                "Content-Type": "application/json"})
+        except ConnectionError as e:
+            raise ConnectionError(self._fehlertext(str(e))) from None
+        text = roh.decode("utf-8", errors="replace").strip()
+        return json.loads(text) if text else []
+
+    def _fehlertext(self, text: str) -> str:
+        if "HTTP 401" in text or "HTTP 403" in text:
+            ende = self.token[-4:] if len(self.token) > 12 else "…"
+            return (f"Token wird nicht angenommen (gespeichertes Token endet auf …{ende}). "
+                    f"Gehört es zu genau dieser InfluxDB unter {self.base}? Ein Token legt man "
+                    f"mit „influxdb3 create token --admin“ an bzw. in InfluxDB 3 Explorer. — {text}")
+        if "HTTP 404" in text and "database" in text.lower():
+            return (f"Datenbank '{self.db}' nicht gefunden – das ist der Name, den Home Assistant "
+                    f"in der InfluxDB-Konfiguration als bucket einträgt. — {text}")
+        return text
+
+    @staticmethod
+    def _paare(zeilen: list) -> list:
+        """[(datetime, float)] aus Zeilen mit den Spalten time und value."""
+        werte = []
+        for z in zeilen:
+            try:
+                werte.append((_parse_zeit(z["time"]), float(z["value"])))
+            except (KeyError, TypeError, ValueError):
+                continue
+        return sorted(werte, key=lambda x: x[0])
+
+    def _wo(self, schl, kennung, von, bis, ab_inkl=False) -> str:
+        return (f"FROM {_sql_ident(self.measurement(schl))} "
+                f"WHERE {_sql_ident(self.tag)} = {_sql_str(kennung)} AND \"value\" IS NOT NULL "
+                f"AND time {'>=' if ab_inkl else '>'} {_sql_str(_iso(von))} "
+                f"AND time <= {_sql_str(_iso(bis))}")
+
+    def test(self):
+        if not self.token:
+            return False, "Token fehlt"
+        try:
+            tabellen = self._sql("SELECT table_name FROM information_schema.tables "
+                                 "WHERE table_schema = 'iox'")
+        except Exception as e:
+            return False, str(e)
+        return True, f"Verbunden · Datenbank '{self.db}' mit {len(tabellen)} Measurements"
+
+    def suche(self, begriff):
+        tag = self.tag
+        # Nur Tabellen (Measurements), die sowohl den Tag als auch das Feld "value" haben
+        spalten = self._sql("SELECT table_name, column_name FROM information_schema.columns "
+                            f"WHERE table_schema = 'iox' AND column_name IN ({_sql_str(tag)}, 'value')",
+                            TIMEOUT_SUCHE)
+        je_tabelle = {}
+        for z in spalten:
+            je_tabelle.setdefault(z["table_name"], set()).add(z["column_name"])
+        tabellen = sorted(t for t, s in je_tabelle.items() if s == {tag, "value"})
+        begriff = (begriff or "").strip().lower()
+        treffer = []
+        for tabelle in tabellen:
+            q = (f"SELECT {_sql_ident(tag)} AS kennung, min(time) AS von, max(time) AS bis "
+                 f"FROM {_sql_ident(tabelle)} WHERE \"value\" IS NOT NULL")
+            if begriff:
+                q += f" AND strpos(lower({_sql_ident(tag)}), {_sql_str(begriff)}) > 0"
+            for z in self._sql(q + " GROUP BY 1", TIMEOUT_SUCHE):
+                if z.get("kennung") and z.get("von"):
+                    treffer.append({"kennung": z["kennung"], "name": z["kennung"], "einheit": tabelle,
+                                    "von": _parse_zeit(z["von"]), "bis": _parse_zeit(z["bis"])})
+        return sorted(treffer, key=lambda e: (e["kennung"].lower(), e["einheit"]))[:MAX_TREFFER]
+
+    def _letzter(self, schl, kennung, von, bis):
+        w = self._paare(self._sql(f"SELECT time, \"value\" {self._wo(schl, kennung, von, bis)} "
+                                  "ORDER BY time DESC LIMIT 1"))
+        return w[-1] if w else None
+
+    def _werte(self, schl, kennung, von, bis):
+        return self._paare(self._sql(f"SELECT time, \"value\" {self._wo(schl, kennung, von, bis)} "
+                                     "ORDER BY time"))
+
+    def _stunden(self, schl, kennung, von, bis, aggregat):
+        wert = ('last_value("value" ORDER BY time)' if aggregat == "last" else 'avg("value")')
+        return self._paare(self._sql(
+            f"SELECT date_bin(INTERVAL '1 hour', time) AS time, {wert} AS \"value\" "
+            f"{self._wo(schl, kennung, von, bis, ab_inkl=True)} GROUP BY 1 ORDER BY 1"))
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

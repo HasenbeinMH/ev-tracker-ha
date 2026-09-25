@@ -135,7 +135,7 @@
   <p class="hint" style="margin-top:8px">
     Mit einer Datenbank werden die Werte zuerst dort gesucht; was fehlt, kommt weiter aus der
     HA-API. Nützlich, wenn die Datenbank weiter zurückreicht als die Langzeitstatistik von HA.
-    <span data-quelle="influxdb2 postgres prometheus"><br>🧪 Diese Anbindung ist neu und noch nicht mit
+    <span data-quelle="influxdb2 influxdb3 postgres prometheus"><br>🧪 Diese Anbindung ist neu und noch nicht mit
     vielen echten Installationen erprobt – Rückmeldungen (auch „läuft“) bitte als Issue auf GitHub.</span>
   </p>
 
@@ -161,7 +161,7 @@
         <input id="sensor-suche" placeholder="z.B. laden oder odometer" style="width:230px">
       </label>
       <button type="button" class="secondary" onclick="sucheSensoren()">🔍 In HA suchen</button>
-      <button type="button" class="secondary" data-quelle="influxdb influxdb2 postgres prometheus"
+      <button type="button" class="secondary" data-quelle="influxdb influxdb2 influxdb3 postgres prometheus"
               onclick="sucheDatenbank()" title="Sucht mit der gespeicherten Verbindung">🗄️ In Datenbank suchen</button>
       <label class="feld">Sensor prüfen (Monatswerte)
         <input id="sensor-pruef" placeholder="sensor.xyz" style="width:230px">
@@ -174,17 +174,17 @@
   <table>
     {# Friendly-Name-Spalte nur bei InfluxDB – die Werte bleiben beim Ausblenden erhalten #}
     <tr><th>Sensor</th><th>Entity-ID (Home Assistant)</th>
-        <th data-quelle="influxdb influxdb2">Name in der InfluxDB (Friendly Name)</th></tr>
+        <th data-quelle="influxdb influxdb2 influxdb3">Name in der InfluxDB (Friendly Name)</th></tr>
     {% for ha_key, fn_key, label in sensor_felder %}
     <tr>
       <td style="white-space:nowrap">{{ label }}</td>
       <td><input class="breit" name="{{ ha_key }}" value="{{ ha[ha_key] }}"></td>
-      <td data-quelle="influxdb influxdb2">{% if fn_key %}<input class="breit" name="{{ fn_key }}" value="{{ ha[fn_key] }}">{% endif %}</td>
+      <td data-quelle="influxdb influxdb2 influxdb3">{% if fn_key %}<input class="breit" name="{{ fn_key }}" value="{{ ha[fn_key] }}">{% endif %}</td>
     </tr>
     {% endfor %}
   </table>
 
-  <div data-quelle="influxdb influxdb2">
+  <div data-quelle="influxdb influxdb2 influxdb3">
   <details class="erweitert">
   <summary>Erweitert: InfluxDB-Measurements</summary>
   <p class="hint">Füllt die <b>Sensorsuche</b> beim „Übernehmen“ automatisch aus – nur ändern, wenn du
@@ -250,6 +250,25 @@
       <input type="password" name="influx2_token" placeholder="{{ '••••••••' if ha.influx2_token else 'Lese-Token für den Bucket' }}" style="width:220px">
     </label>
     <button type="button" class="secondary" onclick="testeVerbindung('influxdb2', this)">InfluxDB 2.x testen</button>
+  </div>
+  </div>
+
+  <div data-quelle="influxdb3">
+  <h2>InfluxDB 3.x Verbindung</h2>
+  <p class="hint">InfluxDB 3 Core bzw. Enterprise, abgefragt per SQL. Die Datenbank ist der Name, den
+    Home Assistant in seiner InfluxDB-Konfiguration als <code>bucket</code> einträgt.
+    Ein Token entsteht mit <code>influxdb3 create token --admin</code> oder in InfluxDB 3 Explorer.</p>
+  <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
+    <label class="feld">URL mit Port
+      <input name="influx3_url" value="{{ ha.influx3_url }}" placeholder="http://192.168.0.59:8181" style="width:220px">
+    </label>
+    <label class="feld">Datenbank
+      <input name="influx3_database" value="{{ ha.influx3_database }}" style="width:160px">
+    </label>
+    <label class="feld">Token {{ "(gesetzt – leer lassen zum Behalten)" if ha.influx3_token }}
+      <input type="password" name="influx3_token" placeholder="{{ '••••••••' if ha.influx3_token else 'Token mit Lesezugriff' }}" style="width:220px">
+    </label>
+    <button type="button" class="secondary" onclick="testeVerbindung('influxdb3', this)">InfluxDB 3.x testen</button>
   </div>
   </div>
 

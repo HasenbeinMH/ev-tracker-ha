@@ -31,7 +31,7 @@ nicht auf ein bestimmtes Modell festgelegt.
 <tr>
 <td><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-bericht.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-bericht.png" alt="Monatsbericht per Mail" width="70%"></a>
 <br><b>Monatsbericht per Mail</b> – kommt automatisch, sobald der Monat vollständig ist.</td>
-<td valign="top"><br><b>Und außerdem:</b> Import aus Home Assistant oder einer Datenbank (InfluxDB 1.x/2.x, PostgreSQL/TimescaleDB, Prometheus/VictoriaMetrics), jede Nacht automatisch · Rechnungs-PDFs einlesen · Ladeerkennung am Akkustand (meldet Ladungen unterwegs ohne Beleg) · THG-Quote und KFZ-Steuer · Instandhaltung und Versicherung · Backup und Wiederherstellen</td>
+<td valign="top"><br><b>Und außerdem:</b> Import aus Home Assistant oder einer Datenbank (InfluxDB 1.x/2.x/3.x, PostgreSQL/TimescaleDB, Prometheus/VictoriaMetrics), jede Nacht automatisch · Rechnungs-PDFs einlesen · Ladeerkennung am Akkustand (meldet Ladungen unterwegs ohne Beleg) · THG-Quote und KFZ-Steuer · Instandhaltung und Versicherung · Backup und Wiederherstellen</td>
 </tr>
 </table>
 
@@ -144,7 +144,7 @@ suchen, wenn unklar ist, wo genau sich beide Wege unterscheiden.
 | `berechnung.py` | Alle Kennzahlen und Ersparnis-Berechnungen |
 | `database.py` | SQLite-Zugriff und Schema |
 | `ha_client.py` | Home Assistant (REST, WebSocket, Supervisor) |
-| `datenquellen.py` | Datenbanken: InfluxDB 1.x/2.x, PostgreSQL/TimescaleDB (LTSS), Prometheus/VictoriaMetrics |
+| `datenquellen.py` | Datenbanken: InfluxDB 1.x/2.x/3.x, PostgreSQL/TimescaleDB (LTSS), Prometheus/VictoriaMetrics |
 | `berichte.py`, `mailer.py` | Monatsbericht als PDF, Mailversand |
 | `pdf_parser.py`, `ladeerkennung.py` | Rechnungs-PDFs, Erkennung von Ladevorgängen |
 | `backup_db.py`, `backup.sh` | Sicherung der Datenbank (nur Standalone-Docker) |

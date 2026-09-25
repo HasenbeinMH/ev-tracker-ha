@@ -3,6 +3,13 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.5.0] - 2026-09-25
+### InfluxDB 3.x als Datenquelle
+- Neue Datenquelle InfluxDB 3.x (Core/Enterprise): Verbindung ueber URL, Datenbank und Token, abgefragt per SQL (/api/v3/query_sql) – Flux gibt es in InfluxDB 3 nicht mehr
+- Datenbanksuche, Verbindungstest, Import, Stunden fuer Akkuverbrauch und Ladeerkennung wie bei InfluxDB 1.x/2.x; Tag und Measurements aus dem Bereich "Erweitert" gelten auch hier
+- Klartext bei abgelehntem Token (mit den letzten vier Zeichen) und unbekannter Datenbank
+- Hilfe, Einrichtung und README nennen InfluxDB 3.x
+
 ## [2.4.1] - 2026-09-25
 ### Verstaendliche Fehlermeldungen bei InfluxDB 2.x
 - InfluxDB 2.x: bei HTTP 401 nennt die App die Ursache – das Token wird nicht angenommen – mit den letzten vier Zeichen des gespeicherten Tokens zum Abgleich und dem Hinweis, dass bei mehreren InfluxDB-Instanzen jede eigene Tokens hat

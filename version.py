@@ -19,10 +19,21 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.4.1"
+VERSION = "2.5.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.5.0",
+        "datum": "2026-09-25",
+        "titel": "InfluxDB 3.x als Datenquelle",
+        "aenderungen": [
+            "Neue Datenquelle InfluxDB 3.x (Core/Enterprise): Verbindung ueber URL, Datenbank und Token, abgefragt per SQL (/api/v3/query_sql) – Flux gibt es in InfluxDB 3 nicht mehr",
+            "Datenbanksuche, Verbindungstest, Import, Stunden fuer Akkuverbrauch und Ladeerkennung wie bei InfluxDB 1.x/2.x; Tag und Measurements aus dem Bereich \"Erweitert\" gelten auch hier",
+            "Klartext bei abgelehntem Token (mit den letzten vier Zeichen) und unbekannter Datenbank",
+            "Hilfe, Einrichtung und README nennen InfluxDB 3.x",
+        ],
+    },
     {
         "version": "2.4.1",
         "datum": "2026-09-25",
