@@ -6,3 +6,4 @@ plotly.min.js
 webapp/data/
 webapp/static/plotly.min.js
 .dockerignore
+fahrzeugbilder/final/

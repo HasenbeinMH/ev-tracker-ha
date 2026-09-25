@@ -5,6 +5,7 @@ database.py, berechnung.py, ha_client.py, pdf_parser.py, charts.py
 """
 import os
 import re
+import shutil
 import sys
 import threading
 import uuid
@@ -15,12 +16,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, Request, UploadFile, File, Form
 from fastapi.responses import (HTMLResponse, RedirectResponse, JSONResponse,
-                               FileResponse)
+                               FileResponse, Response)
 from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
 from fastapi.templating import Jinja2Templates
 
 import database as db
+import galerie
 import akkuverbrauch
 import berechnung
 import berichte
@@ -74,6 +76,10 @@ def render(request, template, **ctx):
     cfg = db.get_config()
     ctx.setdefault("kf", berechnung.kraftstoff(cfg["kraftstoff"]))
     ctx.setdefault("simulation", cfg["simulation"])
+    # Versionsmarke fuer api/auto-bild: aendert sich mit jedem Bildwechsel, damit der
+    # Browser nicht das alte Bild aus dem Cache zeigt
+    voll = _auto_bild_pfad()
+    ctx.setdefault("bild_v", int(os.path.getmtime(voll)) if voll else 0)
     return templates.TemplateResponse(request, template, ctx)
 
 
@@ -141,6 +147,46 @@ async def auto_bild_hochladen(bild: UploadFile = File(...)):
     with open(os.path.join(DATA_DIR, dateiname), "wb") as f:
         f.write(inhalt)
     db.set_einstellung("auto_bild_datei", dateiname)
+    db.set_einstellung("auto_bild_galerie", "")      # eigenes Bild, kein Galeriebild
+    return {"ok": True}
+
+
+def auto_bild_galerie() -> dict | None:
+    """Das gewaehlte Galeriebild mit Name und Nachweis – None bei eigenem oder Standardbild."""
+    datei = db.get_einstellung_str("auto_bild_galerie")
+    if not datei or not _auto_bild_pfad():
+        return None
+    return next((b for b in galerie.bilder() if b["datei"] == datei),
+                {"datei": datei, "name": datei, "nachweis": None})
+
+
+@app.get("/api/galerie/vorschau/{datei}")
+def galerie_vorschau(datei: str):
+    """Verkleinertes Galeriebild; ohne Pillow das Original."""
+    daten = galerie.vorschau(datei)
+    if daten is not None:
+        return Response(daten, media_type="image/jpeg",
+                        headers={"Cache-Control": "max-age=86400"})
+    voll = galerie.pfad(datei)
+    if not voll:
+        return JSONResponse({"error": "Bild nicht gefunden"}, status_code=404)
+    return FileResponse(voll)
+
+
+@app.post("/api/auto-bild/galerie")
+def auto_bild_aus_galerie(datei: str = Form(...)):
+    """Galeriebild als Fahrzeugbild uebernehmen – als Kopie im Datenordner, damit es
+    auch nach einem Update ohne dieses Bild erhalten bleibt."""
+    voll = galerie.pfad(datei)
+    if not voll:
+        return JSONResponse({"error": "Bild nicht gefunden"}, status_code=404)
+    alt = _auto_bild_pfad()
+    if alt:
+        os.remove(alt)
+    dateiname = f"auto_bild{os.path.splitext(datei)[1].lower()}"
+    shutil.copyfile(voll, os.path.join(DATA_DIR, dateiname))
+    db.set_einstellung("auto_bild_datei", dateiname)
+    db.set_einstellung("auto_bild_galerie", datei)
     return {"ok": True}
 
 
@@ -151,6 +197,7 @@ def auto_bild_zuruecksetzen():
     if voll:
         os.remove(voll)
     db.set_einstellung("auto_bild_datei", "")
+    db.set_einstellung("auto_bild_galerie", "")
     return {"ok": True}
 
 
@@ -187,6 +234,7 @@ def dashboard(request: Request, zeitraum: str | None = None):
     antwort = render(request, "dashboard.html", kz=kz, charts=charts_html,
                      zeitraum=z, zeitraum_optionen=zeitraum_mod.optionen(daten),
                      fahrzeug_name=db.get_einstellung_str("fahrzeug_name") or "Mein Elektroauto",
+                     galerie_aktiv=auto_bild_galerie(),
                      aktiv="dashboard")
     if zeitraum is not None:
         antwort.set_cookie("zeitraum", z["schluessel"], max_age=365 * 24 * 3600,
@@ -1671,6 +1719,8 @@ def einstellungen(request: Request):
                   fahrzeug_name=db.get_einstellung_str("fahrzeug_name") or "",
                   kfz=db.get_einstellung("kfz_steuer_benziner") or 0.0,
                   kraftstoffe=berechnung.KRAFTSTOFFE,
+                  galerie=galerie.bilder(),
+                  galerie_aktiv=auto_bild_galerie(),
                   ha=ha_settings,
                   add_on_modus=IST_ADDON,
                   supervisor_aktiv=IST_ADDON

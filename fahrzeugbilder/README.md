@@ -10,9 +10,18 @@ passendes Bild – aus einem eigenen Foto oder ganz neu.
 
 ## Bild einsetzen
 
-1. Bild aus diesem Ordner öffnen → **Download** (Symbol oben rechts), oder ein eigenes erzeugen.
+Die Bilder dieses Ordners sind im Add-on enthalten: **Einstellungen → Fahrzeugbild →
+Aus der Galerie wählen**, ein Klick genügt. Urheber und Lizenz der Vorlage stehen danach
+unter dem Bild. Ein eigenes Bild:
+
+1. Mit dem Prompt unten erzeugen (oder ein Bild aus diesem Ordner herunterladen).
 2. Im EV Tracker: **Einstellungen → Fahrzeugbild → Neues Bild** wählen → **Hochladen**.
 3. Zurück zum Standardbild: **↺ Standardbild**.
+
+**Neues Bild für die Galerie:** Datei hier ablegen, eine Zeile in die Tabelle
+„Vorhandene Bilder“ (Anzeigename) und – bei einer Vorlage – eine in
+[CREDITS.md](CREDITS.md). Mit dem nächsten Update erscheint es in der App; am Code
+ändert sich nichts. Der Arbeitsordner `final/` wird nicht mitgeliefert.
 
 JPG, PNG oder WebP, höchstens 8 MB.
 
@@ -143,17 +152,36 @@ und Lizenz in der Tabelle unten. Keine Pressefotos oder Bilder ohne klare Lizenz
 
 | Datei | Fahrzeug | Vorlage, Urheber, Lizenz |
 |-------|----------|--------------------------|
-| [`audi-a6-etron-schwarz.jpg`](audi-a6-etron-schwarz.jpg) | Audi A6 e-tron, Schwarz | [Audi A6 Avant e-tron DSC 7425](https://commons.wikimedia.org/wiki/File:Audi_A6_Avant_e-tron_DSC_7425.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.de), bearbeitet |
-| [`audi-q4-etron-sportback-grau.jpg`](audi-q4-etron-sportback-grau.jpg) | Audi Q4 e-tron Sportback, Grau | [Audi Q4 Sportback e-tron IAA 2021 1X7A0159](https://commons.wikimedia.org/wiki/File:Audi_Q4_Sportback_e-tron_IAA_2021_1X7A0159.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.de), bearbeitet |
-| [`audi-q6-etron-silber.jpg`](audi-q6-etron-silber.jpg) | Audi Q6 e-tron, Silber (Erlkönig-Folie) | [Audi Q6 e-tron Sportback DSC 9276](https://commons.wikimedia.org/wiki/File:Audi_Q6_e-tron_Sportback_DSC_9276.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.de), bearbeitet |
-| [`bmw-i5-schwarz.jpg`](bmw-i5-schwarz.jpg) | BMW i5, Schwarz | [BMW G60 520i 1X7A2443](https://commons.wikimedia.org/wiki/File:BMW_G60_520i_1X7A2443.jpg) von Alexander-93, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.de), bearbeitet |
-| [`bmw-ix1-grau.jpg`](bmw-ix1-grau.jpg) | BMW iX1, Grau | [BMW iX1 1X7A6829](https://commons.wikimedia.org/wiki/File:BMW_iX1_1X7A6829.jpg) von Alexander-93, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.de), bearbeitet |
-| [`bmw-ix3-blau.jpg`](bmw-ix3-blau.jpg) | BMW iX3, Blau | [BMW iX3, IAA Summit 2025, Munich (20250908-P1049823)](https://commons.wikimedia.org/wiki/File:BMW_iX3,_IAA_Summit_2025,_Munich_(20250908-P1049823).jpg) von Matti Blume, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.de), bearbeitet |
+| [`audi-a6-etron-schwarz.jpg`](audi-a6-etron-schwarz.jpg) | Audi A6 e-tron, Schwarz | [Audi A6 Avant e-tron DSC 7425](https://commons.wikimedia.org/wiki/File:Audi_A6_Avant_e-tron_DSC_7425.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`audi-q4-etron-grau.jpg`](audi-q4-etron-grau.jpg) | Audi Q4 e-tron, Grau | [Audi Q4 Sportback e-tron IAA 2021 1X7A0159](https://commons.wikimedia.org/wiki/File:Audi_Q4_Sportback_e-tron_IAA_2021_1X7A0159.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`audi-q6-etron-grau.jpg`](audi-q6-etron-grau.jpg) | Audi Q6 e-tron, Grau | [Audi Q6 e-tron Sportback DSC 9276](https://commons.wikimedia.org/wiki/File:Audi_Q6_e-tron_Sportback_DSC_9276.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`bmw-i4-weiss.jpg`](bmw-i4-weiss.jpg) | BMW i4, Weiß | [BMW i4 IAA 2021 1X7A0307](https://commons.wikimedia.org/wiki/File:BMW_i4_IAA_2021_1X7A0307.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`bmw-i5-weiss.jpg`](bmw-i5-weiss.jpg) | BMW i5, Weiß | [BMW G60 520i 1X7A2443](https://commons.wikimedia.org/wiki/File:BMW_G60_520i_1X7A2443.jpg) von Alexander-93, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`bmw-ix1-silber.jpg`](bmw-ix1-silber.jpg) | BMW iX1, Silber | [BMW iX1 1X7A6829](https://commons.wikimedia.org/wiki/File:BMW_iX1_1X7A6829.jpg) von Alexander-93, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`bmw-ix3-blau.jpg`](bmw-ix3-blau.jpg) | BMW iX3, Blau | [BMW iX3, IAA Summit 2025, Munich (20250908-P1049823)](https://commons.wikimedia.org/wiki/File:BMW_iX3,_IAA_Summit_2025,_Munich_(20250908-P1049823).jpg) von Matti Blume, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.en), bearbeitet |
+| [`citroen-ec3-silber.jpg`](citroen-ec3-silber.jpg) | Citroën ë-C3, Silber | [Citroen ë-C3 IMG 4539](https://commons.wikimedia.org/wiki/File:Citroen_%C3%AB-C3_IMG_4539.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`cupra-born-grau.jpg`](cupra-born-grau.jpg) | Cupra Born, Grau | [Cupra Born IMG 8234](https://commons.wikimedia.org/wiki/File:Cupra_Born_IMG_8234.jpg) von Alexander-93, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`cupra-tavascan-grau.jpg`](cupra-tavascan-grau.jpg) | Cupra Tavascan, Grau | [Cupra Tavascan Leonberg 2024 IMG 0881](https://commons.wikimedia.org/wiki/File:Cupra_Tavascan_Leonberg_2024_IMG_0881.jpg) von Alexander-93, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`dacia-spring-schwarz.jpg`](dacia-spring-schwarz.jpg) | Dacia Spring, Schwarz | [2023 Dacia Spring 1X7A6282](https://commons.wikimedia.org/wiki/File:2023_Dacia_Spring_1X7A6282.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`fiat-500e-blau.jpg`](fiat-500e-blau.jpg) | Fiat 500e, Blau | [Fiat 500e in München](https://commons.wikimedia.org/wiki/File:Fiat_500e_in_M%C3%BCnchen.jpg) von AuHaidhausen, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0), bearbeitet |
+| [`ford-explorer-ev-hellblau.jpg`](ford-explorer-ev-hellblau.jpg) | Ford Explorer EV, Hellblau | [2024 Ford Explorer Premium EV AWD](https://commons.wikimedia.org/wiki/File:2024_Ford_Explorer_Premium_EV_AWD.jpg) von Calreyn88, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`hyundai-inster-weiss.jpg`](hyundai-inster-weiss.jpg) | Hyundai Inster, Weiß | [Hyundai Inster DSC 8778](https://commons.wikimedia.org/wiki/File:Hyundai_Inster_DSC_8778.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
 | [`kia-ev3-orange.jpg`](kia-ev3-orange.jpg) | Kia EV3, Orange (Standardbild der App) | – |
+| [`leapmotor-t03-hellblau.jpg`](leapmotor-t03-hellblau.jpg) | Leapmotor T03, Hellblau | [Leapmotor T03 IAA 2023 1X7A0244](https://commons.wikimedia.org/wiki/File:Leapmotor_T03_IAA_2023_1X7A0244.jpg) von Alexander-93, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`mercedes-cla-ev-hellblau.jpg`](mercedes-cla-ev-hellblau.jpg) | Mercedes CLA (elektrisch), Hellblau | [Mercedes-Benz Electric CLA 001](https://commons.wikimedia.org/wiki/File:Mercedes-Benz_Electric_CLA_001.jpg) von JustAnotherCarDesigner, [CC0](http://creativecommons.org/publicdomain/zero/1.0/deed.en), bearbeitet |
+| [`mercedes-eqb-silber.jpg`](mercedes-eqb-silber.jpg) | Mercedes EQB, Silber | [MERCEDES-EQ EQB China (3)](https://commons.wikimedia.org/wiki/File:MERCEDES-EQ_EQB_China_(3).jpg) von Dinkun Chen, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`mercedes-glc-ev-blau.jpg`](mercedes-glc-ev-blau.jpg) | Mercedes GLC (elektrisch), Blau | [Mercedes-Benz GLC with EQ Technology IMG 6100](https://commons.wikimedia.org/wiki/File:Mercedes-Benz_GLC_with_EQ_Technology_IMG_6100.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`mini-cooper-e-blau.jpg`](mini-cooper-e-blau.jpg) | Mini Cooper E, Blau | [2005 Mini Cooper S](https://commons.wikimedia.org/wiki/File:2005_Mini_Cooper_S.jpg) von Calreyn88, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`opel-grandland-ev-kupfer.jpg`](opel-grandland-ev-kupfer.jpg) | Opel Grandland Electric, Kupfer | [Opel Grandland Electric Sindelfingen 2025 DSC 9106](https://commons.wikimedia.org/wiki/File:Opel_Grandland_Electric_Sindelfingen_2025_DSC_9106.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`renault-5-etech-gelb.jpg`](renault-5-etech-gelb.jpg) | Renault 5 E-Tech, Gelb | [Renault 5 E-Tech Electric Auto Zuerich 2024 DSC 6501](https://commons.wikimedia.org/wiki/File:Renault_5_E-Tech_Electric_Auto_Zuerich_2024_DSC_6501.jpg) von Alexander-93, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`skoda-elroq-gruen.jpg`](skoda-elroq-gruen.jpg) | Škoda Elroq, Grün | [Škoda Elroq - 01](https://commons.wikimedia.org/wiki/File:%C5%A0koda_Elroq_-_01.jpg) von Y.Leclercq, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`skoda-enyaq-gruen.jpg`](skoda-enyaq-gruen.jpg) | Škoda Enyaq, Grün | [Škoda Enyaq IMG 1190](https://commons.wikimedia.org/wiki/File:%C5%A0koda_Enyaq_IMG_1190.jpg) von Alexander-93, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`tesla-model-3-weiss.jpg`](tesla-model-3-weiss.jpg) | Tesla Model 3, Weiß | [Tesla Model 3 (2023) IMG 9488 (cropped)](https://commons.wikimedia.org/wiki/File:Tesla_Model_3_(2023)_IMG_9488_(cropped).jpg) von Alexander-93, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`tesla-model-y-weiss.jpg`](tesla-model-y-weiss.jpg) | Tesla Model Y, Weiß | [Tesla Model Y 2025 at Santana Row dllu 02](https://commons.wikimedia.org/wiki/File:Tesla_Model_Y_2025_at_Santana_Row_dllu_02.jpg) von Dllu, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
 
 **Alle Vorlagen** mit Urheber und Lizenz stehen in [CREDITS.md](CREDITS.md).
 
-**Lizenz der bearbeiteten Bilder:** Die Bilder mit Vorlage unter CC BY-SA 4.0 sind
-Bearbeitungen (freigestellt, auf den Hintergrund #14171E gesetzt, zum Teil KI-überarbeitet)
-und stehen unter derselben Lizenz, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.de). Wer sie weitergibt, nennt den Urheber der
-Vorlage wie oben.
+**Lizenz der bearbeiteten Bilder:** Die Bilder sind Bearbeitungen ihrer Vorlage
+(freigestellt, auf den Hintergrund #14171E gesetzt, Spiegelungen entfernt, zum Teil
+KI-überarbeitet). Bei CC BY-SA stehen sie unter derselben Lizenz; wer sie weitergibt,
+nennt den Urheber der Vorlage wie oben. Bei CC0 ist keine Nennung nötig.

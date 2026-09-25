@@ -19,10 +19,22 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.6.0"
+VERSION = "2.7.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.7.0",
+        "datum": "2026-09-25",
+        "titel": "Galerie der Fahrzeugbilder",
+        "aenderungen": [
+            "Einstellungen → Fahrzeugbild: Galerie der mitgelieferten Bilder, ein Klick uebernimmt das Bild; Vorschaubilder werden verkleinert (etwa 8 KB statt 400 KB)",
+            "Urheber, Vorlage und Lizenz (aus fahrzeugbilder/CREDITS.md) stehen unter dem gewaehlten Bild und als Tooltip im Dashboard",
+            "Neue Bilder erscheinen ohne Code-Aenderung: Datei in fahrzeugbilder/, Name in der README-Tabelle, Nachweis in CREDITS.md",
+            "Das Add-on liefert den Ordner fahrzeugbilder/ mit (ohne den Arbeitsordner final/)",
+            "Behoben: nach einem Bildwechsel zeigte das Dashboard mitunter noch das alte Bild aus dem Browser-Cache",
+        ],
+    },
     {
         "version": "2.6.0",
         "datum": "2026-09-25",

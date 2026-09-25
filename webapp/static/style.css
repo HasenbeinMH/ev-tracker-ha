@@ -313,6 +313,13 @@ button:disabled { background: var(--border); color: #555; cursor: default; }
    Hintergrund kaum lesbar. Links mit eigener Klasse (Knoepfe, Tabs …) bleiben unberuehrt. */
 main a:not([class]), main a:not([class]):visited { color: var(--blau-hell); text-underline-offset: 2px; }
 main a:not([class]):hover { color: #a9c4e2; }
+.galerie { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.galerie-bild { display: flex; flex-direction: column; gap: 5px; padding: 6px; margin: 0;
+  background: #14171e; border: 2px solid var(--border2); border-radius: 8px; cursor: pointer;
+  color: var(--text); font-size: 12px; text-align: center; }
+.galerie-bild:hover { border-color: var(--blau-hell); background: #14171e; }
+.galerie-bild.aktiv { border-color: var(--gruen); }
+.galerie-bild img { width: 100%; aspect-ratio: 16 / 9; object-fit: contain; border-radius: 4px; }
 .sim-banner { background: #c4963a14; border: 1px solid #c4963a66; border-radius: 8px;
   padding: 8px 14px; margin-bottom: 14px; font-size: 13px; }
 .sim-banner b { color: var(--gelb); }

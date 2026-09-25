@@ -3,6 +3,14 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.7.0] - 2026-09-25
+### Galerie der Fahrzeugbilder
+- Einstellungen → Fahrzeugbild: Galerie der mitgelieferten Bilder, ein Klick uebernimmt das Bild; Vorschaubilder werden verkleinert (etwa 8 KB statt 400 KB)
+- Urheber, Vorlage und Lizenz (aus fahrzeugbilder/CREDITS.md) stehen unter dem gewaehlten Bild und als Tooltip im Dashboard
+- Neue Bilder erscheinen ohne Code-Aenderung: Datei in fahrzeugbilder/, Name in der README-Tabelle, Nachweis in CREDITS.md
+- Das Add-on liefert den Ordner fahrzeugbilder/ mit (ohne den Arbeitsordner final/)
+- Behoben: nach einem Bildwechsel zeigte das Dashboard mitunter noch das alte Bild aus dem Browser-Cache
+
 ## [2.6.0] - 2026-09-25
 ### Simulationsmodus: Ersparnis testen, bevor man ein E-Auto kauft
 - Einstellungen → Simulationsmodus: aus den echten km des jetzigen Autos und dem echten Kraftstoffpreis rechnet die App, was ein E-Auto gekostet haette – km ÷ 100 × EV Referenz × (1 + Ladeverluste), aufgeteilt nach einstellbaren Anteilen PV, Netz (Stromtarif des Monats) und oeffentlich (ct/kWh)

@@ -14,6 +14,8 @@ RUN pip install --no-cache-dir -r requirements-web.txt
 COPY *.py ./
 # Web-App
 COPY webapp/ ./webapp/
+# Galerie der Fahrzeugbilder (Einstellungen → Fahrzeugbild); final/ ist Arbeitsordner
+COPY fahrzeugbilder/ ./fahrzeugbilder/
 
 # Datenverzeichnis: vom Supervisor per config.yaml "map: [data:rw]" bereitgestellt
 ENV EV_TRACKER_DB=/data/ev_tracker.db

@@ -71,7 +71,11 @@
     im Verhältnis aufgeteilt. KFZ-Steuer und THG-Prämie wie gewohnt eintragen.</p>
 </div>
 
-<h2>Fahrzeugbild</h2>
+{% macro nachweis(n) -%}
+  Vorlage: <a href="{{ n.url }}" target="_blank" rel="noopener">{{ n.titel }}</a> von {{ n.autor }},
+  <a href="{{ n.lizenz_url }}" target="_blank" rel="noopener">{{ n.lizenz }}</a>, bearbeitet
+{%- endmacro %}
+<h2 id="fahrzeugbild">Fahrzeugbild</h2>
 <div class="card">
   <p class="hint" style="margin-top:0">
     Bild im Kopf des Dashboards, neben dem Fahrzeugnamen von oben. JPG, PNG oder WebP, max. 8 MB.
@@ -80,7 +84,7 @@
     <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/fahrzeugbilder" target="_blank" rel="noopener">Fahrzeugbilder</a>.
   </p>
   <div class="inline">
-    <img id="auto-vorschau" src="api/auto-bild" alt="Aktuelles Fahrzeugbild"
+    <img id="auto-vorschau" src="api/auto-bild?v={{ bild_v }}" alt="Aktuelles Fahrzeugbild"
          style="height:60px; border-radius:8px; object-fit:cover">
     <label class="feld">Neues Bild
       <input type="file" id="auto-bild-datei" accept=".jpg,.jpeg,.png,.webp">
@@ -89,6 +93,29 @@
     <button type="button" class="secondary" onclick="autoBildZuruecksetzen()">↺ Standardbild</button>
     <span id="auto-bild-meldung" style="align-self:center; font-size:12px"></span>
   </div>
+  {% if galerie_aktiv %}
+  <p class="hint">Gewählt: <b>{{ galerie_aktiv.name }}</b>{% if galerie_aktiv.nachweis %} ·
+    {{ nachweis(galerie_aktiv.nachweis) }}{% endif %}</p>
+  {% endif %}
+
+  {% if galerie %}
+  <h3 style="margin:16px 0 4px; font-size:13px">Aus der Galerie wählen</h3>
+  <p class="hint" style="margin-top:0">Ein Klick übernimmt das Bild.</p>
+  <div class="galerie">
+    {% for b in galerie %}
+    <button type="button" class="galerie-bild{% if galerie_aktiv and galerie_aktiv.datei == b.datei %} aktiv{% endif %}"
+            onclick="galerieWaehlen('{{ b.datei }}', this)"
+            title="{{ b.name }}{% if b.nachweis %} – Vorlage von {{ b.nachweis.autor }}, {{ b.nachweis.lizenz }}{% endif %}">
+      <img src="api/galerie/vorschau/{{ b.datei | urlencode }}" alt="{{ b.name }}" loading="lazy">
+      <span>{{ b.name }}</span>
+    </button>
+    {% endfor %}
+  </div>
+  <p class="hint">Die Bilder entstehen aus frei lizenzierten Fotos von Wikimedia Commons; Urheber und
+    Lizenz stehen beim Überfahren und nach der Auswahl oben.
+    Dein Auto fehlt? <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/fahrzeugbilder"
+    target="_blank" rel="noopener">Anleitung und Prompt für ein eigenes Bild</a>.</p>
+  {% endif %}
 </div>
 
 {% if not add_on_modus %}
@@ -572,14 +599,25 @@ async function autoBildHochladen() {
   const data = await resp.json();
   if (data.error) { m.textContent = "✗ " + data.error; m.className = "rot"; return; }
   m.textContent = "✓ Gespeichert"; m.className = "gruen";
-  document.getElementById("auto-vorschau").src = "api/auto-bild?" + Date.now();
+  setTimeout(() => { location.hash = "fahrzeugbild"; location.reload(); }, 600);
+}
+
+async function galerieWaehlen(datei, knopf) {
+  const m = document.getElementById("auto-bild-meldung");
+  knopf.disabled = true;
+  const fd = new FormData();
+  fd.append("datei", datei);
+  const data = await (await fetch("api/auto-bild/galerie", { method: "POST", body: fd })).json();
+  if (data.error) { m.textContent = "✗ " + data.error; m.className = "rot"; knopf.disabled = false; return; }
+  location.hash = "fahrzeugbild";
+  location.reload();
 }
 
 async function autoBildZuruecksetzen() {
   const m = document.getElementById("auto-bild-meldung");
   await fetch("api/auto-bild/reset", { method: "POST" });
   m.textContent = "✓ Standardbild wiederhergestellt"; m.className = "gruen";
-  document.getElementById("auto-vorschau").src = "api/auto-bild?" + Date.now();
+  setTimeout(() => { location.hash = "fahrzeugbild"; location.reload(); }, 600);
 }
 </script>
 {% endblock %}

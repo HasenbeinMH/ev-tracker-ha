@@ -13,6 +13,8 @@ RUN pip install --no-cache-dir -r requirements-web.txt
 COPY *.py ./
 # Web-App
 COPY webapp/ ./webapp/
+# Galerie der Fahrzeugbilder (Einstellungen → Fahrzeugbild); final/ ist Arbeitsordner
+COPY fahrzeugbilder/ ./fahrzeugbilder/
 # Backup-Skript mitliefern – so laesst es sich per
 # docker cp ev-tracker:/app/backup.sh . auf den Host holen
 COPY backup.sh ./backup.sh

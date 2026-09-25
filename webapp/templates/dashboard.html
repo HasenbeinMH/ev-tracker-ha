@@ -8,7 +8,8 @@
     <div class="hero-wert">{{ kz.ersparnis_gesamt | de(2) }}<span> €</span></div>
     <div class="hero-label">Gesamt-Ersparnis gegenüber einem {{ kf.fahrzeug }}{% if zeitraum.von %} · {{ zeitraum.titel }}{% endif %}</div>
   </div>
-  <img class="hero-auto" src="api/auto-bild" alt="Fahrzeugbild">
+  <img class="hero-auto" src="api/auto-bild?v={{ bild_v }}" alt="Fahrzeugbild"
+       {%- if galerie_aktiv and galerie_aktiv.nachweis %} title="Bild nach einer Vorlage von {{ galerie_aktiv.nachweis.autor }}, {{ galerie_aktiv.nachweis.lizenz }} (Wikimedia Commons)"{% endif %}>
 </section>
 <script>
 // Akzentfarbe (Farbverlauf + Fahrzeugname) aus dem Fahrzeugbild ableiten,
