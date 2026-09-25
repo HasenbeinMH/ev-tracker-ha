@@ -19,10 +19,22 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.8.1"
+VERSION = "2.9.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.9.0",
+        "datum": "2026-09-25",
+        "titel": "Heimladungen einzeln aus Home Assistant",
+        "aenderungen": [
+            "Home Assistant kann jede Ladung zuhause am Ladeende schicken (POST /api/ladung): Datum, Uhrzeit, kWh aus Netz und PV und optional die Kosten – in der Liste stehen Heimladungen dann einzeln statt nur als Monatssumme",
+            "Einstellungen → \"Ladungen aus Home Assistant empfangen\": Token erzeugen, Adresse und Token zum Kopieren; ohne Token ist der Empfang aus",
+            "Neue Vorlage vorlagen/homeassistant/ev_ladung_senden.yaml: merkt sich beim Ladebeginn die Zaehlerstaende, schickt am Ende die Differenzen, teilt eine Ladung am Monatswechsel und meldet Fehler als Benachrichtigung in HA",
+            "Nichts doppelt, nichts verloren: der naechtliche Abruf und der Zeitraum-Import legen nur noch den Rest (Zaehlerwert minus Einzelladungen) als Monatssumme an; eine Ladung, die nicht ankam, steckt im Rest",
+            "Dieselbe Ladung darf mehrfach ankommen (Kennung: Ladebeginn); Einzelladungen ohne Kosten werden mit dem Stromtarif ihres Tages bewertet und bei einem Tarifwechsel neu bewertet",
+        ],
+    },
     {
         "version": "2.8.1",
         "datum": "2026-09-25",

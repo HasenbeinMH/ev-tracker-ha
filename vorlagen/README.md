@@ -103,6 +103,26 @@ Der EV Tracker bewertet damit jeden Monat mit Kosten ÷ kWh statt mit dem Stromt
 - Gezählt wird ab der Einrichtung. Monate davor – und der Monat, in dem der Zähler
   startet – bleiben beim Stromtarif.
 
+## Jede Ladung einzeln an den EV Tracker schicken (optional)
+
+Die Vorlage [`homeassistant/ev_ladung_senden.yaml`](homeassistant/ev_ladung_senden.yaml)
+merkt sich beim Ladebeginn die Zählerstände und schickt am Ladeende die Differenzen an
+den EV Tracker. Heimladungen erscheinen dann einzeln mit Datum und Uhrzeit statt nur als
+Monatssumme.
+
+1. EV Tracker → **Einstellungen → Ladungen aus Home Assistant empfangen** →
+   **Token erzeugen**. Dort stehen Adresse und Token zum Kopieren.
+2. Datei nach `/config/packages/ev_ladung_senden.yaml` kopieren, `ADRESSE_EV_TRACKER`
+   und `DEIN_TOKEN` ersetzen, Home Assistant neu starten.
+
+- Nutzt die Zähler der PV-Anteil-Vorlagen (`sensor.ev_ladung_netz`, `sensor.ev_ladung_pv`)
+  und – falls vorhanden – den Kostenzähler aus `ev_netzkosten.yaml`.
+- Eine Ladung beginnt ab 50 W für 1 Minute und endet nach 15 Minuten ohne Leistung. Mit
+  einem Stecker-Status der Wallbox lässt sich die Erkennung ersetzen (Kommentar in der Datei).
+- Am Monatswechsel wird eine laufende Ladung geteilt.
+- Kommt eine Ladung nicht an, meldet HA das als Benachrichtigung. Verloren ist sie nicht:
+  Der nächtliche Abruf legt den Rest (Zählerwert minus Einzelladungen) als Monatssumme an.
+
 ## Vorzeichen der Netzleistung
 
 Zeigt dein Netz-Sensor **positive Werte beim Bezug** (Strom aus dem Netz), bleibt

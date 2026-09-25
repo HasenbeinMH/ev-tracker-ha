@@ -213,6 +213,16 @@
   <li>Der Stromtarif bleibt trotzdem sinnvoll: für Monate vor dem Kostenzähler, den Preisvorschlag bei Ladungen von Hand und die Simulation.</li>
 </ul>
 
+<h3 id="push">Ladungen einzeln aus Home Assistant</h3>
+<p>Statt nur einer Monatssumme kann Home Assistant jede Ladung zuhause <b>einzeln</b> schicken – mit Datum, Uhrzeit, kWh aus Netz und PV und (mit Kostenzähler) den Kosten. Einschalten unter <a href="einstellungen#ladung-senden">Einstellungen → Ladungen aus Home Assistant empfangen</a>; die <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen" target="_blank" rel="noopener">Vorlage</a> <code>ev_ladung_senden.yaml</code> merkt sich beim Ladebeginn die Zählerstände und schickt am Ende die Differenzen.</p>
+<div class="hb-formel"><span class="lbl">Monatssumme</span>Rest [kWh] = Zählerwert des Monats − Σ Einzelladungen des Monats</div>
+<ul>
+  <li>Die Einzelladungen tragen die Notiz <b>„HA-Ladung 22:10–05:30“</b>. Netz wird mit den gesendeten Kosten bewertet, sonst mit dem Stromtarif des Tages; PV mit dem PV-Preis.</li>
+  <li>Der nächtliche Abruf legt nur den <b>Rest</b> als Monatssumme an (Notiz „Rest ohne Einzelladung“). Ist er kleiner als 0,5 kWh, entfällt die Monatssumme.</li>
+  <li>Kam eine Ladung nicht an (Add-on gerade neu gestartet), steckt sie im Rest – es fehlt nichts, nur das Datum ist dann der Monatserste.</li>
+  <li>Dieselbe Ladung darf mehrfach ankommen; Kennung ist der Ladebeginn. Eine Ladung über den Monatswechsel teilt die Vorlage um 0 Uhr.</li>
+</ul>
+
 <h2 id="steuer">Steuer &amp; THG <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„💶 KFZ-Steuer &amp; THG-Quote"</b></p>
 <div class="hb-formel"><span class="lbl">Steuer-Ersparnis</span>Ersparnis [€] = KFZ-Steuer {{ kf.fahrzeug }} − 0 € (E-Auto)</div>

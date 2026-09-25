@@ -187,6 +187,15 @@ def init_db():
         except sqlite3.OperationalError:
             pass
 
+        # Migration: Kennung von Ladungen, die Home Assistant schickt (Push) – macht
+        # das Senden wiederholbar, ohne doppelte Eintraege
+        try:
+            c.execute("ALTER TABLE ladevorgang ADD COLUMN extern_id TEXT")
+        except sqlite3.OperationalError:
+            pass
+        c.execute("""CREATE UNIQUE INDEX IF NOT EXISTS idx_ladevorgang_extern
+                     ON ladevorgang(extern_id) WHERE extern_id IS NOT NULL""")
+
         # Migration: alten mEDL-Eintrag korrigieren
         c.execute("UPDATE lade_anbieter SET name='medl', gruenstrom=1 WHERE name='mEDL'")
 
@@ -426,6 +435,52 @@ def upsert_auto_ladevorgang(datum, menge_kwh, preis_kwh, gesamtpreis, anbieter,
             (datum, menge_kwh, preis_kwh, gesamtpreis, anbieter, 11, "AC", notiz))
         conn.commit()
         return "neu"
+
+
+def delete_auto_ladevorgang(datum, anbieter) -> bool:
+    """Entfernt die automatisch importierte Monatssumme (Notiz beginnt mit AUTO_NOTIZ) –
+    wenn Einzelladungen aus HA den Monat schon ganz abdecken. True, wenn es eine gab."""
+    with closing(get_connection()) as conn:
+        n = conn.execute("DELETE FROM ladevorgang WHERE datum=? AND anbieter=? AND notiz LIKE ?",
+                         (datum, anbieter, AUTO_NOTIZ + "%")).rowcount
+        conn.commit()
+    return n > 0
+
+
+def upsert_extern_ladevorgang(extern_id, datum, menge_kwh, preis_kwh, gesamtpreis, anbieter,
+                              ladeleistung_kw, notiz):
+    """Ladung, die Home Assistant geschickt hat: anlegen oder – beim erneuten Senden
+    derselben Ladung (gleiche extern_id) – aktualisieren.
+    Rueckgabe: ("neu" | "aktualisiert" | "unveraendert", id)."""
+    werte = (datum, menge_kwh, preis_kwh, gesamtpreis, anbieter, ladeleistung_kw, notiz)
+    with closing(get_connection()) as conn:
+        row = conn.execute("""SELECT id, datum, menge_kwh, preis_kwh, gesamtpreis, anbieter,
+                                     ladeleistung_kw, notiz
+                              FROM ladevorgang WHERE extern_id=?""", (extern_id,)).fetchone()
+        if row:
+            if tuple(row)[1:] == werte:
+                return "unveraendert", row["id"]
+            conn.execute("""UPDATE ladevorgang SET datum=?, menge_kwh=?, preis_kwh=?, gesamtpreis=?,
+                                   anbieter=?, ladeleistung_kw=?, notiz=? WHERE id=?""",
+                         (*werte, row["id"]))
+            conn.commit()
+            return "aktualisiert", row["id"]
+        cur = conn.execute("""INSERT INTO ladevorgang (datum, menge_kwh, preis_kwh, gesamtpreis,
+                                  anbieter, ladeleistung_kw, notiz, ladetyp, extern_id)
+                              VALUES (?,?,?,?,?,?,?,?,?)""", (*werte, "AC", extern_id))
+        conn.commit()
+        return "neu", cur.lastrowid
+
+
+def summe_extern(monat: str, anbieter: str) -> tuple:
+    """(kWh, €) der von HA geschickten Ladungen eines Monats 'YYYY-MM' und Anbieters."""
+    with closing(get_connection()) as conn:
+        row = conn.execute("""SELECT COALESCE(SUM(menge_kwh), 0) AS kwh,
+                                     COALESCE(SUM(gesamtpreis), 0) AS kosten
+                              FROM ladevorgang WHERE extern_id IS NOT NULL
+                                AND anbieter=? AND substr(datum, 1, 7)=?""",
+                           (anbieter, monat)).fetchone()
+    return row["kwh"], row["kosten"]
 
 
 def get_ladevorgaenge_zeitraum(von: str, bis: str):

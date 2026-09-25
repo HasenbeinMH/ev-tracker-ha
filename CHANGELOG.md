@@ -3,6 +3,14 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.9.0] - 2026-09-25
+### Heimladungen einzeln aus Home Assistant
+- Home Assistant kann jede Ladung zuhause am Ladeende schicken (POST /api/ladung): Datum, Uhrzeit, kWh aus Netz und PV und optional die Kosten – in der Liste stehen Heimladungen dann einzeln statt nur als Monatssumme
+- Einstellungen → "Ladungen aus Home Assistant empfangen": Token erzeugen, Adresse und Token zum Kopieren; ohne Token ist der Empfang aus
+- Neue Vorlage vorlagen/homeassistant/ev_ladung_senden.yaml: merkt sich beim Ladebeginn die Zaehlerstaende, schickt am Ende die Differenzen, teilt eine Ladung am Monatswechsel und meldet Fehler als Benachrichtigung in HA
+- Nichts doppelt, nichts verloren: der naechtliche Abruf und der Zeitraum-Import legen nur noch den Rest (Zaehlerwert minus Einzelladungen) als Monatssumme an; eine Ladung, die nicht ankam, steckt im Rest
+- Dieselbe Ladung darf mehrfach ankommen (Kennung: Ladebeginn); Einzelladungen ohne Kosten werden mit dem Stromtarif ihres Tages bewertet und bei einem Tarifwechsel neu bewertet
+
 ## [2.8.1] - 2026-09-25
 ### Galerie eingeklappt
 - Einstellungen → Fahrzeugbild: die Galerie ist eingeklappt und oeffnet sich per Klick auf "Aus der Galerie wählen" – die 30 Bilder machen die Seite nicht mehr voll; das gewaehlte Bild steht weiter darueber

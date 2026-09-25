@@ -88,6 +88,24 @@ def ist_dynamisch(ladung: dict) -> bool:
     return DYNAMISCH_NOTIZ in (ladung.get("notiz") or "")
 
 
+def netzpreis_tag(datum: str, tarife: list) -> float:
+    """Strompreis (ct/kWh) an einem Tag 'YYYY-MM-DD' – fuer einzelne Heimladungen.
+    Vor dem ersten erfassten Tarif gilt der aelteste."""
+    if not tarife:
+        return NETZPREIS_FALLBACK
+    sortiert = sorted(tarife, key=lambda t: t["gueltig_ab"])
+    gueltig = [t for t in sortiert if t["gueltig_ab"] <= datum]
+    return (gueltig[-1] if gueltig else sortiert[0])["preis_kwh"]
+
+
+# Einzelne Heimladungen, die Home Assistant am Ladeende schickt (heimladung.py)
+PUSH_NOTIZ = "HA-Ladung"
+
+
+def ist_push(ladung: dict) -> bool:
+    return (ladung.get("notiz") or "").startswith(PUSH_NOTIZ)
+
+
 def ist_heim_import(ladung: dict) -> bool:
     """Monatssumme aus dem HA-Import (Zeitraum-Import oder naechtlicher Abruf)?"""
     notiz = ladung.get("notiz") or ""
@@ -95,16 +113,19 @@ def ist_heim_import(ladung: dict) -> bool:
 
 
 def heimladungen_neu_bewerten() -> int:
-    """Bewertet importierte Netzbezug-Monatssummen mit dem Tarif ihres Monats neu –
-    noetig, wenn ein Stromtarif nachgetragen, geaendert oder geloescht wird.
+    """Bewertet importierte Netzbezug-Monatssummen mit dem Tarif ihres Monats und von
+    HA geschickte Einzelladungen mit dem Tarif ihres Tages neu – noetig, wenn ein
+    Stromtarif nachgetragen, geaendert oder geloescht wird.
     Von Hand erfasste und mit dem dynamischen Tarif bewertete Ladevorgaenge bleiben
     unberuehrt. Rueckgabe: Anzahl geaendert."""
     tarife = db.get_stromtarife()
     geaendert = 0
     for l in db.get_ladevorgaenge(limit=100000):
-        if l["anbieter"] != NETZBEZUG or not ist_heim_import(l) or ist_dynamisch(l):
+        if (l["anbieter"] != NETZBEZUG or ist_dynamisch(l)
+                or not (ist_heim_import(l) or ist_push(l))):
             continue
-        ct = netzpreis_monat(l["datum"][:7], tarife)
+        ct = (netzpreis_tag(l["datum"], tarife) if ist_push(l)
+              else netzpreis_monat(l["datum"][:7], tarife))
         if abs((l["preis_kwh"] or 0) - ct) > 0.001:
             db.set_ladepreis(l["id"], ct, round(l["menge_kwh"] * ct / 100, 2))
             geaendert += 1

@@ -34,6 +34,7 @@ import charts
 import zeitraum as zeitraum_mod
 from version import VERSION, CHANGELOG
 import datenquellen
+import heimladung
 from ha_client import HAClient, IST_ADDON, ha_verbindung as _ha_verbindung
 from pdf_parser import parse_rechnung_pdf, parse_rechnung_text
 
@@ -875,21 +876,17 @@ def import_apply(payload: dict):
                                   ("wallbox", "Privat – Netzbezug", netz_ct)]:
             kwh = parse_de(str(r.get(key) or ""))
             if kwh is not None and kwh > 0:
-                if db.ladevorgang_exists(f"{monat}-01", kwh, anbieter):
+                # Einzelladungen aus HA abziehen, nur der Rest wird Monatssumme
+                summe = heimladung.monatssumme(monat, anbieter, kwh, kosten, ct)
+                if not summe["kwh"]:
+                    teile.append(mit_quelle(f"{key} {kwh:.1f} kWh", key) + summe["text"])
+                    continue
+                if db.ladevorgang_exists(f"{monat}-01", summe["kwh"], anbieter):
                     teile.append(f"{key} übersprungen (Duplikat)")
                     continue
-                notiz, preis_text = f"Import {monat}", ""
-                gesamt = round(kwh * ct / 100, 2)
-                if key == "wallbox":
-                    ct, gesamt, hinweis = berechnung.heimpreis(kwh, kosten, ct)
-                    if hinweis == berechnung.DYNAMISCH_NOTIZ:
-                        notiz += f" · {hinweis}"
-                        preis_text = mit_quelle(f", {gesamt:.2f} € = {ct:.1f} ct/kWh", "kosten")
-                    elif hinweis:
-                        preis_text = f" ({hinweis})"
-                db.add_ladevorgang(f"{monat}-01", kwh, ct, gesamt, anbieter,
-                                   11, "AC", notiz)
-                teile.append(mit_quelle(f"{key} {kwh:.1f} kWh", key) + preis_text)
+                db.add_ladevorgang(f"{monat}-01", summe["kwh"], summe["ct"], summe["gesamt"],
+                                   anbieter, 11, "AC", f"Import {monat}{summe['zusatz']}")
+                teile.append(mit_quelle(f"{key} {kwh:.1f} kWh", key) + summe["text"])
         if teile:
             log.append(f"{monat}: " + ", ".join(teile))
     kopf = f"Zeitraum-Import übernommen ({len(log)} Monat(e))"
@@ -1089,7 +1086,7 @@ def rechnung_apply(payload: dict):
 #  Einstellungen als Datei sichern / laden
 # ─────────────────────────────────────────────────────────────
 
-GEHEIM_KEYS = {"ha_token"} | datenquellen.GEHEIM
+GEHEIM_KEYS = {"ha_token", heimladung.TOKEN_KEY} | datenquellen.GEHEIM
 
 
 @app.get("/api/settings/export")
@@ -1378,19 +1375,19 @@ def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> lis
                                   ("wallbox", "Privat – Netzbezug", netz_ct)]:
             kwh = werte.get(key)
             if kwh:
-                notiz, preis_text = db.AUTO_NOTIZ, ""
-                gesamt = round(kwh * ct / 100, 2)
-                if key == "wallbox":
-                    ct, gesamt, hinweis = berechnung.heimpreis(kwh, werte.get("kosten"), ct)
-                    if hinweis == berechnung.DYNAMISCH_NOTIZ:
-                        notiz += f" · {hinweis}"
-                        preis_text = f", {gesamt:.2f} € = {ct:.1f} ct/kWh"
-                    elif hinweis:
-                        preis_text = f", {hinweis}"
+                # Einzelladungen aus HA abziehen, nur der Rest wird Monatssumme
+                summe = heimladung.monatssumme(schluessel, anbieter, kwh,
+                                               werte.get("kosten"), ct)
+                if not summe["kwh"]:
+                    if db.delete_auto_ladevorgang(f"{schluessel}-01", anbieter):
+                        teile.append(f"{key} {kwh:.1f} kWh ({herkunft[key]}{summe['text']}, "
+                                     f"Monatssumme entfernt)")
+                    continue
                 ergebnis = db.upsert_auto_ladevorgang(
-                    f"{schluessel}-01", round(kwh, 3), ct, gesamt, anbieter, notiz)
+                    f"{schluessel}-01", summe["kwh"], summe["ct"], summe["gesamt"], anbieter,
+                    db.AUTO_NOTIZ + summe["zusatz"])
                 if ergebnis != "unveraendert":
-                    teile.append(f"{key} {kwh:.1f} kWh ({ergebnis}, {herkunft[key]}{preis_text})")
+                    teile.append(f"{key} {kwh:.1f} kWh ({ergebnis}, {herkunft[key]}{summe['text']})")
         zeile = ", ".join(teile) if teile else "keine neuen Werte"
         _log_import([f"{schluessel}: übernommen {zeile}"])
         protokoll.append(f"{schluessel}: {zeile}")
@@ -1415,6 +1412,52 @@ def auto_import_jetzt():
     db.set_einstellung("auto_import_letzter",
                        f"{datetime.now():%Y-%m-%d %H:%M} · " + " | ".join(protokoll))
     return {"ok": True, "protokoll": protokoll}
+
+
+# ── Einzelne Heimladungen aus Home Assistant (Push) ─────────────────────────
+
+def _push_url(request: Request) -> str:
+    """Adresse, unter der HA den Endpunkt erreicht. Im Add-on ueber das interne Netz
+    (Hostname des Add-ons, Port 8099) – nicht ueber Ingress, das eine Anmeldung braucht."""
+    if IST_ADDON:
+        import socket
+        host = os.environ.get("HOSTNAME") or socket.gethostname()
+        return f"http://{host}:8099/api/ladung"
+    return str(request.base_url).rstrip("/") + "/api/ladung"
+
+
+@app.post("/api/ladung")
+async def ladung_empfangen(request: Request):
+    """Nimmt eine Heimladung aus HA an (Vorlage ev_ladung_senden.yaml).
+    Header: Authorization: Bearer <Token aus den Einstellungen>."""
+    if not heimladung.token():
+        return JSONResponse({"ok": False, "error": "Empfang ausgeschaltet – in den Einstellungen "
+                                                   "unter „Ladungen aus Home Assistant“ einen "
+                                                   "Token erzeugen."}, status_code=403)
+    auth = request.headers.get("authorization", "")
+    if not heimladung.token_ok(auth[7:].strip() if auth.lower().startswith("bearer ") else ""):
+        return JSONResponse({"ok": False, "error": "Token fehlt oder falsch"}, status_code=401)
+    try:
+        daten = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "error": "Kein gültiges JSON"}, status_code=400)
+    try:
+        ergebnis = heimladung.annehmen(daten)
+    except heimladung.UngueltigeLadung as e:
+        _log_import([f"✗ Ladung aus HA abgelehnt: {e} · {str(daten)[:200]}"])
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=422)
+    _log_import([heimladung.protokoll_text(ergebnis)])
+    return ergebnis
+
+
+@app.post("/einstellungen/push-token")
+def push_token(aktion: str = Form("neu")):
+    """Token fuer den Empfang erzeugen ("neu") oder den Empfang ausschalten ("aus")."""
+    if aktion == "aus":
+        db.set_einstellung(heimladung.TOKEN_KEY, "")
+    else:
+        heimladung.token_neu()
+    return RedirectResponse("../einstellungen#ladung-senden", status_code=303)
 
 
 @app.get("/api/import/log")
@@ -1763,6 +1806,8 @@ def einstellungen(request: Request):
                                  for h, f, l in SENSOR_FELDER],
                   quellen=datenquellen.QUELLEN,
                   prom_standard=datenquellen.PROM_SELEKTOR_STANDARD,
+                  push_token=heimladung.token(),
+                  push_url=_push_url(request),
                   aktiv="einstellungen")
 
 

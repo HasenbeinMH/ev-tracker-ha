@@ -20,6 +20,7 @@ FLOW = os.path.join(REPO, "vorlagen", "node-red", "ev_pv_anteil_flow.json")
 PAKET = os.path.join(REPO, "vorlagen", "homeassistant", "ev_pv_anteil.yaml")
 PAKET_Z = os.path.join(REPO, "vorlagen", "homeassistant", "ev_pv_anteil_mit_zaehler.yaml")
 PAKET_K = os.path.join(REPO, "vorlagen", "homeassistant", "ev_netzkosten.yaml")
+PAKET_S = os.path.join(REPO, "vorlagen", "homeassistant", "ev_ladung_senden.yaml")
 ERG = []
 
 
@@ -331,6 +332,90 @@ wert_ = kosten_lauf([(107, 0, 0.30)], start="12.5")
 check("Kosten-Paket", "Zähler zurückgesetzt: Stand bleibt, kein Minus", nah(wert_, 12.5), wert_)
 wert_ = kosten_lauf([(100, 102, None)], start="1")
 check("Kosten-Paket", "Noch kein Preis → Ersatzpreis 30 ct", nah(wert_, 1.6), wert_)
+
+# ═══ Ladung senden (Push an den EV Tracker) ══════════════════════════════════
+from datetime import datetime as _dt
+text_s = open(PAKET_S, encoding="utf-8").read()
+ps = yaml.safe_load(text_s)
+check("Senden-Paket", "Platzhalter ADRESSE_EV_TRACKER und DEIN_TOKEN vorhanden",
+      "ADRESSE_EV_TRACKER" in text_s and "Bearer DEIN_TOKEN" in text_s)
+auto = ps["automation"][0]
+check("Senden-Paket", "Auslöser Start, Ende und Mitternacht",
+      [t["id"] for t in auto["trigger"]] == ["start", "ende", "mitternacht"])
+
+
+def renderer_s(zustaende, jetzt):
+    env = renderer(zustaende)
+    env.globals["now"] = lambda: jetzt
+    env.globals["is_state"] = lambda e, s_: e in zustaende and zustaende[e].state == s_
+    env.filters["to_json"] = json.dumps
+    return env
+
+
+def ha_wert_s(text):
+    """HA wandelt gerenderte Templates in Zahlen/None um (native Typen)"""
+    t = text.strip()
+    if t == "None":
+        return None
+    try:
+        return float(t) if "." in t or t.lstrip("-").isdigit() else t
+    except ValueError:
+        return t
+
+
+sitzung = ps["template"][0]["binary_sensor"][0]["state"]
+for pv_w, netz_w, soll in ((5000, 2000, "True"), (0, 30, "False"), ("unavailable", 7000, "True")):
+    env = renderer_s({"sensor.ev_ladeleistung_pv": Zustand(pv_w),
+                      "sensor.ev_ladeleistung_netz": Zustand(netz_w)}, _dt.now())
+    wert_ = env.from_string(sitzung).render().strip()
+    check("Senden-Paket", f"Ladesitzung bei PV {pv_w} / Netz {netz_w} W → {soll}", wert_ == soll, wert_)
+
+
+def senden(zust, trigger_id, jetzt):
+    """Rendert Variablen und Nutzdaten wie die Automation. Rueckgabe: (gesendet?, JSON)"""
+    env = renderer_s(zust, jetzt)
+    trig = {"id": trigger_id}
+    v = {k: ha_wert_s(env.from_string(t).render(trigger=trig)) for k, t in auto["variables"].items()}
+    v["monatswechsel"] = v["monatswechsel"] == "True"
+    if not (trigger_id == "ende" or v["monatswechsel"]):
+        return False, None
+    then = auto["action"][0]["then"]
+    for k, t in then[0]["variables"].items():
+        v[k] = ha_wert_s(env.from_string(t).render(trigger=trig, **v))
+    if env.from_string(then[1]["if"][0]["value_template"]).render(**v).strip() != "True":
+        return False, None
+    daten = {k: ha_wert_s(env.from_string(t).render(**v))
+             for k, t in then[1]["then"][0]["data"].items()}
+    return True, json.loads(env.from_string(ps["rest_command"]["ev_tracker_ladung"]["payload"]).render(**daten))
+
+
+START = {"input_datetime.ev_tracker_ladestart": Zustand("2026-09-24 22:10:00"),
+         "input_number.ev_tracker_start_netz": Zustand("100.0"),
+         "input_number.ev_tracker_start_pv": Zustand("25.0"),
+         "input_number.ev_tracker_start_kosten": Zustand("34.0")}
+ENDE = {"sensor.ev_ladung_netz": Zustand("120.5"), "sensor.ev_ladung_pv": Zustand("30.2"),
+        "sensor.ev_ladung_netz_kosten": Zustand("40.1")}
+ok, j = senden({**START, **ENDE}, "ende", _dt(2026, 9, 25, 5, 30))
+check("Senden-Paket", "Ladeende: 20,5 kWh Netz, 5,2 kWh PV, 6,10 € seit Ladebeginn",
+      ok and j["start"] == "2026-09-24 22:10:00" and j["ende"] == "2026-09-25 05:30:00"
+      and nah(j["kwh_netz"], 20.5) and nah(j["kwh_pv"], 5.2) and nah(j["kosten"], 6.1), str(j))
+ohne = {k: v_ for k, v_ in ENDE.items() if "kosten" not in k}
+ok, j = senden({**START, **ohne}, "ende", _dt(2026, 9, 25, 5, 30))
+check("Senden-Paket", "Ohne Kostenzähler: kosten = null", ok and j["kosten"] is None, str(j))
+ok, j = senden({**START, **ENDE, "sensor.ev_ladung_netz": Zustand("100.01"),
+                "sensor.ev_ladung_pv": Zustand("25.0")}, "ende", _dt(2026, 9, 25, 5, 30))
+check("Senden-Paket", "Unter 0,05 kWh: nichts senden", not ok, str(j))
+ok, j = senden({**START, **ENDE, "input_datetime.ev_tracker_ladestart": Zustand("unknown")},
+               "ende", _dt(2026, 9, 25, 5, 30))
+check("Senden-Paket", "Ohne gemerkten Ladebeginn: nichts senden", not ok, str(j))
+an = {"binary_sensor.ev_ladesitzung": Zustand("on")}
+ok, j = senden({**START, **ENDE, **an}, "mitternacht", _dt(2026, 10, 1, 0, 0))
+check("Senden-Paket", "Monatswechsel mit laufender Ladung: Teil senden", ok and nah(j["kwh_netz"], 20.5), str(j))
+ok, _ = senden({**START, **ENDE, **an}, "mitternacht", _dt(2026, 9, 25, 0, 0))
+check("Senden-Paket", "Mitternacht mitten im Monat: nichts senden", not ok)
+ok, _ = senden({**START, **ENDE, "binary_sensor.ev_ladesitzung": Zustand("off")},
+               "mitternacht", _dt(2026, 10, 1, 0, 0))
+check("Senden-Paket", "Monatswechsel ohne Ladung: nichts senden", not ok)
 
 # ── Ausgabe ──────────────────────────────────────────────────────────────────
 ok_n = sum(1 for e in ERG if e[2])

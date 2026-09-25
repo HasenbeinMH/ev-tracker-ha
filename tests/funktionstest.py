@@ -640,6 +640,112 @@ check("Dyn. Tarif", "Einstellungen: Zeile Kosten Netz ins Auto",
 r = c.get("/einrichtung")
 check("Dyn. Tarif", "Einrichtung laedt", r.status_code == 200)
 
+# ── 18. Einzelne Heimladungen aus HA (Push) ────────────────────────────────
+import heimladung
+LADUNG = {"start": "2027-06-10 22:10:00", "ende": "2027-06-11 05:30:00",
+          "kwh_netz": 20.5, "kwh_pv": 5.2, "kosten": 6.15}
+r = c.post("/api/ladung", json=LADUNG)
+check("Push", "Ohne Token ausgeschaltet -> 403", r.status_code == 403, r.text[:80])
+c.post("/einstellungen/push-token", data={"aktion": "neu"}, follow_redirects=False)
+TOKEN = heimladung.token()
+KOPF = {"Authorization": f"Bearer {TOKEN}"}
+check("Push", "Token erzeugt", len(TOKEN) >= 20)
+r = c.post("/api/ladung", json=LADUNG, headers={"Authorization": "Bearer falsch"})
+check("Push", "Falscher Token -> 401", r.status_code == 401)
+r = c.post("/api/ladung", json=LADUNG)
+check("Push", "Ohne Token im Header -> 401", r.status_code == 401)
+r = c.post("/api/ladung", json=LADUNG, headers=KOPF)
+check("Push", "Ladung angenommen", r.status_code == 200 and r.json()["ok"], r.text[:200])
+
+
+def push_zeilen(datum):
+    return {l["anbieter"]: l for l in db.get_ladevorgaenge(limit=100000)
+            if l["datum"] == datum and berechnung.ist_push(l)}
+
+
+z = push_zeilen("2027-06-10")
+netz, pv = z.get(berechnung.NETZBEZUG), z.get("Privat – PV")
+check("Push", "Netz: 20,5 kWh, 6,15 € = 30 ct, dynamisch, Datum des Ladebeginns",
+      netz and nah(netz["menge_kwh"], 20.5) and nah(netz["gesamtpreis"], 6.15)
+      and nah(netz["preis_kwh"], 30.0) and berechnung.ist_dynamisch(netz), str(netz))
+check("Push", "PV: 5,2 kWh zum PV-Preis", pv and nah(pv["menge_kwh"], 5.2)
+      and nah(pv["preis_kwh"], db.get_einstellung("pv_preis_ct")), str(pv))
+check("Push", "Leistung aus kWh und Dauer (25,7 kWh in 7:20 h = 3,5 kW)",
+      netz and nah(netz["ladeleistung_kw"], 3.5, 0.05), str(netz and netz["ladeleistung_kw"]))
+check("Push", "Notiz mit Uhrzeit", netz and "22:10–05:30" in netz["notiz"], str(netz and netz["notiz"]))
+anz = len(db.get_ladevorgaenge(limit=100000))
+r = c.post("/api/ladung", json=LADUNG, headers=KOPF)
+check("Push", "Nochmal gesendet: unveraendert, keine Duplikate",
+      r.json()["teile"][0]["status"] == "unveraendert" and len(db.get_ladevorgaenge(limit=100000)) == anz)
+r = c.post("/api/ladung", json={**LADUNG, "kwh_netz": 21.0, "kosten": 6.3}, headers=KOPF)
+check("Push", "Korrigiert nachgesendet: aktualisiert",
+      r.json()["teile"][0]["status"] == "aktualisiert"
+      and nah(push_zeilen("2027-06-10")[berechnung.NETZBEZUG]["menge_kwh"], 21.0))
+for daten, grund in (({**LADUNG, "kwh_netz": 500}, "500 kWh"), ({**LADUNG, "start": "gestern"}, "Zeit"),
+                     ({**LADUNG, "kwh_netz": 0, "kwh_pv": 0}, "keine Energie"),
+                     ({**LADUNG, "ende": "2027-06-09 10:00:00"}, "Ende vor Start")):
+    r = c.post("/api/ladung", json=daten, headers=KOPF)
+    check("Push", f"Unplausibel ({grund}) -> 422", r.status_code == 422, r.text[:100])
+r = c.post("/api/ladung", content=b"kein json", headers=KOPF)
+check("Push", "Kein JSON -> 400", r.status_code == 400)
+# Wie HA sendet: Zahlen als Text, kosten None, Zeit mit Zeitzone
+r = c.post("/api/ladung", json={"start": "2027-06-20T18:00:00+02:00", "ende": "2027-06-20 20:00:00",
+                                "kwh_netz": "10.0", "kwh_pv": "0", "kosten": "None"}, headers=KOPF)
+z = push_zeilen("2027-06-20").get(berechnung.NETZBEZUG)
+check("Push", "Ohne Kosten: Tarif des Tages (40 ct), nicht dynamisch",
+      r.status_code == 200 and z and nah(z["preis_kwh"], 40.0) and not berechnung.ist_dynamisch(z),
+      r.text[:200])
+c.post("/stromtarif", data={"gueltig_ab": "2027-06-15", "preis": "35", "name": "Test Juni"},
+       follow_redirects=False)
+z20, z10 = push_zeilen("2027-06-20")[berechnung.NETZBEZUG], push_zeilen("2027-06-10")[berechnung.NETZBEZUG]
+check("Push", "Neuer Tarif: Einzelladung mit Tarif neu bewertet, dynamische bleibt",
+      nah(z20["preis_kwh"], 35.0) and nah(z10["preis_kwh"], 30.0),
+      f"{z20['preis_kwh']} / {z10['preis_kwh']}")
+
+# Naechtlicher Abruf: nur der Rest ohne Einzelladungen wird Monatssumme
+_orig = (webapp._fetch_monat, webapp._ha_verbindung, webapp.HAClient)
+FAKE = {(2027, 6): {"wallbox": 45.0, "pv": 5.4, "kosten": 12.0}}
+webapp._ha_verbindung = lambda cfg: {"url": "http://x", "token": "t"}
+webapp.HAClient = lambda **k: object()
+webapp._fetch_monat = lambda client, quelle, cfg, y, m: {
+    "km": None, "benzin": None, **FAKE[(y, m)],
+    "_quelle": {k: "HA-API" for k in webapp.IMPORT_WERTE}, "_grund": {}}
+try:
+    webapp._auto_import([(2027, 6)], quelle="test")
+    monat = {l["anbieter"]: l for l in db.get_ladevorgaenge(limit=100000)
+             if l["datum"] == "2027-06-01" and l["notiz"].startswith(db.AUTO_NOTIZ)}
+    rest = monat.get(berechnung.NETZBEZUG)
+    # 45 kWh − 21 − 10 = 14 kWh; Kosten 12,00 − 6,30 − 3,50 = 2,20 € → 15,7 ct
+    check("Push", "Auto-Import: Netz-Rest 14 kWh mit Restkosten 2,20 €",
+          rest and nah(rest["menge_kwh"], 14.0) and nah(rest["gesamtpreis"], 2.2)
+          and "Rest" in rest["notiz"] and berechnung.ist_dynamisch(rest), str(rest))
+    check("Push", "Auto-Import: PV-Rest 0,2 kWh < 0,5 -> keine Monatssumme",
+          "Privat – PV" not in monat, str(monat.get("Privat – PV")))
+    summe = sum(l["menge_kwh"] for l in db.get_ladevorgaenge(limit=100000)
+                if l["datum"][:7] == "2027-06" and l["anbieter"] == berechnung.NETZBEZUG)
+    check("Push", "Summe Netz im Monat = Zaehlerwert (nichts doppelt)", nah(summe, 45.0), str(summe))
+    FAKE[(2027, 6)]["wallbox"] = 31.2       # Zaehler deckt sich mit den Einzelladungen
+    webapp._auto_import([(2027, 6)], quelle="test")
+    check("Push", "Kein Rest mehr -> Monatssumme entfernt",
+          not any(l["datum"] == "2027-06-01" and l["anbieter"] == berechnung.NETZBEZUG
+                  for l in db.get_ladevorgaenge(limit=100000)))
+finally:
+    webapp._fetch_monat, webapp._ha_verbindung, webapp.HAClient = _orig
+r = c.post("/api/import/apply", json={"rows": [{"monat": "2027-06", "wallbox": "40", "pv": "5,2"}]})
+imp = [l for l in db.get_ladevorgaenge(limit=100000) if l["notiz"].startswith("Import 2027-06")]
+check("Push", "Zeitraum-Import: Rest 40 − 31 = 9 kWh, PV ohne Rest",
+      len(imp) == 1 and nah(imp[0]["menge_kwh"], 9.0) and "Rest" in imp[0]["notiz"],
+      str([(l["anbieter"], l["menge_kwh"], l["notiz"]) for l in imp]) + str(r.json()["log"]))
+
+r = c.get("/einstellungen")
+check("Push", "Einstellungen zeigen Adresse und Token",
+      TOKEN in r.text and "/api/ladung" in r.text)
+r = c.get("/api/settings/export?secrets=0")
+check("Push", "Export ohne Zugangsdaten enthaelt keinen Token", TOKEN not in r.text)
+c.post("/einstellungen/push-token", data={"aktion": "aus"}, follow_redirects=False)
+r = c.post("/api/ladung", json=LADUNG, headers=KOPF)
+check("Push", "Empfang ausgeschaltet -> 403", r.status_code == 403)
+
 # ── Ausgabe ────────────────────────────────────────────────────────────────
 ok_n = sum(1 for e in ERG if e[2])
 print(f"\n{ok_n}/{len(ERG)} Pruefungen bestanden\n")

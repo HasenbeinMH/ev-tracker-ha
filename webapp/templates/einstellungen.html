@@ -407,7 +407,57 @@
 </div>
 </form>
 
+<h2 id="ladung-senden">Ladungen aus Home Assistant empfangen</h2>
+<div class="card">
+  <p class="hint" style="margin-top:0">
+    Optional: Home Assistant schickt am Ende jeder Ladung zuhause kWh aus Netz und PV (und mit
+    dynamischem Tarif die Kosten). Dann stehen Heimladungen <b>einzeln mit Datum</b> in der Liste
+    statt nur als Monatssumme. Der nächtliche Abruf legt nur noch den Rest an, der nicht als
+    Einzelladung ankam – nichts wird doppelt gezählt, und eine verlorene Ladung steckt im Rest.
+    Vorlage für HA:
+    <a href="https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/homeassistant/ev_ladung_senden.yaml"
+       target="_blank" rel="noopener">ev_ladung_senden.yaml</a>.
+  </p>
+  {% if push_token %}
+  <p class="gruen" style="font-size:13px">✓ Empfang eingeschaltet. In der Vorlage diese beiden Werte eintragen:</p>
+  <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end">
+    <label class="feld">Adresse (ersetzt <code>ADRESSE_EV_TRACKER</code>)
+      <input id="push-url" readonly value="{{ push_url }}" style="width:340px">
+    </label>
+    <button type="button" class="secondary" onclick="kopieren('push-url', this)">📋 Kopieren</button>
+    <label class="feld">Token (ersetzt <code>DEIN_TOKEN</code>)
+      <input id="push-token" readonly value="{{ push_token }}" style="width:300px">
+    </label>
+    <button type="button" class="secondary" onclick="kopieren('push-token', this)">📋 Kopieren</button>
+  </div>
+  {% if add_on_modus %}
+  <p class="hint">Die Adresse gilt im internen Netz von Home Assistant (Hostname des Add-ons) –
+    von außen ist sie nicht erreichbar, und das muss sie auch nicht.</p>
+  {% endif %}
+  <form method="post" action="einstellungen/push-token" style="display:flex; gap:8px; margin-top:8px">
+    <button type="submit" name="aktion" value="neu" class="secondary"
+            onclick="return confirm('Neuen Token erzeugen? Der alte gilt dann nicht mehr – in HA ersetzen.')">↻ Neuer Token</button>
+    <button type="submit" name="aktion" value="aus" class="secondary"
+            onclick="return confirm('Empfang ausschalten? HA kann dann keine Ladungen mehr schicken.')">Empfang ausschalten</button>
+  </form>
+  {% else %}
+  <p class="hint">Ausgeschaltet. Mit dem Token kann Home Assistant Ladungen schicken – sonst niemand.</p>
+  <form method="post" action="einstellungen/push-token">
+    <button type="submit" name="aktion" value="neu">🔑 Token erzeugen und Empfang einschalten</button>
+  </form>
+  {% endif %}
+</div>
+
 <script>
+async function kopieren(id, knopf) {
+  const feld = document.getElementById(id);
+  try { await navigator.clipboard.writeText(feld.value); }
+  catch (e) { feld.select(); document.execCommand("copy"); }
+  const alt = knopf.textContent;
+  knopf.textContent = "✓ Kopiert";
+  setTimeout(() => { knopf.textContent = alt; }, 1500);
+}
+
 async function sucheSensoren() {
   const q = document.getElementById("sensor-suche").value.trim();
   const box = document.getElementById("sensor-ergebnis");

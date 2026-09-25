@@ -1,0 +1,188 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  EV Tracker – jede Ladung zuhause einzeln an den EV Tracker schicken
+#  (Home-Assistant-Paket, optional)
+#
+#  Merkt sich beim Ladebeginn die Zählerstände und schickt am Ladeende die
+#  Differenzen: kWh aus dem Netz, kWh aus der PV und – mit ev_netzkosten.yaml –
+#  die Kosten. Im EV Tracker stehen Heimladungen dann einzeln mit Datum statt nur
+#  als Monatssumme. Der nächtliche Abruf legt nur noch den Rest an, der nicht als
+#  Einzelladung ankam – schlägt ein Senden fehl, geht also nichts verloren.
+#
+#  Voraussetzung: die Zähler aus den Vorlagen (ev_pv_anteil*.yaml oder Node-RED):
+#    sensor.ev_ladung_netz, sensor.ev_ladung_pv (kWh),
+#    sensor.ev_ladeleistung_netz, sensor.ev_ladeleistung_pv (W)
+#  und optional sensor.ev_ladung_netz_kosten (€) aus ev_netzkosten.yaml.
+#  Eigene Zähler? Die Namen unten per Suchen & Ersetzen austauschen.
+#
+#  EINRICHTUNG
+#  1. EV Tracker → Einstellungen → „Ladungen aus Home Assistant empfangen“ →
+#     „Token erzeugen“. Dort stehen Adresse und Token zum Kopieren.
+#  2. Diese Datei nach /config/packages/ev_ladung_senden.yaml kopieren (packages
+#     wie bei ev_pv_anteil.yaml in configuration.yaml einbinden).
+#  3. Suchen & Ersetzen:
+#         ADRESSE_EV_TRACKER  → die Adresse aus Schritt 1
+#                               (Add-on z.B. http://a0d7b954-ev-tracker:8099/api/ladung)
+#         DEIN_TOKEN          → der Token aus Schritt 1
+#  4. Einstellungen → System → Neu starten.
+#
+#  Eine Ladung beginnt, wenn mehr als 50 W ins Auto gehen (1 Minute lang), und endet
+#  nach 15 Minuten ohne Leistung – kurze Pausen beim PV-Überschussladen bleiben so
+#  eine Ladung. Am Monatswechsel wird eine laufende Ladung geteilt, damit jeder Teil
+#  im richtigen Monat zählt.
+#  Schlägt das Senden fehl, erscheint eine Benachrichtigung in Home Assistant.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Zählerstände beim Ladebeginn (überstehen Neustarts)
+input_datetime:
+  ev_tracker_ladestart:
+    name: EV Tracker Ladebeginn
+    has_date: true
+    has_time: true
+
+input_number:
+  ev_tracker_start_netz:
+    name: EV Tracker Start Netz
+    min: 0
+    max: 1000000000
+    step: 0.001
+    mode: box
+    unit_of_measurement: kWh
+  ev_tracker_start_pv:
+    name: EV Tracker Start PV
+    min: 0
+    max: 1000000000
+    step: 0.001
+    mode: box
+    unit_of_measurement: kWh
+  ev_tracker_start_kosten:
+    name: EV Tracker Start Kosten
+    min: -1000000000
+    max: 1000000000
+    step: 0.00001
+    mode: box
+    unit_of_measurement: EUR
+
+template:
+  - binary_sensor:
+      # An = es wird geladen. Mit einem Stecker-Status der Wallbox geht es auch so:
+      #   state: "{{ is_state('binary_sensor.DEINE_WALLBOX_STECKER', 'on') }}"
+      - name: EV Ladesitzung
+        unique_id: ev_tracker_ladesitzung
+        icon: mdi:ev-station
+        delay_on:
+          minutes: 1
+        delay_off:
+          minutes: 15
+        state: >
+          {{ (states('sensor.ev_ladeleistung_netz') | float(0)
+              + states('sensor.ev_ladeleistung_pv') | float(0)) > 50 }}
+
+rest_command:
+  ev_tracker_ladung:
+    url: "ADRESSE_EV_TRACKER"
+    method: post
+    headers:
+      Authorization: "Bearer DEIN_TOKEN"
+    content_type: "application/json"
+    timeout: 20
+    payload: >-
+      {{ {"start": start, "ende": ende, "kwh_netz": kwh_netz, "kwh_pv": kwh_pv,
+          "kosten": kosten} | to_json }}
+
+automation:
+  - id: ev_tracker_ladung_senden
+    alias: "EV Tracker – Ladung senden"
+    description: "Schickt jede Ladung zuhause an den EV Tracker (Vorlage ev_ladung_senden.yaml)"
+    mode: queued
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.ev_ladesitzung
+        from: "off"
+        to: "on"
+        id: start
+      - platform: state
+        entity_id: binary_sensor.ev_ladesitzung
+        from: "on"
+        to: "off"
+        id: ende
+      - platform: time
+        at: "00:00:00"
+        id: mitternacht
+    variables:
+      netz: "{{ states('sensor.ev_ladung_netz') | float(none) }}"
+      pv: "{{ states('sensor.ev_ladung_pv') | float(none) }}"
+      kosten_stand: "{{ states('sensor.ev_ladung_netz_kosten') | float(none) }}"
+      # Am 1. um 0 Uhr eine laufende Ladung teilen
+      monatswechsel: >
+        {{ trigger.id == 'mitternacht' and now().day == 1
+           and is_state('binary_sensor.ev_ladesitzung', 'on') }}
+    action:
+      # Ladeende oder Monatswechsel: Differenzen seit dem Ladebeginn schicken
+      - if:
+          - condition: template
+            value_template: "{{ trigger.id == 'ende' or monatswechsel }}"
+        then:
+          - variables:
+              start: "{{ states('input_datetime.ev_tracker_ladestart') }}"
+              kwh_netz: >
+                {{ ([netz - states('input_number.ev_tracker_start_netz') | float(0), 0] | max) | round(3)
+                   if netz is not none else 0 }}
+              kwh_pv: >
+                {{ ([pv - states('input_number.ev_tracker_start_pv') | float(0), 0] | max) | round(3)
+                   if pv is not none else 0 }}
+              kosten: >
+                {{ (kosten_stand - states('input_number.ev_tracker_start_kosten') | float(0)) | round(4)
+                   if kosten_stand is not none else none }}
+          - if:
+              - condition: template
+                value_template: >
+                  {{ start not in ['unknown', 'unavailable', '']
+                     and 0.05 <= kwh_netz + kwh_pv <= 200 }}
+            then:
+              - action: rest_command.ev_tracker_ladung
+                continue_on_error: true
+                response_variable: antwort
+                data:
+                  start: "{{ start }}"
+                  ende: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+                  kwh_netz: "{{ kwh_netz }}"
+                  kwh_pv: "{{ kwh_pv }}"
+                  kosten: "{{ kosten }}"
+              - if:
+                  - condition: template
+                    value_template: "{{ antwort is not defined or antwort.status != 200 }}"
+                then:
+                  - action: persistent_notification.create
+                    data:
+                      title: "EV Tracker: Ladung nicht angekommen"
+                      notification_id: ev_tracker_ladung
+                      message: >
+                        Ladung ab {{ start }} ({{ kwh_netz }} kWh Netz, {{ kwh_pv }} kWh PV)
+                        wurde nicht angenommen:
+                        {{ antwort.content if antwort is defined else 'keine Antwort' }}.
+                        Sie fehlt nicht – der nächtliche Abruf zählt sie in der Monatssumme mit.
+      # Ladebeginn (auch der zweite Teil nach dem Monatswechsel): Stände merken
+      - if:
+          - condition: template
+            value_template: "{{ trigger.id == 'start' or monatswechsel }}"
+        then:
+          - action: input_datetime.set_datetime
+            target:
+              entity_id: input_datetime.ev_tracker_ladestart
+            data:
+              datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.ev_tracker_start_netz
+            data:
+              value: "{{ netz if netz is not none else 0 }}"
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.ev_tracker_start_pv
+            data:
+              value: "{{ pv if pv is not none else 0 }}"
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.ev_tracker_start_kosten
+            data:
+              value: "{{ kosten_stand if kosten_stand is not none else 0 }}"
