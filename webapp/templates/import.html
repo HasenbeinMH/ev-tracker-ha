@@ -74,7 +74,7 @@
   </p>
   <p class="hint" id="vorschau-quelle"></p>
   <div class="tabelle-scroll"><table id="vorschau-tabelle">
-    <tr><th>Monat</th><th>km</th><th>PV kWh</th><th>Wallbox kWh</th><th>{{ kf.name }} €/L</th></tr>
+    <tr><th>Monat</th><th>km</th><th>PV kWh</th><th>Wallbox kWh</th>{% if mit_kosten %}<th title="Kostenzähler „Netz ins Auto“ (dynamischer Tarif) – leer = fester Stromtarif">Netz €</th>{% endif %}<th>{{ kf.name }} €/L</th></tr>
   </table></div>
   <div style="margin-top:12px">
     <button id="btn-apply" style="background:#3a7a3a">✓ Alle Werte in DB übernehmen</button>
@@ -169,6 +169,9 @@ function herkunftMarke(herkunft, grund) {
   return html;
 }
 
+// "kosten" nur mit eingetragenem Kostenzaehler (dynamischer Tarif)
+const SPALTEN = {{ (["km", "pv", "wallbox", "kosten", "benzin"] if mit_kosten
+                    else ["km", "pv", "wallbox", "benzin"]) | tojson }};
 let vorschauQuelle = "";
 function zeigeVorschau(rows, quelle) {
   vorschauRows = rows;
@@ -183,7 +186,7 @@ function zeigeVorschau(rows, quelle) {
   for (const r of rows) {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${r.label}</td>` +
-      ["km", "pv", "wallbox", "benzin"].map(k =>
+      SPALTEN.map(k =>
         `<td><input data-monat="${r.monat}" data-key="${k}" value="${r[k] ?? ""}">` +
         `${herkunftMarke((r._quelle || {})[k], (r._grund || {})[k])}</td>`
       ).join("");

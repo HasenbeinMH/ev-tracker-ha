@@ -171,10 +171,14 @@ class HAClient:
 
     def get_month_value_stats(self, entity_id: str,
                               year: int, month: int,
-                              mode: str = "delta") -> float | None:
+                              mode: str = "delta",
+                              braucht_vorwert: bool = False) -> float | None:
         """
         Holt den Monatswert über die Statistics-API.
         Gibt None zurück wenn keine Statistics → Fallback auf History.
+        braucht_vorwert (nur "delta"): ohne Wert vor dem Monat None statt der Differenz
+        ab dem ersten Wert im Monat – fuer Zaehler, die nur zusammen mit einem anderen
+        ueber den ganzen Monat stimmen (Kosten ÷ kWh).
         """
         last_day  = calendar.monthrange(year, month)[1]
 
@@ -222,6 +226,8 @@ class HAClient:
                 return None
             end_sum      = curr_sum_rows[-1]["sum"]
             pre_sum_rows = [r for r in pre_rows if r.get("sum") is not None]
+            if braucht_vorwert and not pre_sum_rows:
+                return None
             base_sum     = pre_sum_rows[-1]["sum"] if pre_sum_rows else curr_sum_rows[0].get("sum", end_sum)
             delta = end_sum - base_sum
             return round(delta, 3) if delta >= 0 else None

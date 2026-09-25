@@ -19,6 +19,7 @@ REPO = os.path.dirname(HIER)
 FLOW = os.path.join(REPO, "vorlagen", "node-red", "ev_pv_anteil_flow.json")
 PAKET = os.path.join(REPO, "vorlagen", "homeassistant", "ev_pv_anteil.yaml")
 PAKET_Z = os.path.join(REPO, "vorlagen", "homeassistant", "ev_pv_anteil_mit_zaehler.yaml")
+PAKET_K = os.path.join(REPO, "vorlagen", "homeassistant", "ev_netzkosten.yaml")
 ERG = []
 
 
@@ -275,6 +276,61 @@ env = renderer({"sensor.ev_ladeleistung_wallbox": Zustand(0), "sensor.ev_ladelei
 trig = {"to_state": Zustand(100.05, {"unit_of_measurement": "kWh"}), "from_state": Zustand(100, {"unit_of_measurement": "kWh"})}
 netz = env.from_string(t["ev_tracker_ladung_netz"]["state"]).render(trigger=trig, this=Zustand("3")).strip()
 check("HA-Paket", "Zähler steigt ohne gemessene Leistung → zählt als Netz (vorsichtig)", nah(netz, 3.05), netz)
+
+# ═══ Kostenzaehler (dynamischer Tarif) ═══════════════════════════════════════
+tk = templates(PAKET_K, {"sensor.DEIN_STROMPREIS": "sensor.preis"})
+check("Kosten-Paket", "Platzhalter vorhanden",
+      "sensor.DEIN_STROMPREIS" in open(PAKET_K, encoding="utf-8").read())
+check("Kosten-Paket", "Kosten: EUR, monetary, state_class total (negative Preise)",
+      tk["ev_tracker_ladung_netz_kosten"]["unit_of_measurement"] == "EUR"
+      and tk["ev_tracker_ladung_netz_kosten"]["device_class"] == "monetary"
+      and tk["ev_tracker_ladung_netz_kosten"]["state_class"] == "total")
+
+
+def strompreis(wert, einheit, this="unknown", ersetzen=None):
+    t = templates(PAKET_K, {"sensor.DEIN_STROMPREIS": "sensor.preis", **(ersetzen or {})})
+    env = renderer({"sensor.preis": Zustand(wert, {"unit_of_measurement": einheit})})
+    return env.from_string(t["ev_tracker_strompreis"]["state"]).render(this=Zustand(this)).strip()
+
+
+for wert, einheit, soll in ((0.3125, "EUR/kWh", 0.3125), (0.3125, "€/kWh", 0.3125),
+                            (31.25, "ct/kWh", 0.3125), (31.25, "Cent/kWh", 0.3125),
+                            (31.25, "c/kWh", 0.3125), (312.5, "EUR/MWh", 0.3125)):
+    wert_ = strompreis(wert, einheit)
+    check("Kosten-Paket", f"Strompreis {wert} {einheit} → {soll} €/kWh", nah(wert_, soll, 1e-6), wert_)
+wert_ = strompreis("unavailable", "EUR/kWh", this="0.28")
+check("Kosten-Paket", "Preissensor nicht verfügbar → letzter Preis bleibt", nah(wert_, 0.28, 1e-6), wert_)
+wert_ = strompreis(8.0, "ct/kWh", ersetzen={"{% set aufschlag_ct = 0 %}": "{% set aufschlag_ct = 17 %}",
+                                              "{% set faktor = 1.0 %}": "{% set faktor = 1.19 %}"})
+check("Kosten-Paket", "Börsenpreis 8 ct + 17 ct Aufschlag, MwSt. → 0,2975 €/kWh",
+      nah(wert_, 0.2975, 1e-6), wert_)
+
+
+def kosten_lauf(schritte, einheit="kWh", start="unknown"):
+    """schritte: [(zaehler_alt, zaehler_neu, preis_eur_kwh oder None)] → Kostenstand"""
+    stand = start
+    for alt, neu, preis in schritte:
+        zust = {} if preis is None else {"sensor.ev_strompreis": Zustand(preis)}
+        env = renderer(zust)
+        trig = {"to_state": Zustand(neu, {"unit_of_measurement": einheit}),
+                "from_state": Zustand(alt, {"unit_of_measurement": einheit})}
+        stand = env.from_string(tk["ev_tracker_ladung_netz_kosten"]["state"]).render(
+            trigger=trig, this=Zustand(stand)).strip()
+    return stand
+
+
+# Nacht: 10 kWh zu 20 ct, dann 10 kWh zu 35 ct → 2,00 + 3,50 = 5,50 €
+schritte = [(100 + i * 0.1, 100 + (i + 1) * 0.1, 0.20) for i in range(100)] +            [(110 + i * 0.1, 110 + (i + 1) * 0.1, 0.35) for i in range(100)]
+wert_ = kosten_lauf(schritte)
+check("Kosten-Paket", "20 kWh mit wechselndem Preis → 5,50 €", nah(wert_, 5.5), wert_)
+wert_ = kosten_lauf([(a * 1000, b * 1000, p) for a, b, p in schritte], einheit="Wh")
+check("Kosten-Paket", "Zähler in Wh → gleiche Kosten", nah(wert_, 5.5), wert_)
+wert_ = kosten_lauf([(100, 101, -0.05)], start="3")
+check("Kosten-Paket", "Negativer Preis senkt die Kosten", nah(wert_, 2.95), wert_)
+wert_ = kosten_lauf([(107, 0, 0.30)], start="12.5")
+check("Kosten-Paket", "Zähler zurückgesetzt: Stand bleibt, kein Minus", nah(wert_, 12.5), wert_)
+wert_ = kosten_lauf([(100, 102, None)], start="1")
+check("Kosten-Paket", "Noch kein Preis → Ersatzpreis 30 ct", nah(wert_, 1.6), wert_)
 
 # ── Ausgabe ──────────────────────────────────────────────────────────────────
 ok_n = sum(1 for e in ERG if e[2])

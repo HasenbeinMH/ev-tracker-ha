@@ -3,6 +3,14 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.8.0] - 2026-09-25
+### Dynamischer Stromtarif: tatsaechliche Kosten fuer Netz ins Auto
+- Neuer optionaler Sensor "Kosten Netz ins Auto (€)": ein fortlaufender Kostenzaehler aus HA. Der Import bewertet die Netz-Monatssumme dann mit Kosten ÷ kWh statt mit dem Stromtarif – passend fuer Tibber, aWATTar, Octopus & Co.
+- Neue Vorlage vorlagen/homeassistant/ev_netzkosten.yaml: addiert zu jeder kWh aus dem Netz den Preis in diesem Moment (€/kWh, ct/kWh oder €/MWh wird erkannt; Aufschlag und MwSt. fuer reine Boersenpreise einstellbar); funktioniert mit dem HA-Paket, dem Node-RED-Flow und eigenen Zaehlern
+- Solche Monate tragen die Notiz "dynamischer Tarif" und bleiben beim Anlegen oder Loeschen eines Stromtarifs unveraendert. Fehlt der Kostenwert oder ist der Preis unplausibel (ueber 150 ct/kWh), gilt wie bisher der Stromtarif – das Importprotokoll nennt den Grund
+- HA-Import: Spalte "Netz €" in der Vorschau, sobald ein Kostenzaehler eingetragen ist; InfluxDB: Measurement "EUR" einstellbar
+- Hilfe: Abschnitt Dynamischer Stromtarif; der Hinweis zur Neubewertung der importierten Monatssummen beim Tarifwechsel ist korrigiert
+
 ## [2.7.1] - 2026-09-25
 ### Galerie: VW ID.3, ID.4, ID.7 und ID. Buzz
 - Vier weitere Fahrzeugbilder in der Galerie (VW ID.3, ID.4, ID.7, ID. Buzz) – jetzt 30 Bilder

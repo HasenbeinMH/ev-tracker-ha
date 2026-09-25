@@ -13,6 +13,7 @@ Jede Quelle beantwortet dieselben Fragen ueber einen Sensor-Schluessel:
     "km"       Kilometerstand            -> Monatsdifferenz
     "pv"       PV ins Auto (kWh)         -> Monatsdifferenz, sonst Summe der Tagesmaxima
     "wallbox"  Netz ins Auto (kWh)       -> wie "pv"
+    "kosten"   Netz ins Auto (EUR)       -> Monatsdifferenz (optional, dynamischer Tarif)
     "benzin"   1–2 Preissensoren (€/L)   -> Monatsmittel ohne Nullwerte
     "soc"      Akkustand (%)             -> Stundenwerte (Akkuverbrauch, Ladeerkennung)
 
@@ -51,6 +52,7 @@ SENSOREN = {
     "km":      (["ha_odometer"], ["fn_odometer"], "influx_measurement_km", "km"),
     "pv":      (["ha_pv_production"], ["fn_pv_production"], "influx_measurement_kwh", "kWh"),
     "wallbox": (["ha_wallbox_energy"], ["fn_wallbox_energy"], "influx_measurement_kwh", "kWh"),
+    "kosten":  (["ha_wallbox_cost"], ["fn_wallbox_cost"], "influx_measurement_eur", "EUR"),
     "benzin":  (["ha_tankerkoenig", "ha_tankerkoenig_2"], ["fn_tankerkoenig", "fn_tankerkoenig_2"],
                 "influx_measurement_eur_l", "EUR/L"),
     "soc":     (["ha_ev_battery"], ["fn_ev_battery"], "influx_measurement_prozent", "%"),

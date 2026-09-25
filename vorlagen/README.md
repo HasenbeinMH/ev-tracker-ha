@@ -78,6 +78,31 @@ eingerichtet hat (`contextStorage` mit `file`), nutzt ihn automatisch.
 3. Vorzeichen prüfen (`netz_bezug_positiv` im Sensor „EV Ladeleistung Netz“).
 4. Home Assistant neu starten.
 
+## Dynamischer Stromtarif: Kosten „Netz ins Auto“ (optional)
+
+Bei Tibber, aWATTar, Octopus & Co. ändert sich der Preis stündlich bzw. viertelstündlich.
+Ein fester Tarif trifft dann nicht, was das Laden wirklich gekostet hat. Die Vorlage
+[`homeassistant/ev_netzkosten.yaml`](homeassistant/ev_netzkosten.yaml) addiert zu jeder
+kWh aus dem Netz den Preis **in diesem Moment**:
+
+| Sensor | Inhalt | Im EV Tracker |
+|--------|--------|---------------|
+| `sensor.ev_ladung_netz_kosten` | Kosten in € (fortlaufend) | **Kosten Netz ins Auto (€)** |
+| `sensor.ev_strompreis` | Preis, mit dem gerechnet wird (€/kWh) | – |
+
+Der EV Tracker bewertet damit jeden Monat mit Kosten ÷ kWh statt mit dem Stromtarif.
+
+- **Zusätzlich** zu einer der PV-Anteil-Vorlagen – egal ob Node-RED oder HA-Paket,
+  denn gezählt wird am Sensor `sensor.ev_ladung_netz`. Mit einem eigenen Netz-Zähler
+  diesen Namen in der Datei ersetzen.
+- `sensor.DEIN_STROMPREIS` durch den Preissensor ersetzen. Einheit €/kWh, ct/kWh oder
+  €/MWh wird erkannt.
+- **Nur Börsenpreis** (EPEX Spot, Nordpool)? Dann in der Datei `aufschlag_ct` (Netzentgelt,
+  Abgaben, Marge je kWh, netto) und `faktor = 1.19` (MwSt.) setzen. Tibber, Octopus und
+  aWATTar-Endkundenpreise enthalten schon alles.
+- Gezählt wird ab der Einrichtung. Monate davor – und der Monat, in dem der Zähler
+  startet – bleiben beim Stromtarif.
+
 ## Vorzeichen der Netzleistung
 
 Zeigt dein Netz-Sensor **positive Werte beim Bezug** (Strom aus dem Netz), bleibt

@@ -203,7 +203,15 @@
   <li>Als aktueller Tarif gilt der Eintrag mit dem <b>spätesten</b> Datum.</li>
   <li>Dieser Preis wird für Netzbezug-Ladungen verwendet – auch beim automatischen Import.</li>
 </ul>
-<div class="hb-warn"><b>Der Tarif wirkt nur auf neue Ladungen.</b> Bereits gespeicherte Vorgänge behalten ihren Preis; ein Tarifwechsel rechnet die Vergangenheit nicht um. Fehlt ein Tarif ganz, werden beim Import <b>30 ct/kWh</b> angesetzt.</div>
+<div class="hb-warn"><b>Was ein Tarifeintrag umrechnet:</b> Importierte Netzbezug-Monatssummen werden mit dem Tarif ihres Monats neu bewertet, sobald ein Tarif angelegt oder gelöscht wird. Von Hand erfasste Ladungen und Monate mit dynamischem Tarif (unten) behalten ihren Preis. Fehlt ein Tarif ganz, werden beim Import <b>30 ct/kWh</b> angesetzt.</div>
+<h3 id="dynamisch">Dynamischer Stromtarif (Tibber, aWATTar, Octopus …)</h3>
+<p>Bei einem Tarif mit wechselndem Preis (stündlich bzw. viertelstündlich) passt kein fester Wert. Dafür gibt es den optionalen Sensor <b>„Kosten Netz ins Auto (€)“</b>: ein fortlaufender Zähler in Home Assistant, der zu jeder geladenen kWh aus dem Netz den Preis <b>in diesem Moment</b> addiert. Die <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen" target="_blank" rel="noopener">Vorlage</a> <code>ev_netzkosten.yaml</code> legt ihn als <code>sensor.ev_ladung_netz_kosten</code> an.</p>
+<div class="hb-formel"><span class="lbl">Preis des Monats</span>Preis [ct/kWh] = Kosten des Monats [€] ÷ Netz ins Auto [kWh] × 100</div>
+<ul>
+  <li>Die Monatssumme bekommt die Notiz <b>„dynamischer Tarif“</b> und die tatsächlichen Kosten als Gesamtpreis.</li>
+  <li>Fehlt der Kostenwert für einen Monat (Sensor erst mitten im Monat angelegt, Lücke) oder ergibt er einen unplausiblen Preis (über 150 ct/kWh oder nicht über 0), gilt der Stromtarif dieser Seite – das Importprotokoll nennt den Grund.</li>
+  <li>Der Stromtarif bleibt trotzdem sinnvoll: für Monate vor dem Kostenzähler, den Preisvorschlag bei Ladungen von Hand und die Simulation.</li>
+</ul>
 
 <h2 id="steuer">Steuer &amp; THG <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„💶 KFZ-Steuer &amp; THG-Quote"</b></p>
@@ -318,8 +326,9 @@
 <ul>
   <li><b>Einstellungen sichern / laden</b> – Export als JSON, wahlweise mit oder ohne Zugangsdaten.</li>
   <li><b>Lade-Anbieter</b> – eigene Anbieter anlegen, Grünstrom markieren.</li>
-  <li><b>Sensoren</b> – fünf Zuordnungen: Kilometerstand, PV ins Auto, Netz ins Auto, {{ kf.name }}preis 1 und 2. Je Sensor eine Entity-ID (HA, PostgreSQL, Prometheus) bzw. ein Friendly Name (InfluxDB).</li>
+  <li><b>Sensoren</b> – Kilometerstand, PV ins Auto, Netz ins Auto, optional die Kosten Netz ins Auto (dynamischer Tarif), {{ kf.name }}preis 1 und 2 sowie der Batteriestand. Je Sensor eine Entity-ID (HA, PostgreSQL, Prometheus) bzw. ein Friendly Name (InfluxDB).</li>
   <li><b>Keine Zähler für „PV ins Auto“ / „Netz ins Auto“?</b> Liefert die Wallbox nur die gesamte Ladeleistung, erzeugen die <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen" target="_blank" rel="noopener">Vorlagen</a> beide Zähler – als Node-RED-Flow (<a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen/node-red" target="_blank" rel="noopener">Import-Anleitung</a> – importiert wird nur <code>ev_pv_anteil_flow.json</code>, nicht die <code>.js</code>-Dateien) oder als Home-Assistant-Paket. Regel: Haus zuerst, das Auto bekommt den Überschuss (Netz ins Auto = min(Netzbezug, Wallbox-Leistung), der Rest ist PV; ein Hausakku zählt als PV). Danach <code>sensor.ev_ladung_pv</code> und <code>sensor.ev_ladung_netz</code> hier eintragen.</li>
+  <li><b>Dynamischer Stromtarif?</b> Optional den Kostenzähler <code>sensor.ev_ladung_netz_kosten</code> unter „Kosten Netz ins Auto (€)“ eintragen – siehe <a href="#dynamisch">Dynamischer Stromtarif</a>.</li>
 </ul>
 <div class="hb-info"><b>Token bleiben gespeichert:</b> Lässt du das Token- oder Passwortfeld leer, wird der gespeicherte Wert beibehalten und nicht überschrieben.</div>
 

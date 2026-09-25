@@ -59,6 +59,35 @@ def netzpreis_monat(monat: str, tarife: list) -> float:
     return round(summe / tage, 2)
 
 
+# Dynamischer Tarif: Kommt zum Netz-kWh-Zaehler ein Kostenzaehler (EUR) aus HA, zaehlen
+# die tatsaechlichen Kosten des Monats. Die Notiz der Monatssumme bekommt diesen Zusatz –
+# so bleibt sichtbar, woher der Preis stammt, und die Neubewertung laesst sie in Ruhe.
+DYNAMISCH_NOTIZ = "dynamischer Tarif"
+# Ein Monatsmittel ausserhalb dieses Bereichs (ct/kWh) passt nicht zu den kWh – etwa weil
+# der Kostenzaehler einen anderen Zeitraum erfasst hat. Dann gilt der feste Tarif.
+DYNAMISCH_MIN_CT = 0.0
+DYNAMISCH_MAX_CT = 150.0
+
+
+def heimpreis(kwh: float, kosten: float | None, tarif_ct: float) -> tuple:
+    """Preis der Netz-Monatssumme: (ct/kWh, Gesamtpreis €, Hinweis).
+
+    Mit plausiblen Kosten aus dem Kostenzaehler gilt deren Mittel (Hinweis
+    DYNAMISCH_NOTIZ), sonst der Tarif des Monats (Hinweis None bzw. der Grund,
+    warum die Kosten nicht passten)."""
+    if kosten is not None and kwh > 0:
+        ct = kosten / kwh * 100
+        if DYNAMISCH_MIN_CT < ct <= DYNAMISCH_MAX_CT:
+            return round(ct, 2), round(kosten, 2), DYNAMISCH_NOTIZ
+        return (tarif_ct, round(kwh * tarif_ct / 100, 2),
+                f"Kosten {kosten:.2f} € ergeben {ct:.1f} ct/kWh – unplausibel, fester Tarif")
+    return tarif_ct, round(kwh * tarif_ct / 100, 2), None
+
+
+def ist_dynamisch(ladung: dict) -> bool:
+    return DYNAMISCH_NOTIZ in (ladung.get("notiz") or "")
+
+
 def ist_heim_import(ladung: dict) -> bool:
     """Monatssumme aus dem HA-Import (Zeitraum-Import oder naechtlicher Abruf)?"""
     notiz = ladung.get("notiz") or ""
@@ -68,11 +97,12 @@ def ist_heim_import(ladung: dict) -> bool:
 def heimladungen_neu_bewerten() -> int:
     """Bewertet importierte Netzbezug-Monatssummen mit dem Tarif ihres Monats neu –
     noetig, wenn ein Stromtarif nachgetragen, geaendert oder geloescht wird.
-    Von Hand erfasste Ladevorgaenge bleiben unberuehrt. Rueckgabe: Anzahl geaendert."""
+    Von Hand erfasste und mit dem dynamischen Tarif bewertete Ladevorgaenge bleiben
+    unberuehrt. Rueckgabe: Anzahl geaendert."""
     tarife = db.get_stromtarife()
     geaendert = 0
     for l in db.get_ladevorgaenge(limit=100000):
-        if l["anbieter"] != NETZBEZUG or not ist_heim_import(l):
+        if l["anbieter"] != NETZBEZUG or not ist_heim_import(l) or ist_dynamisch(l):
             continue
         ct = netzpreis_monat(l["datum"][:7], tarife)
         if abs((l["preis_kwh"] or 0) - ct) > 0.001:

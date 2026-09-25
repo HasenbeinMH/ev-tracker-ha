@@ -308,7 +308,7 @@ def einrichtung(request: Request):
     sensoren = [(label.replace("Benzinpreis", preis), *_sensor_stand(ha, h, f, influx))
                 for h, f, label in SENSOR_FELDER]
     # Zweiter Preis-Sensor und Akkustand sind optional – leer ist dort kein Mangel
-    optional = {"ha_tankerkoenig_2", "ha_ev_battery"}
+    optional = {"ha_tankerkoenig_2", "ha_ev_battery", "ha_wallbox_cost"}
     if simulation:              # ohne E-Auto gibt es keine Ladezaehler
         optional |= {"ha_pv_production", "ha_wallbox_energy"}
     sensoren = [(l, "optional" if st == "fehlt" and h in optional else st, t)
@@ -714,6 +714,8 @@ def _monat_liste(von_y, von_m, bis_y, bis_m):
 
 
 HA_API = "HA-API"
+# Monatswerte des Imports; "kosten" (EUR fuer "Netz ins Auto") ist optional
+IMPORT_WERTE = ("km", "pv", "wallbox", "kosten", "benzin")
 
 
 def _fetch_monat(client, quelle, cfg, year, month):
@@ -749,6 +751,11 @@ def _fetch_monat(client, quelle, cfg, year, month):
             if key == "wallbox":
                 return erster_wert(ha_ids("ha_wallbox_energy"),
                                    lambda e: client.get_month_delta(e, year, month))
+            if key == "kosten":
+                # Nur mit Stand vor dem Monat – sonst passen Kosten und kWh nicht zusammen
+                return erster_wert(ha_ids("ha_wallbox_cost"),
+                                   lambda e: client.get_month_value_stats(
+                                       e, year, month, "delta", braucht_vorwert=True))
             if key == "benzin":
                 ids = ha_ids("ha_tankerkoenig") + ha_ids("ha_tankerkoenig_2")
                 return client.get_month_avg_multi(ids, year, month) if ids else None
@@ -756,7 +763,11 @@ def _fetch_monat(client, quelle, cfg, year, month):
             return None
         return None
 
-    for key in ("km", "pv", "wallbox", "benzin"):
+    for key in IMPORT_WERTE:
+        if key == "kosten" and not (cfg.get("ha_wallbox_cost") or cfg.get("fn_wallbox_cost")):
+            out[key] = None             # optional – ohne Sensor kein Hinweis
+            out["_quelle"][key] = None
+            continue
         val = quelle.monatswert(key, year, month) if quelle else None
         herkunft = quelle.name if val is not None else None
         if val is None:
@@ -800,6 +811,7 @@ def import_page(request: Request):
     now = datetime.now()
     return render(request, "import.html", cfg=cfg, aktiv="import",
                   quelle_name=datenquellen.QUELLEN.get(cfg.get("datasource")),
+                  mit_kosten=bool(cfg.get("ha_wallbox_cost") or cfg.get("fn_wallbox_cost")),
                   mail=db.get_mail_settings(),
                   jahre=list(range(2023, now.year + 2)), jahr=now.year,
                   monat=now.month)
@@ -858,17 +870,26 @@ def import_apply(payload: dict):
         if benzin is not None and benzin > 0:
             db.set_benzinpreis(monat, round(benzin, 3))
             teile.append(mit_quelle(f"{benzin:.3f} €/L", "benzin"))
+        kosten = parse_de(str(r.get("kosten") or ""))
         for key, anbieter, ct in [("pv", "Privat – PV", pv_ct),
                                   ("wallbox", "Privat – Netzbezug", netz_ct)]:
             kwh = parse_de(str(r.get(key) or ""))
             if kwh is not None and kwh > 0:
                 if db.ladevorgang_exists(f"{monat}-01", kwh, anbieter):
                     teile.append(f"{key} übersprungen (Duplikat)")
-                else:
-                    db.add_ladevorgang(f"{monat}-01", kwh, ct,
-                                       round(kwh * ct / 100, 2), anbieter,
-                                       11, "AC", f"Import {monat}")
-                    teile.append(mit_quelle(f"{key} {kwh:.1f} kWh", key))
+                    continue
+                notiz, preis_text = f"Import {monat}", ""
+                gesamt = round(kwh * ct / 100, 2)
+                if key == "wallbox":
+                    ct, gesamt, hinweis = berechnung.heimpreis(kwh, kosten, ct)
+                    if hinweis == berechnung.DYNAMISCH_NOTIZ:
+                        notiz += f" · {hinweis}"
+                        preis_text = mit_quelle(f", {gesamt:.2f} € = {ct:.1f} ct/kWh", "kosten")
+                    elif hinweis:
+                        preis_text = f" ({hinweis})"
+                db.add_ladevorgang(f"{monat}-01", kwh, ct, gesamt, anbieter,
+                                   11, "AC", notiz)
+                teile.append(mit_quelle(f"{key} {kwh:.1f} kWh", key) + preis_text)
         if teile:
             log.append(f"{monat}: " + ", ".join(teile))
     kopf = f"Zeitraum-Import übernommen ({len(log)} Monat(e))"
@@ -1276,11 +1297,13 @@ def _rohwerte_text(werte: dict) -> str:
     """Gelesene Sensorwerte lesbar machen – '—' fuer nicht gelieferte Werte,
     dahinter in Klammern die Herkunft (Datenbank oder HA-API)."""
     namen = [("km", "km"), ("pv", "PV kWh"), ("wallbox", "Netz kWh"),
-             ("benzin", "€/L")]
+             ("kosten", "Netz €"), ("benzin", "€/L")]
     herkunft = werte.get("_quelle") or {}
     grund = werte.get("_grund") or {}
     teile = []
     for key, label in namen:
+        if key == "kosten" and werte.get(key) is None and key not in grund:
+            continue                    # kein Kostenzaehler eingetragen
         if werte.get(key) is not None:
             teile.append(f"{label}={werte[key]} ({herkunft.get(key)})")
         else:
@@ -1355,11 +1378,19 @@ def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> lis
                                   ("wallbox", "Privat – Netzbezug", netz_ct)]:
             kwh = werte.get(key)
             if kwh:
+                notiz, preis_text = db.AUTO_NOTIZ, ""
+                gesamt = round(kwh * ct / 100, 2)
+                if key == "wallbox":
+                    ct, gesamt, hinweis = berechnung.heimpreis(kwh, werte.get("kosten"), ct)
+                    if hinweis == berechnung.DYNAMISCH_NOTIZ:
+                        notiz += f" · {hinweis}"
+                        preis_text = f", {gesamt:.2f} € = {ct:.1f} ct/kWh"
+                    elif hinweis:
+                        preis_text = f", {hinweis}"
                 ergebnis = db.upsert_auto_ladevorgang(
-                    f"{schluessel}-01", round(kwh, 3), ct,
-                    round(kwh * ct / 100, 2), anbieter)
+                    f"{schluessel}-01", round(kwh, 3), ct, gesamt, anbieter, notiz)
                 if ergebnis != "unveraendert":
-                    teile.append(f"{key} {kwh:.1f} kWh ({ergebnis}, {herkunft[key]})")
+                    teile.append(f"{key} {kwh:.1f} kWh ({ergebnis}, {herkunft[key]}{preis_text})")
         zeile = ", ".join(teile) if teile else "keine neuen Werte"
         _log_import([f"{schluessel}: übernommen {zeile}"])
         protokoll.append(f"{schluessel}: {zeile}")
@@ -1704,6 +1735,8 @@ SENSOR_FELDER = [
     ("ha_odometer",       "fn_odometer",       "Kilometerstand (km)"),
     ("ha_pv_production",  "fn_pv_production",  "PV ins Auto geladen (kWh)"),
     ("ha_wallbox_energy", "fn_wallbox_energy", "Netz ins Auto geladen (kWh)"),
+    # Optional, fuer dynamische Stromtarife (Vorlage vorlagen/homeassistant/ev_netzkosten.yaml)
+    ("ha_wallbox_cost",   "fn_wallbox_cost",   "Kosten Netz ins Auto (€, dynamischer Tarif)"),
     ("ha_tankerkoenig",   "fn_tankerkoenig",   "Benzinpreis Sensor 1 (€/L)"),
     ("ha_tankerkoenig_2", "fn_tankerkoenig_2", "Benzinpreis Sensor 2 (€/L)"),
     # Fuer Ladeerkennung und Verbrauch aus dem Akkustand

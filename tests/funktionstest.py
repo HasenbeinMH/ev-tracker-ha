@@ -567,6 +567,79 @@ check("HA-Import", "Auto-Import ohne Datenquelle -> Meldung, kein Absturz", r.st
 r = c.get("/api/import/log")
 check("HA-Import", "Importprotokoll lesbar", r.status_code == 200 and r.json()["zeilen"])
 
+# ── 17. Dynamischer Stromtarif (Kostenzaehler "Netz ins Auto") ─────────────
+ct, gesamt, hinweis = berechnung.heimpreis(100, 23.4, 30.0)
+check("Dyn. Tarif", "Kosten ÷ kWh = Monatspreis", ct == 23.4 and gesamt == 23.4
+      and hinweis == berechnung.DYNAMISCH_NOTIZ, f"{ct} {gesamt} {hinweis}")
+ct, gesamt, hinweis = berechnung.heimpreis(100, None, 30.0)
+check("Dyn. Tarif", "Ohne Kosten -> Tarif", ct == 30.0 and gesamt == 30.0 and hinweis is None)
+ct, gesamt, hinweis = berechnung.heimpreis(100, 400.0, 30.0)
+check("Dyn. Tarif", "Unplausible Kosten (400 ct/kWh) -> Tarif mit Hinweis",
+      ct == 30.0 and hinweis and "unplausibel" in hinweis, str(hinweis))
+
+
+def netz_ladung(monat):
+    return next((l for l in db.get_ladevorgaenge(limit=100000)
+                 if l["datum"] == monat + "-01" and l["anbieter"] == berechnung.NETZBEZUG), None)
+
+
+tarif_2027 = berechnung.netzpreis_monat("2027-01", db.get_stromtarife())
+r = c.post("/api/import/apply", json={"rows": [
+    {"monat": "2027-01", "wallbox": "120", "kosten": "26,40"},
+    {"monat": "2027-02", "wallbox": "100", "kosten": "999"},
+    {"monat": "2027-03", "wallbox": "80"}]})
+l1, l2, l3 = netz_ladung("2027-01"), netz_ladung("2027-02"), netz_ladung("2027-03")
+check("Dyn. Tarif", "Import mit Kosten: 26,40 € / 120 kWh = 22 ct, Notiz",
+      l1 and nah(l1["preis_kwh"], 22.0) and nah(l1["gesamtpreis"], 26.4)
+      and berechnung.ist_dynamisch(l1), str(l1))
+check("Dyn. Tarif", "Import mit unplausiblen Kosten -> Stromtarif",
+      l2 and nah(l2["preis_kwh"], tarif_2027) and not berechnung.ist_dynamisch(l2), str(l2))
+check("Dyn. Tarif", "Import ohne Kosten -> Stromtarif",
+      l3 and nah(l3["preis_kwh"], tarif_2027), str(l3))
+check("Dyn. Tarif", "Protokoll nennt den Preis", any("22.0 ct/kWh" in z for z in r.json()["log"]),
+      str(r.json()["log"]))
+c.post("/stromtarif", data={"gueltig_ab": "2027-01-01", "preis": "40", "name": "Test 27"},
+       follow_redirects=False)
+l1, l3 = netz_ladung("2027-01"), netz_ladung("2027-03")
+check("Dyn. Tarif", "Neuer Tarif: dynamischer Monat bleibt, fester wird neu bewertet",
+      nah(l1["preis_kwh"], 22.0) and nah(l3["preis_kwh"], 40.0), f"{l1['preis_kwh']} / {l3['preis_kwh']}")
+
+# Naechtlicher Abruf mit Kostenzaehler (Abruf nachgestellt, ohne HA)
+_orig = (webapp._fetch_monat, webapp._ha_verbindung, webapp.HAClient)
+FAKE = {(2027, 4): {"wallbox": 50.0, "kosten": 12.5}, (2027, 5): {"wallbox": 60.0, "kosten": None}}
+webapp._ha_verbindung = lambda cfg: {"url": "http://x", "token": "t"}
+webapp.HAClient = lambda **k: object()
+webapp._fetch_monat = lambda client, quelle, cfg, y, m: {
+    "km": None, "pv": None, "benzin": None, **FAKE[(y, m)],
+    "_quelle": {k: "HA-API" for k in webapp.IMPORT_WERTE}, "_grund": {}}
+try:
+    webapp._auto_import([(2027, 4), (2027, 5)], quelle="test")
+    l4, l5 = netz_ladung("2027-04"), netz_ladung("2027-05")
+    check("Dyn. Tarif", "Auto-Import: 12,50 € / 50 kWh = 25 ct, dynamisch",
+          l4 and nah(l4["preis_kwh"], 25.0) and berechnung.ist_dynamisch(l4)
+          and l4["notiz"].startswith(db.AUTO_NOTIZ), str(l4))
+    check("Dyn. Tarif", "Auto-Import ohne Kosten -> Stromtarif",
+          l5 and nah(l5["preis_kwh"], 40.0) and not berechnung.ist_dynamisch(l5), str(l5))
+    FAKE[(2027, 4)]["kosten"] = None        # Kostenwert faellt spaeter weg -> zurueck zum Tarif
+    webapp._auto_import([(2027, 4)], quelle="test")
+    l4 = netz_ladung("2027-04")
+    check("Dyn. Tarif", "Auto-Import aktualisiert Preis und Notiz derselben Zeile",
+          nah(l4["preis_kwh"], 40.0) and not berechnung.ist_dynamisch(l4)
+          and sum(1 for l in db.get_ladevorgaenge(limit=100000) if l["datum"] == "2027-04-01") == 1,
+          str(l4))
+finally:
+    webapp._fetch_monat, webapp._ha_verbindung, webapp.HAClient = _orig
+
+db.save_ha_settings({"ha_wallbox_cost": "sensor.ev_ladung_netz_kosten"})
+r = c.get("/import")
+check("Dyn. Tarif", "Importseite zeigt Spalte Netz € mit Kostenzaehler",
+      r.status_code == 200 and "Netz €" in r.text)
+r = c.get("/einstellungen")
+check("Dyn. Tarif", "Einstellungen: Zeile Kosten Netz ins Auto",
+      "ha_wallbox_cost" in r.text and "sensor.ev_ladung_netz_kosten" in r.text)
+r = c.get("/einrichtung")
+check("Dyn. Tarif", "Einrichtung laedt", r.status_code == 200)
+
 # ── Ausgabe ────────────────────────────────────────────────────────────────
 ok_n = sum(1 for e in ERG if e[2])
 print(f"\n{ok_n}/{len(ERG)} Pruefungen bestanden\n")

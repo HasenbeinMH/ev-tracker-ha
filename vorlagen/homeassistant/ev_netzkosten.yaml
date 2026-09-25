@@ -1,0 +1,88 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  EV Tracker – Kosten „Netz ins Auto“ bei dynamischem Stromtarif
+#  (Home-Assistant-Paket, optional – zusätzlich zu einer der PV-Anteil-Vorlagen)
+#
+#  Zu jeder kWh, die aus dem Netz ins Auto geht, wird der Preis in diesem Moment
+#  addiert. Ergebnis:
+#    sensor.ev_ladung_netz_kosten  (EUR, fortlaufend)
+#      → im EV Tracker als „Kosten Netz ins Auto (€)“ eintragen
+#    sensor.ev_strompreis          (EUR/kWh) – der Preis, mit dem gerechnet wird
+#  Der EV Tracker rechnet daraus je Monat: Kosten ÷ kWh = dein tatsächlicher Preis.
+#
+#  Für Tibber, aWATTar, Octopus, EPEX Spot, Nordpool usw. – jeder Sensor mit dem
+#  aktuellen Strompreis passt (EUR/kWh, ct/kWh oder EUR/MWh – wird erkannt).
+#  Funktioniert auch mit dem Node-RED-Flow und mit eigenen Netz-Zählern.
+#
+#  EINRICHTUNG
+#  1. Diese Datei nach /config/packages/ev_netzkosten.yaml kopieren (packages wie
+#     bei ev_pv_anteil.yaml in configuration.yaml einbinden).
+#  2. Suchen & Ersetzen (alle Vorkommen):
+#         sensor.DEIN_STROMPREIS  → Sensor mit dem aktuellen Strompreis
+#     Und falls dein kWh-Zähler „Netz ins Auto“ nicht aus den Vorlagen stammt:
+#         sensor.ev_ladung_netz   → dein Zähler (kWh oder Wh)
+#  3. Unten bei „EINSTELLUNGEN“ prüfen, ob der Preis schon alles enthält.
+#  4. Einstellungen → System → Neu starten.
+#
+#  Gezählt wird ab jetzt – frühere Monate bewertet der EV Tracker weiter mit dem
+#  Stromtarif. Der erste volle Monat mit Kostenzähler ist der erste mit echtem Preis.
+# ═══════════════════════════════════════════════════════════════════════════
+
+template:
+  # Aktueller Preis je kWh inklusive allem, was du pro kWh zahlst. Behält den letzten
+  # Wert, wenn der Preissensor kurz nicht verfügbar ist.
+  - trigger:
+      - platform: state
+        entity_id: sensor.DEIN_STROMPREIS
+        not_to: ["unavailable", "unknown"]
+      - platform: time_pattern
+        minutes: "/15"
+    sensor:
+      - name: EV Strompreis
+        unique_id: ev_tracker_strompreis
+        unit_of_measurement: EUR/kWh
+        icon: mdi:cash-clock
+        state: >
+          {# ── EINSTELLUNGEN ────────────────────────────────────────────────── #}
+          {# Enthält der Sensor schon den Endpreis (Tibber, Octopus, aWATTar mit     #}
+          {# Endkundenpreis): beides so lassen. Nur Börsenpreis (EPEX Spot,          #}
+          {# Nordpool): aufschlag_ct = Netzentgelt + Abgaben + Marge je kWh (netto)   #}
+          {# und faktor = 1.19 für die MwSt.                                          #}
+          {% set aufschlag_ct = 0 %}
+          {% set faktor = 1.0 %}
+          {# ────────────────────────────────────────────────────────────────── #}
+          {% set p = 'sensor.DEIN_STROMPREIS' %}
+          {% if states(p) | is_number %}
+            {% set v = states(p) | float %}
+            {% set u = (state_attr(p, 'unit_of_measurement') or '') | lower %}
+            {% if 'ct' in u or 'cent' in u or u.startswith('c/') %}
+              {% set v = v / 100 %}
+            {% elif 'mwh' in u %}
+              {% set v = v / 1000 %}
+            {% endif %}
+            {{ ((v + aufschlag_ct / 100) * faktor) | round(5) }}
+          {% else %}
+            {{ this.state }}
+          {% endif %}
+
+  # Jeder Anstieg des Netz-Zählers × aktueller Preis. Bei negativem Börsenpreis kann
+  # der Zähler auch sinken (deshalb state_class total, nicht total_increasing).
+  - trigger:
+      - platform: state
+        entity_id: sensor.ev_ladung_netz
+        not_from: ["unavailable", "unknown"]
+        not_to: ["unavailable", "unknown"]
+    sensor:
+      - name: EV Ladung Netz Kosten
+        unique_id: ev_tracker_ladung_netz_kosten
+        unit_of_measurement: EUR
+        device_class: monetary
+        state_class: total
+        icon: mdi:cash-plus
+        state: >
+          {# ── EINSTELLUNGEN ── Preis (ct/kWh), solange noch keiner bekannt ist #}
+          {% set ersatz_ct = 30 %}
+          {% set f = 0.001 if trigger.to_state.attributes.unit_of_measurement == 'Wh' else 1 %}
+          {% set d = (trigger.to_state.state | float(0) - trigger.from_state.state | float(0)) * f %}
+          {% set preis = states('sensor.ev_strompreis') | float(ersatz_ct / 100) %}
+          {% set alt = this.state | float(0) if this.state | is_number else 0 %}
+          {{ (alt + (d * preis if 0 < d <= 20 else 0)) | round(5) }}

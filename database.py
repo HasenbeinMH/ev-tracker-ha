@@ -394,33 +394,36 @@ def get_lade_gesamt():
 AUTO_NOTIZ = "Auto-Import HA"
 
 
-def upsert_auto_ladevorgang(datum, menge_kwh, preis_kwh, gesamtpreis, anbieter):
+def upsert_auto_ladevorgang(datum, menge_kwh, preis_kwh, gesamtpreis, anbieter,
+                            notiz=AUTO_NOTIZ):
     """Legt einen automatisch importierten Ladevorgang an oder aktualisiert ihn.
 
-    Erkennungsmerkmal ist Datum + Anbieter + die Notiz `AUTO_NOTIZ`; manuell
+    Erkennungsmerkmal ist Datum + Anbieter + die Notiz `AUTO_NOTIZ` (die `notiz`
+    beginnt immer damit, z.B. mit Zusatz fuer den dynamischen Tarif); manuell
     erfasste Vorgaenge bleiben davon unberuehrt.
     Rueckgabe: "neu", "aktualisiert" oder "unveraendert".
     """
     with closing(get_connection()) as conn:
         row = conn.execute(
-            """SELECT id, menge_kwh, preis_kwh FROM ladevorgang
+            """SELECT id, menge_kwh, preis_kwh, notiz FROM ladevorgang
                WHERE datum=? AND anbieter=? AND notiz LIKE ?""",
             (datum, anbieter, AUTO_NOTIZ + "%")).fetchone()
         if row:
             if (abs((row["menge_kwh"] or 0) - menge_kwh) < 0.01
-                    and abs((row["preis_kwh"] or 0) - (preis_kwh or 0)) < 0.001):
+                    and abs((row["preis_kwh"] or 0) - (preis_kwh or 0)) < 0.001
+                    and row["notiz"] == notiz):
                 return "unveraendert"
             conn.execute(
                 """UPDATE ladevorgang
-                   SET menge_kwh=?, preis_kwh=?, gesamtpreis=? WHERE id=?""",
-                (menge_kwh, preis_kwh, gesamtpreis, row["id"]))
+                   SET menge_kwh=?, preis_kwh=?, gesamtpreis=?, notiz=? WHERE id=?""",
+                (menge_kwh, preis_kwh, gesamtpreis, notiz, row["id"]))
             conn.commit()
             return "aktualisiert"
         conn.execute(
             """INSERT INTO ladevorgang (datum, menge_kwh, preis_kwh, gesamtpreis,
                                         anbieter, ladeleistung_kw, ladetyp, notiz)
                VALUES (?,?,?,?,?,?,?,?)""",
-            (datum, menge_kwh, preis_kwh, gesamtpreis, anbieter, 11, "AC", AUTO_NOTIZ))
+            (datum, menge_kwh, preis_kwh, gesamtpreis, anbieter, 11, "AC", notiz))
         conn.commit()
         return "neu"
 
@@ -748,6 +751,8 @@ HA_ENTITY_DEFAULTS = {
     "ha_grid_consumption":       "sensor.solaredge_energy_consumption",
     "ha_grid_export":            "sensor.solaredge_energy_export",
     "ha_wallbox_energy":         "sensor.wallbox_energy_charged",
+    # Optional: fortlaufender Kostenzaehler (EUR) fuer "Netz ins Auto" – dynamischer Tarif
+    "ha_wallbox_cost":           "",
     "ha_tankerkoenig":           "sensor.tankerkoenig_e10_preis",
     "ha_tankerkoenig_2":         "",
     # Friendly Names für InfluxDB-Abfragen
@@ -756,6 +761,7 @@ HA_ENTITY_DEFAULTS = {
     "fn_grid_consumption":       "",
     "fn_grid_export":            "",
     "fn_wallbox_energy":         "",
+    "fn_wallbox_cost":           "",
     "fn_tankerkoenig":           "",
     "fn_tankerkoenig_2":         "",
     "fn_ev_battery":             "",
@@ -768,6 +774,7 @@ HA_ENTITY_DEFAULTS = {
     "influx_measurement_km":     "km",
     "influx_measurement_kwh":    "kWh",
     "influx_measurement_eur_l":  "EUR/L",
+    "influx_measurement_eur":    "EUR",
     "influx_measurement_prozent": "%",
     # Tag, ueber den InfluxDB 1.x/2.x den Sensor findet (friendly_name oder entity_id)
     "influx_tag":                "friendly_name",

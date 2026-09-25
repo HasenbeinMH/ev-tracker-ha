@@ -215,6 +215,9 @@
     <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen" target="_blank" rel="noopener">Vorlagen</a> (<a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen/node-red" target="_blank" rel="noopener">Node-RED</a> oder HA-Paket)
     berechnen sie aus Netz- und Wallbox-Leistung – dann <code>sensor.ev_ladung_pv</code> und
     <code>sensor.ev_ladung_netz</code> eintragen.
+    <strong>Dynamischer Stromtarif?</strong> Optional „Kosten Netz ins Auto (€)“ eintragen – einen
+    fortlaufenden Kostenzähler, z.B. <code>sensor.ev_ladung_netz_kosten</code> aus der Vorlage
+    <code>ev_netzkosten.yaml</code>. Dann zählen die tatsächlichen Kosten statt des Stromtarifs.
     <strong>Einheit:</strong> kWh-Zähler in <b>kWh</b> anlegen, nicht in Wh – die App rechnet
     nicht um, Wh-Werte wären 1000-fach zu hoch.
     <strong>Umbenannter Sensor?</strong> Mehrere Namen mit <code>|</code> trennen, alten zuerst –
@@ -254,7 +257,7 @@
   <details class="erweitert">
   <summary>Erweitert: InfluxDB-Measurements</summary>
   <p class="hint">Füllt die <b>Sensorsuche</b> beim „Übernehmen“ automatisch aus – nur ändern, wenn du
-    weißt warum. HA schreibt je Einheit ein Measurement (km, kWh, EUR/L, %) mit dem Feld „value“;
+    weißt warum. HA schreibt je Einheit ein Measurement (km, kWh, EUR/L, EUR, %) mit dem Feld „value“;
     alle Sensoren einer Einheit liegen darin und werden über den Tag unterschieden:
     <code>friendly_name</code> (Standard) oder <code>entity_id</code> – dann in der Spalte
     Friendly Name die Entity-ID <em>ohne</em> „sensor.“ eintragen.</p>
@@ -270,6 +273,9 @@
     </label>
     <label class="feld">Meas. EUR/L
       <input name="influx_measurement_eur_l" value="{{ ha.influx_measurement_eur_l }}" style="width:70px">
+    </label>
+    <label class="feld">Meas. EUR
+      <input name="influx_measurement_eur" value="{{ ha.influx_measurement_eur }}" style="width:70px">
     </label>
     <label class="feld">Meas. %
       <input name="influx_measurement_prozent" value="{{ ha.influx_measurement_prozent }}" style="width:70px">
@@ -434,6 +440,8 @@ function vorschlagZeile(treffer, vergeben) {
     kandidaten = /pv|solar/.test(text) ? ["ha_pv_production", "ha_wallbox_energy"]
                                        : ["ha_wallbox_energy", "ha_pv_production"];
   else if (e.includes("km") || e.includes("distance")) kandidaten = ["ha_odometer"];
+  else if (/^(eur|€)$/.test(e.trim()) || (e.includes("monetary") && !e.includes("/")))
+    kandidaten = ["ha_wallbox_cost"];     // Kostenzaehler (dynamischer Tarif), nicht €/L
   else if (e.includes("eur") || e.includes("€") || e.includes("monetary"))
     kandidaten = ["ha_tankerkoenig", "ha_tankerkoenig_2"];
   else if (e.includes("%") || e.includes("percent") || e.includes("battery")) kandidaten = ["ha_ev_battery"];
@@ -510,7 +518,8 @@ function dbEintragen(i) {
   // InfluxDB: das Measurement des Treffers fuer diese Einheit uebernehmen
   const MEAS_FELD = {ha_odometer: "influx_measurement_km", ha_pv_production: "influx_measurement_kwh",
                      ha_wallbox_energy: "influx_measurement_kwh", ha_tankerkoenig: "influx_measurement_eur_l",
-                     ha_tankerkoenig_2: "influx_measurement_eur_l", ha_ev_battery: "influx_measurement_prozent"};
+                     ha_tankerkoenig_2: "influx_measurement_eur_l", ha_ev_battery: "influx_measurement_prozent",
+                     ha_wallbox_cost: "influx_measurement_eur"};
   const measEingabe = dbSpalte === "name" && document.querySelector(`[name="${MEAS_FELD[haKey]}"]`);
   if (measEingabe && dbTreffer[i].einheit && measEingabe.value !== dbTreffer[i].einheit) {
     measEingabe.value = dbTreffer[i].einheit;
