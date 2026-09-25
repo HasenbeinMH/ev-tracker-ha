@@ -178,6 +178,10 @@ und Lizenz in der Tabelle unten. Keine Pressefotos oder Bilder ohne klare Lizenz
 | [`skoda-enyaq-gruen.jpg`](skoda-enyaq-gruen.jpg) | Škoda Enyaq, Grün | [Škoda Enyaq IMG 1190](https://commons.wikimedia.org/wiki/File:%C5%A0koda_Enyaq_IMG_1190.jpg) von Alexander-93, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
 | [`tesla-model-3-weiss.jpg`](tesla-model-3-weiss.jpg) | Tesla Model 3, Weiß | [Tesla Model 3 (2023) IMG 9488 (cropped)](https://commons.wikimedia.org/wiki/File:Tesla_Model_3_(2023)_IMG_9488_(cropped).jpg) von Alexander-93, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
 | [`tesla-model-y-weiss.jpg`](tesla-model-y-weiss.jpg) | Tesla Model Y, Weiß | [Tesla Model Y 2025 at Santana Row dllu 02](https://commons.wikimedia.org/wiki/File:Tesla_Model_Y_2025_at_Santana_Row_dllu_02.jpg) von Dllu, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`vw-id-buzz-orange.jpg`](vw-id-buzz-orange.jpg) | VW ID. Buzz, Orange-Weiß | [Volkswagen ID. Buzz 1X7A6264](https://commons.wikimedia.org/wiki/File:Volkswagen_ID._Buzz_1X7A6264.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`vw-id3-weiss.jpg`](vw-id3-weiss.jpg) | VW ID.3, Weiß | [2020 Volkswagen ID.3 1st Front](https://commons.wikimedia.org/wiki/File:2020_Volkswagen_ID.3_1st_Front.jpg) von Vauxford, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`vw-id4-silber.jpg`](vw-id4-silber.jpg) | VW ID.4, Silber | [Volkswagen ID.5 GTX 1X7A0318](https://commons.wikimedia.org/wiki/File:Volkswagen_ID.5_GTX_1X7A0318.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
+| [`vw-id7-silber.jpg`](vw-id7-silber.jpg) | VW ID.7, Silber | [Volkswagen ID.7 IAA 2023 1X7A0375](https://commons.wikimedia.org/wiki/File:Volkswagen_ID.7_IAA_2023_1X7A0375.jpg) von Alexander-93, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0), bearbeitet |
 
 **Alle Vorlagen** mit Urheber und Lizenz stehen in [CREDITS.md](CREDITS.md).
 

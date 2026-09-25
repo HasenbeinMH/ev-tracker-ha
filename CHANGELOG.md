@@ -3,6 +3,10 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.7.1] - 2026-09-25
+### Galerie: VW ID.3, ID.4, ID.7 und ID. Buzz
+- Vier weitere Fahrzeugbilder in der Galerie (VW ID.3, ID.4, ID.7, ID. Buzz) – jetzt 30 Bilder
+
 ## [2.7.0] - 2026-09-25
 ### Galerie der Fahrzeugbilder
 - Einstellungen → Fahrzeugbild: Galerie der mitgelieferten Bilder, ein Klick uebernimmt das Bild; Vorschaubilder werden verkleinert (etwa 8 KB statt 400 KB)

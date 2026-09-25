@@ -19,10 +19,18 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.7.0"
+VERSION = "2.7.1"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.7.1",
+        "datum": "2026-09-25",
+        "titel": "Galerie: VW ID.3, ID.4, ID.7 und ID. Buzz",
+        "aenderungen": [
+            "Vier weitere Fahrzeugbilder in der Galerie (VW ID.3, ID.4, ID.7, ID. Buzz) – jetzt 30 Bilder",
+        ],
+    },
     {
         "version": "2.7.0",
         "datum": "2026-09-25",
