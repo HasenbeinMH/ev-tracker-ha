@@ -1615,6 +1615,7 @@ def einstellungen(request: Request):
                   cfg=db.get_config(),
                   fahrzeug_name=db.get_einstellung_str("fahrzeug_name") or "",
                   kfz=db.get_einstellung("kfz_steuer_benziner") or 0.0,
+                  kraftstoffe=berechnung.KRAFTSTOFFE,
                   ha=ha_settings,
                   add_on_modus=IST_ADDON,
                   supervisor_aktiv=IST_ADDON

@@ -246,8 +246,9 @@ def get_config() -> dict:
         "co2_faktor_benzin":  float(m.get("co2_faktor_benzin") or 2.37),
         "co2_strommix":       float(m.get("co2_strommix") or 401.0),
         "ha_aktiv":           m.get("ha_aktiv") == "1",
-        # Vergleichsfahrzeug: "benzin" oder "diesel" (nur Beschriftung und CO2-Standard)
-        "kraftstoff":         m.get("kraftstoff") if m.get("kraftstoff") == "diesel" else "benzin",
+        # Vergleichsfahrzeug: "benzin", "diesel" oder "autogas" (nur Beschriftung und
+        # CO2-Standard; die Liste steht in berechnung.KRAFTSTOFFE)
+        "kraftstoff":         m.get("kraftstoff") or "benzin",
     }
 
 

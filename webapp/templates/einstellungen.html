@@ -11,8 +11,9 @@
     </label>
     <label class="feld">Vergleich mit
       <select name="kraftstoff">
-        <option value="benzin" {% if kf.art == "benzin" %}selected{% endif %}>Benziner</option>
-        <option value="diesel" {% if kf.art == "diesel" %}selected{% endif %}>Diesel</option>
+        {% for art, k in kraftstoffe.items() %}
+        <option value="{{ art }}" {% if kf.art == art %}selected{% endif %}>{{ k.fahrzeug }}</option>
+        {% endfor %}
       </select>
     </label>
     <label class="feld">{{ kf.fahrzeug }} L/100km

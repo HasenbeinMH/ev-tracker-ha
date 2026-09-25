@@ -265,7 +265,7 @@ def als_text(bericht: dict) -> str:
         f"Geladene Energie:   {fmt(d['kwh'], 1, 'kWh')} "
         f"in {d['ladevorgaenge']} Vorgaengen",
         f"Stromkosten:        {fmt(d['strom_kosten'], 2, 'EUR')}",
-        f"{(kf['fahrzeug'] + '-Vergleich:'):<19} {fmt(d['benzin_kosten'], 2, 'EUR')}",
+        f"{(kf['name'] + '-Vergleich:'):<19} {fmt(d['benzin_kosten'], 2, 'EUR')}",
         f"Ersparnis:          {fmt(d['ersparnis'], 2, 'EUR')}",
         f"THG-Ertrag:         {fmt(d['thg'], 2, 'EUR')}",
         f"CO2 gespart:        {fmt(d['co2'], 1, 'kg')}",

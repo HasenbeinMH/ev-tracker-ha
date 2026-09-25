@@ -6,7 +6,7 @@
 > Backups. Rückmeldungen und Fehlerberichte sind willkommen.
 
 Web-App zur Erfassung und Auswertung der Kosteneinsparungen eines Elektroautos
-gegenüber einem Benziner oder Diesel. Fahrzeugname und -bild sind in den Einstellungen frei wählbar –
+gegenüber einem Benziner, Diesel oder Autogas-Auto. Fahrzeugname und -bild sind in den Einstellungen frei wählbar –
 nicht auf ein bestimmtes Modell festgelegt.
 
 ![Dashboard des EV Trackers](https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-dashboard.png)
@@ -43,7 +43,7 @@ vorher in Home Assistant eingerichtet sein:
 
 | Was | Wozu | Hinweis |
 |-----|------|---------|
-| ⛽ **Tankerkönig-Integration** | Benzin- bzw. Dieselpreis für den Vergleich mit einem Verbrenner | Kostenlosen API-Key bei [Tankerkönig](https://creativecommons.tankerkoenig.de/) holen, Integration in HA einrichten und die Tankstelle(n) wählen, an der man sonst tanken würde. Bis zu zwei Preis-Sensoren (€/L) können eingetragen werden, es wird der Monatsdurchschnitt gebildet. |
+| ⛽ **Tankerkönig-Integration** | Benzin-, Diesel- bzw. Autogaspreis für den Vergleich mit einem Verbrenner | Kostenlosen API-Key bei [Tankerkönig](https://creativecommons.tankerkoenig.de/) holen, Integration in HA einrichten und die Tankstelle(n) wählen, an der man sonst tanken würde. Bis zu zwei Preis-Sensoren (€/L) können eingetragen werden, es wird der Monatsdurchschnitt gebildet. |
 | 🔌 **Geladene kWh aus dem Netz** | Stromkosten für das Laden zu Hause (Netzbezug) | Muss **außerhalb** des EV Trackers gezählt werden – z. B. durch den Energiezähler der Wallbox oder einen Zwischenzähler. Benötigt wird ein fortlaufender kWh-Zähler. Liefert die Wallbox nur die gesamte Ladeleistung: siehe [Vorlagen](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/README.md) unten. |
 | ☀️ **Geladene kWh aus der PV** | Anteil des Solarstroms am Laden (mit eigenem PV-Preis bewertet) | Ebenfalls **außerhalb** des Tools zu ermitteln, z. B. über die Wallbox-/PV-Steuerung (evcc, go-e, OpenWB …) oder einen Template-/Utility-Meter-Sensor. Fortlaufender oder täglich zurückgesetzter kWh-Zähler. Oder mit den [Vorlagen](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/README.md) aus Netz- und Wallbox-Leistung berechnen. |
 | 🚗 **Kilometerstand** | Gefahrene km pro Monat | Z. B. über die Fahrzeug-Integration des Herstellers |
@@ -70,10 +70,10 @@ Ladesäulen) werden dagegen direkt in der App erfasst.
 | Seite | Beschreibung |
 |-------|-------------|
 | 📊 Dashboard | Gesamtübersicht, Kennzahlen, alle Charts |
-| 🚗 Fahrten | km erfassen, Benzin-/Diesel-Äquivalent, Verbrauch kWh/100 km |
+| 🚗 Fahrten | km erfassen, Kraftstoff-Äquivalent, Verbrauch kWh/100 km |
 | 🔌 Laden | Ladevorgänge mit kWh, Preis, Anbieter, AC/DC, Blockiergebühr |
 | 🔋 Ladetarife | Eigene Lade-Abos mit Preisverlauf |
-| ⛽ Benzin-/Dieselpreise | Monatsdurchschnitte + Preisverlauf |
+| ⛽ Kraftstoffpreise | Benzin, Diesel oder Autogas: Monatsdurchschnitte + Preisverlauf |
 | ⚡ Stromtarif | Tarifliste mit Preisverlauf |
 | 💶 Steuer & THG | KFZ-Steuer-Ersparnis + THG-Quote-Erträge |
 | 🔧 Instandhaltung | Werkstatt, Reifen, Verschleiß, HU – umgerechnet auf €/100 km |
@@ -91,9 +91,9 @@ unter `/data` – wird automatisch von Home Assistants eigenen Sicherungen mit e
 
 ## Benzin- bzw. Diesel-Äquivalent
 
-Berechnung: `km / 100 × 7,0 L × Kraftstoffpreis`. Ob mit einem Benziner oder einem Diesel
-verglichen wird, steht in den Einstellungen – das ändert die Beschriftungen und den
-Standard-CO2-Faktor (Benzin 2,37 kg/L, Diesel 2,65 kg/L).
+Berechnung: `km / 100 × 7,0 L × Kraftstoffpreis`. Ob mit einem Benziner, einem Diesel oder einem
+Autogas-Auto verglichen wird, steht in den Einstellungen – das ändert die Beschriftungen und den
+Standard-CO2-Faktor (Benzin 2,37 kg/L, Diesel 2,65 kg/L, Autogas 1,64 kg/L).
 Standard-Referenzverbrauch: **15 kWh/100 km** (in den Einstellungen pro Fahrzeug anpassbar)
 
 ---

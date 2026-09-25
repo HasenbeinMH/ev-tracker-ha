@@ -19,10 +19,20 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.3.0"
+VERSION = "2.3.1"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.3.1",
+        "datum": "2026-09-25",
+        "titel": "Autogas als Vergleichsfahrzeug",
+        "aenderungen": [
+            "Einstellungen → \"Vergleich mit\": neben Benziner und Diesel jetzt auch Autogas-Auto (LPG)",
+            "Standard-CO2-Faktor fuer Autogas 1,64 kg/L; Beschriftungen wie \"Autogaspreise\" und \"Ersparnis vs. Autogas-Auto\"",
+            "Tankerkoenig liefert keine Autogaspreise – den LPG-Preis je Monat von Hand eintragen oder einen eigenen Sensor verwenden",
+        ],
+    },
     {
         "version": "2.3.0",
         "datum": "2026-09-25",

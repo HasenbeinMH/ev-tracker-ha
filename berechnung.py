@@ -18,6 +18,9 @@ KRAFTSTOFFE = {
                "fahrzeug_gen": "Benziners", "co2_standard": 2.37},
     "diesel": {"art": "diesel", "name": "Diesel", "fahrzeug": "Diesel",
                "fahrzeug_gen": "Diesels", "co2_standard": 2.65},
+    # LPG wird wie Benzin und Diesel in Litern getankt und bezahlt
+    "autogas": {"art": "autogas", "name": "Autogas", "fahrzeug": "Autogas-Auto",
+                "fahrzeug_gen": "Autogas-Autos", "co2_standard": 1.64},
 }
 
 

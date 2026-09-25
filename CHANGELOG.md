@@ -3,6 +3,12 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.3.1] - 2026-09-25
+### Autogas als Vergleichsfahrzeug
+- Einstellungen → "Vergleich mit": neben Benziner und Diesel jetzt auch Autogas-Auto (LPG)
+- Standard-CO2-Faktor fuer Autogas 1,64 kg/L; Beschriftungen wie "Autogaspreise" und "Ersparnis vs. Autogas-Auto"
+- Tankerkoenig liefert keine Autogaspreise – den LPG-Preis je Monat von Hand eintragen oder einen eigenen Sensor verwenden
+
 ## [2.3.0] - 2026-09-25
 ### Vergleich mit einem Diesel statt einem Benziner
 - Einstellungen → Berechnungsparameter: neues Feld "Vergleich mit" – Benziner oder Diesel

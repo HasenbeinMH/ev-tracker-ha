@@ -80,7 +80,7 @@
 <h2 id="start">Schnellstart <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p>In dieser Reihenfolge einrichten, dann stimmen alle Auswertungen von Anfang an:</p>
 <ol>
-  <li><b>Einstellungen → Berechnungsparameter</b>: Vergleich mit Benziner oder Diesel wählen, dann Verbrauch des Vergleichsfahrzeugs (7,0 L/100 km), EV-Referenz (15,0 kWh/100 km), PV-Preis (13 ct/kWh), CO2-Faktor ({{ '%.2f'|format(kf.co2_standard)|replace('.', ',') }} kg/L) und KFZ-Steuer prüfen.</li>
+  <li><b>Einstellungen → Berechnungsparameter</b>: Vergleich mit Benziner, Diesel oder Autogas wählen, dann Verbrauch des Vergleichsfahrzeugs (7,0 L/100 km), EV-Referenz (15,0 kWh/100 km), PV-Preis (13 ct/kWh), CO2-Faktor ({{ '%.2f'|format(kf.co2_standard)|replace('.', ',') }} kg/L) und KFZ-Steuer prüfen.</li>
   <li><b>Einstellungen → Home Assistant &amp; Datenbank</b>: URL und Token eintragen (im Add-on nicht nötig), Verbindung testen, dann die Sensoren zuordnen. Optional eine Datenbank als Quelle wählen (InfluxDB, PostgreSQL, Prometheus).</li>
   <li><b>Stromtarif</b>: aktuellen Haushaltsstrompreis in ct/kWh anlegen.</li>
   <li><b>HA Import</b>: einmalig den gewünschten Zeitraum rückwirkend abrufen, Vorschau prüfen, übernehmen.</li>
@@ -305,11 +305,11 @@
 <h2 id="einstellungen">Einstellungen <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <table>
   <tr><th style="width:26%">Parameter</th><th style="width:18%">Standard</th><th>Wirkung</th></tr>
-  <tr><td>Vergleich mit</td><td>Benziner</td><td>Benziner oder Diesel. Gerechnet wird gleich (Liter × Preis); es ändern sich die Beschriftungen und der Standard-CO2-Faktor. Als Preis-Sensor dann den Dieselpreis wählen, z.B. von Tankerkönig.</td></tr>
+  <tr><td>Vergleich mit</td><td>Benziner</td><td>Benziner, Diesel oder Autogas (LPG). Gerechnet wird gleich (Liter × Preis); es ändern sich die Beschriftungen und der Standard-CO2-Faktor. Als Preis-Sensor den passenden Kraftstoff wählen – Diesel z.B. von Tankerkönig. Tankerkönig kennt kein Autogas; den LPG-Preis dann von Hand je Monat eintragen oder einen eigenen Sensor verwenden.</td></tr>
   <tr><td>{{ kf.fahrzeug }}-Verbrauch</td><td>7,0 L/100 km</td><td>Basis jeder Ersparnis- und CO2-Rechnung. Wirkt rückwirkend.</td></tr>
   <tr><td>EV-Referenz</td><td>15,0 kWh/100 km</td><td>Nur Ziellinie im Verbrauchsdiagramm – keine Kostenwirkung.</td></tr>
   <tr><td>PV-Preis</td><td>13 ct/kWh</td><td>Bewertung des PV-Eigenverbrauchs.</td></tr>
-  <tr><td>CO2-Faktor</td><td>2,37 kg/L (Diesel 2,65)</td><td>Verbrennungs- plus Vorkettenemission je Liter. Beim Wechsel Benziner ↔ Diesel springt der Standardwert mit um; ein eigener Wert bleibt stehen.</td></tr>
+  <tr><td>CO2-Faktor</td><td>2,37 kg/L (Diesel 2,65, Autogas 1,64)</td><td>Verbrennungs- plus Vorkettenemission je Liter. Beim Wechsel des Kraftstoffs springt der Standardwert mit um; ein eigener Wert bleibt stehen.</td></tr>
   <tr><td>KFZ-Steuer</td><td>0 €</td><td>Jahressteuer des Vergleichs-{{ kf.fahrzeug_gen }}.</td></tr>
 </table>
 <ul>
