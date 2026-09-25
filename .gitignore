@@ -17,3 +17,6 @@ webapp/data/
 Thumbs.db
 desktop.ini
 *.tmp.*
+
+# Fahrzeugbilder in Arbeit – erst nach Fertigstellung ins Repo
+fahrzeugbilder/final/
