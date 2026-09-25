@@ -79,17 +79,23 @@ Hintergrund, PNG“ schreiben. Sonst ist der einfarbige Hintergrund der sichere 
 
 Eigenes Bild für andere freigeben? Gern als Pull Request in diesen Ordner, benannt
 nach `marke-modell-farbe.jpg` (klein, mit Bindestrichen), z.B. `hyundai-ioniq5-gold.jpg`.
-Bitte nur Bilder, die du selbst erzeugt oder fotografiert hast – keine Pressefotos
-oder Bilder aus dem Netz.
+Erlaubt sind selbst erzeugte oder fotografierte Bilder und Bilder unter einer freien
+Lizenz (z.B. von Wikimedia Commons, CC BY / CC BY-SA / CC0) – dann mit Urheber, Quelle
+und Lizenz in der Tabelle unten. Keine Pressefotos oder Bilder ohne klare Lizenz.
 
 ## Vorhandene Bilder
 
-| Datei | Fahrzeug |
-|-------|----------|
-| [`audi-a6-etron-schwarz.jpg`](audi-a6-etron-schwarz.jpg) | Audi A6 e-tron, Schwarz |
-| [`audi-q4-etron-sportback-grau.jpg`](audi-q4-etron-sportback-grau.jpg) | Audi Q4 e-tron Sportback, Grau |
-| [`audi-q6-etron-silber.jpg`](audi-q6-etron-silber.jpg) | Audi Q6 e-tron, Silber (Erlkönig-Folie) |
-| [`bmw-i5-schwarz.jpg`](bmw-i5-schwarz.jpg) | BMW i5, Schwarz |
-| [`bmw-ix1-grau.jpg`](bmw-ix1-grau.jpg) | BMW iX1, Grau |
-| [`bmw-ix3-blau.jpg`](bmw-ix3-blau.jpg) | BMW iX3, Blau |
-| [`kia-ev3-orange.jpg`](kia-ev3-orange.jpg) | Kia EV3, Orange (Standardbild der App) |
+| Datei | Fahrzeug | Vorlage, Urheber, Lizenz |
+|-------|----------|--------------------------|
+| [`audi-a6-etron-schwarz.jpg`](audi-a6-etron-schwarz.jpg) | Audi A6 e-tron, Schwarz | [Audi A6 Avant e-tron DSC 7425](https://commons.wikimedia.org/wiki/File:Audi_A6_Avant_e-tron_DSC_7425.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.de), bearbeitet |
+| [`audi-q4-etron-sportback-grau.jpg`](audi-q4-etron-sportback-grau.jpg) | Audi Q4 e-tron Sportback, Grau | [Audi Q4 Sportback e-tron IAA 2021 1X7A0159](https://commons.wikimedia.org/wiki/File:Audi_Q4_Sportback_e-tron_IAA_2021_1X7A0159.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.de), bearbeitet |
+| [`audi-q6-etron-silber.jpg`](audi-q6-etron-silber.jpg) | Audi Q6 e-tron, Silber (Erlkönig-Folie) | [Audi Q6 e-tron Sportback DSC 9276](https://commons.wikimedia.org/wiki/File:Audi_Q6_e-tron_Sportback_DSC_9276.jpg) von Alexander Migl, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.de), bearbeitet |
+| [`bmw-i5-schwarz.jpg`](bmw-i5-schwarz.jpg) | BMW i5, Schwarz | [BMW G60 520i 1X7A2443](https://commons.wikimedia.org/wiki/File:BMW_G60_520i_1X7A2443.jpg) von Alexander-93, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.de), bearbeitet |
+| [`bmw-ix1-grau.jpg`](bmw-ix1-grau.jpg) | BMW iX1, Grau | [BMW iX1 1X7A6829](https://commons.wikimedia.org/wiki/File:BMW_iX1_1X7A6829.jpg) von Alexander-93, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.de), bearbeitet |
+| [`bmw-ix3-blau.jpg`](bmw-ix3-blau.jpg) | BMW iX3, Blau | [BMW iX3, IAA Summit 2025, Munich (20250908-P1049823)](https://commons.wikimedia.org/wiki/File:BMW_iX3,_IAA_Summit_2025,_Munich_(20250908-P1049823).jpg) von Matti Blume, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.de), bearbeitet |
+| [`kia-ev3-orange.jpg`](kia-ev3-orange.jpg) | Kia EV3, Orange (Standardbild der App) | – |
+
+**Lizenz der bearbeiteten Bilder:** Die Bilder mit Vorlage unter CC BY-SA 4.0 sind
+Bearbeitungen (freigestellt, auf den Hintergrund #14171E gesetzt, zum Teil KI-überarbeitet)
+und stehen unter derselben Lizenz, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.de). Wer sie weitergibt, nennt den Urheber der
+Vorlage wie oben.
