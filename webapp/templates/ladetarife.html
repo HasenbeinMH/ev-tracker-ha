@@ -106,8 +106,9 @@
 
 <h2>Was der Tarif wirklich kostet</h2>
 <p class="hint">Je Monat, in dem der Tarif galt: Ladekosten bei diesem Anbieter plus Grundgebühr,
-  geteilt durch die geladenen kWh. Die Grundgebühr zählt auch in Monaten ohne Ladung.
-  Sie steckt nur in dieser Tabelle – die Ersparnis auf dem Dashboard rechnet ohne sie.</p>
+  geteilt durch die geladenen kWh. Die Grundgebühr zählt auch in Monaten ohne Ladung – in einem
+  angefangenen oder beendeten Monat anteilig nach Tagen. Sie fließt in alle Kosten und die Ersparnis ein
+  (Dashboard, Statistik, Berichte).</p>
 <div class="tabelle-scroll"><table>
   <tr><th>Monat</th><th>Anbieter</th><th>Tarif</th><th>Ladungen</th><th>kWh</th><th>Ladekosten €</th>
       <th>davon Blockier €</th><th>Grundgebühr €</th><th>Gesamt €</th><th>Tarif ct/kWh</th><th>effektiv ct/kWh</th></tr>
@@ -120,7 +121,7 @@
     <td>{{ m.kwh | de(1) }}</td>
     <td>{{ m.kosten | de(2) }}</td>
     <td>{{ (m.blockier | de(2)) if m.blockier else "—" }}</td>
-    <td>{{ m.grundgebuehr | de(2) }}</td>
+    <td>{{ m.grundgebuehr | de(2) }}{% if m.grund_anteilig %} <span class="muted" title="Tarif galt nur einen Teil des Monats">anteilig</span>{% endif %}</td>
     <td>{{ m.gesamt | de(2) }}</td>
     <td>{{ m.tarif_ct | de(2) }}</td>
     <td>{% if m.effektiv_ct is not none %}<b class="{{ 'rot' if m.effektiv_ct > m.tarif_ct * 1.2 }}">{{ m.effektiv_ct | de(1) }}</b>

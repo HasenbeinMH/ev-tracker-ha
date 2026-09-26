@@ -3,6 +3,13 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.12.0] - 2026-09-26
+### Grundgebuehr der Ladetarife in allen Kosten
+- Die Grundgebuehr eines Ladetarifs fliesst jetzt in Stromkosten, Ø Strompreis, Kosten je 100 km und Ersparnis ein – auf Dashboard, Statistik, in den Berichten und in der Kostenverteilung nach Anbieter
+- Anteilig nach Tagen, wenn der Tarif mitten im Monat beginnt, endet ("gueltig bis") oder durch einen neuen Eintrag abgeloest wird; gerechnet bis zum laufenden Monat, auch in Monaten ohne Ladung
+- Die Gebuehr zaehlt nicht als Ladevorgang und veraendert den Verbrauch nicht; im Simulationsmodus gibt es keine Gebuehren
+- Ladetarife: Monate mit anteiliger Grundgebuehr sind markiert; Hilfe und Seitentext erklaeren die Rechnung
+
 ## [2.11.0] - 2026-09-26
 ### Rechnungsimport: neue Anbieter und Hinweise in der Vorschau
 - Neue Rechnungsformate: Shell Recharge (Transaktionsbeleg), vaylens (Zahlungsbeleg beim Ad-hoc-Laden), reev/REHAU und die neue EWE-Go-Rechnung mit "Ladevorgangsuebersicht" (netto -> brutto, Ladeart AC/DC)

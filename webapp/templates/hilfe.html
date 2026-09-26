@@ -185,10 +185,11 @@
   <li>Je Tarif: ct/kWh AC und DC, Grundgebühr je Monat, Blockiergebühr (ct/min, ab wie vielen Minuten, Obergrenze), Preise im Fremdnetz und die Ladekarte.</li>
   <li><b>Preisänderung = neuer Eintrag</b> mit neuem „gültig ab“. Die Tabelle zeigt die Änderung gegenüber dem Vorgänger, das Diagramm den Verlauf neben deinem Heimstrompreis.</li>
   <li>„Gültig bis“ nur ausfüllen, wenn du das Abo gekündigt hast.</li>
+  <li><b>Grundgebühr:</b> zählt in jedem Monat, in dem der Tarif gilt – auch ohne Ladung. Beginnt oder endet der Tarif im Monat, wird sie anteilig nach Tagen gerechnet (z. B. ab dem 16. eines 30-Tage-Monats: 15/30 der Gebühr).</li>
   <li>Ladungen werden über den <b>Anbieternamen</b> und das Datum dem Tarif zugeordnet.</li>
 </ul>
 <div class="hb-formel"><span class="lbl">Effektiver Preis</span>effektiv [ct/kWh] = (Σ Ladekosten des Monats + Grundgebühr) ÷ Σ kWh × 100</div>
-<div class="hb-info"><b>Nur zur Kontrolle:</b> Die Grundgebühr fließt nicht in die Ersparnis auf dem Dashboard ein. Bei wenig Ladungen im Monat liegt der effektive Preis deutlich über dem Tarifpreis – dann lohnt vielleicht ein kleinerer Tarif.</div>
+<div class="hb-info"><b>Grundgebühr in den Kosten:</b> Sie fließt in die Stromkosten, den Ø Strompreis und die Ersparnis auf Dashboard, Statistik und in den Berichten ein – als Eintrag ohne kWh, der nicht als Ladevorgang zählt. Bei wenig Ladungen im Monat liegt der effektive Preis deutlich über dem Tarifpreis – dann lohnt vielleicht ein kleinerer Tarif.</div>
 
 <h2 id="benzin">{{ kf.name }} <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„⛽ {{ kf.name }}preise (Monatsdurchschnitt)"</b></p>

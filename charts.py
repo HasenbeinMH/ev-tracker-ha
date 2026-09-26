@@ -334,6 +334,8 @@ def chart_verbrauch_100km(lade_daten, fahrten_daten, ev_ref=15.0, akku_monate=No
     """
     kwh_m = {}
     for l in lade_daten or []:
+        if not l["menge_kwh"]:      # Grundgebuehr-Eintraege haben keine kWh
+            continue
         m = l["datum"][:7]
         kwh_m[m] = kwh_m.get(m, 0) + l["menge_kwh"]
     km_m = {d["datum"]: d["km"] for d in fahrten_daten or []}

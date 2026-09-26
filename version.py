@@ -19,10 +19,21 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.11.0"
+VERSION = "2.12.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.12.0",
+        "datum": "2026-09-26",
+        "titel": "Grundgebuehr der Ladetarife in allen Kosten",
+        "aenderungen": [
+            "Die Grundgebuehr eines Ladetarifs fliesst jetzt in Stromkosten, Ø Strompreis, Kosten je 100 km und Ersparnis ein – auf Dashboard, Statistik, in den Berichten und in der Kostenverteilung nach Anbieter",
+            "Anteilig nach Tagen, wenn der Tarif mitten im Monat beginnt, endet (\"gueltig bis\") oder durch einen neuen Eintrag abgeloest wird; gerechnet bis zum laufenden Monat, auch in Monaten ohne Ladung",
+            "Die Gebuehr zaehlt nicht als Ladevorgang und veraendert den Verbrauch nicht; im Simulationsmodus gibt es keine Gebuehren",
+            "Ladetarife: Monate mit anteiliger Grundgebuehr sind markiert; Hilfe und Seitentext erklaeren die Rechnung",
+        ],
+    },
     {
         "version": "2.11.0",
         "datum": "2026-09-26",

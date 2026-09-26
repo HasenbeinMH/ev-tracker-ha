@@ -208,9 +208,16 @@ db.delete_ladevorgang(next(l["id"] for l in db.get_ladevorgaenge() if l["datum"]
 # fuer die weiteren Checks die App-Bewertung uebernehmen
 ladungen = [(l["datum"], l["menge_kwh"], l["gesamtpreis"], berechnung.stromquelle(l["anbieter"]))
             for l in db.get_ladevorgaenge(limit=100000)]
+# Grundgebuehr EnBW M: jeden Monat seit Tarifbeginn voll, bis zum laufenden Monat
+heute = date.today()
+GEBUEHR = 5.99
+TARIF_MONATE = zeitraum._monatsfolge("2025-03", heute.strftime("%Y-%m"))
+ladungen += [(m + "-01", 0.0, GEBUEHR, berechnung.OEFFENTLICH) for m in TARIF_MONATE]
+# Monate nach den Testdaten, in denen nur noch die Grundgebuehr anfaellt ("Gesamt" und
+# das laufende Jahr reichen bis heute)
+GEBUEHR_LEER_2026 = GEBUEHR * len([m for m in TARIF_MONATE if m.startswith("2026") and m not in MONATE])
 
 daten = zeitraum.laden()
-heute = date.today()
 FAELLE = {
     "alles": (MONATE, None),
     "2025": ([m for m in MONATE if m.startswith("2025")], 12),
@@ -223,6 +230,8 @@ FAELLE = {
 for key, (mon, kfz_mon) in FAELLE.items():
     kz = zeitraum.kennzahlen(zeitraum.aufloesen(key), daten)
     e = erwartet(mon, kfz_mon if kfz_mon else 12)
+    if key in ("alles", "2026"):    # reichen bis heute – die Grundgebuehr laeuft dort weiter
+        e["kosten"] += GEBUEHR_LEER_2026
     b = f"Kennzahlen {key}"
     check(b, "Gesamt-km", nah(kz["gesamt_km"], e["km"]), f'{kz["gesamt_km"]} / soll {e["km"]}')
     check(b, "Geladene kWh", nah(kz["gesamt_kwh"], e["kwh"]), f'{kz["gesamt_kwh"]:.1f} / soll {e["kwh"]:.1f}')
@@ -279,7 +288,8 @@ check("Konsistenz", "Ø Benzinpreis km-gewichtet", nah(kz_all["avg_benzin"], avg
       f'{kz_all["avg_benzin"]:.4f} / soll {avg_soll:.4f}')
 
 # Jahr 2025 + Jahr 2026 = Gesamt ? (2026 zaehlt KFZ bis zum laufenden Monat, Gesamt nur
-# bis zum letzten Datenmonat -> Differenz = KFZ der Monate ohne Daten)
+# bis zum letzten Datenmonat -> Differenz = KFZ der Monate ohne Daten; die Grundgebuehr
+# steckt in beiden bis heute)
 k25 = zeitraum.kennzahlen(zeitraum.aufloesen("2025"), daten)
 k26 = zeitraum.kennzahlen(zeitraum.aufloesen("2026"), daten)
 kfz_leer = KFZ * (k26["monate"] - 8) / 12
@@ -359,6 +369,30 @@ check("Ladetarife", "Tarifwechsel ab 02/2026 greift",
 lhtml = c.get("/laden").text
 check("Ladetarife", "Vorbelegung auf /laden mit aktuellem Abo-Preis (55/65)",
       '"ac": 55.0' in lhtml or "55.0" in lhtml)
+
+# Grundgebuehr anteilig: Beginn, Preiswechsel und Kuendigung mitten im Monat
+def _tarif(a, ab, bis, g):
+    return {"anbieter": a, "gueltig_ab": ab, "gueltig_bis": bis, "grundgebuehr": g, "tarif_name": ""}
+gg = ladetarife.grundgebuehren([_tarif("A", "2026-08-16", None, 11.99),
+                                _tarif("B", "2026-01-01", None, 5), _tarif("B", "2026-03-15", None, 8),
+                                _tarif("C", "2026-04-01", "2026-05-10", 10),
+                                _tarif("D", "2026-11-01", None, 9)], date(2026, 9, 26))
+check("Ladetarife", "Grundgebuehr ab 16.08.: 16/31 im August, September voll",
+      gg[("A", "2026-08")]["betrag"] == 6.19 and gg[("A", "2026-09")]["betrag"] == 11.99,
+      str({k: v["betrag"] for k, v in gg.items() if k[0] == "A"}))
+check("Ladetarife", "Preiswechsel am 15.03.: 14 Tage alt + 17 Tage neu",
+      gg[("B", "2026-03")]["betrag"] == round(5 * 14 / 31 + 8 * 17 / 31, 2), str(gg[("B", "2026-03")]))
+check("Ladetarife", "Gekuendigt zum 10.05.: 10/31 im Mai, danach nichts",
+      gg[("C", "2026-05")]["betrag"] == round(10 * 10 / 31, 2) and ("C", "2026-06") not in gg)
+check("Ladetarife", "Tarif in der Zukunft: noch keine Grundgebuehr", not any(k[0] == "D" for k in gg))
+lade_alle = berechnung.ladevorgaenge()
+gebuehren = [l for l in lade_alle if l.get("grundgebuehr")]
+check("Ladetarife", "Grundgebuehr fliesst als Eintrag ohne kWh in die Auswertungen",
+      len(gebuehren) == len(TARIF_MONATE) and all(l["menge_kwh"] == 0 for l in gebuehren),
+      f"{len(gebuehren)} Eintraege / soll {len(TARIF_MONATE)}")
+check("Ladetarife", "Grundgebuehr zaehlt nicht als Ladevorgang",
+      kz_all["ladevorgaenge"] == len([l for l in ladungen if l[1] > 0 and l[0][:7] in MONATE]),
+      str(kz_all["ladevorgaenge"]))
 
 # ── 8. Instandhaltung / Versicherung ───────────────────────────────────────
 ih = unterhalt.instandhaltung_daten()

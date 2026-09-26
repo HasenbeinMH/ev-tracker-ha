@@ -5,6 +5,7 @@ Die Zeitraum-Kennzahlen (Dashboard, Statistik) stehen in zeitraum.py.
 import calendar
 
 import database as db
+import ladetarife
 
 BENZINPREIS_FALLBACK = 1.80  # €/L wenn keine Monatspreise erfasst sind
 NETZPREIS_FALLBACK = 30.0    # ct/kWh wenn noch kein Stromtarif erfasst ist
@@ -174,14 +175,23 @@ def simulierte_ladungen(cfg: dict | None = None, fahrten: list | None = None,
 
 def ladevorgaenge(von: str | None = None, bis: str | None = None) -> list:
     """Ladevorgaenge fuer die Auswertungen: im Simulationsmodus die aus den km
-    gerechneten, sonst die gespeicherten. von/bis 'YYYY-MM-DD' (inklusive)."""
+    gerechneten, sonst die gespeicherten plus die Grundgebuehren der Ladetarife
+    (Eintraege ohne kWh, markiert mit "grundgebuehr"). von/bis 'YYYY-MM-DD' (inklusive)."""
     cfg = db.get_config()
-    if not cfg["simulation"]:
-        if von is None and bis is None:
-            return db.get_ladevorgaenge(limit=100000)
-        return db.get_ladevorgaenge_zeitraum(von or "0000-00-00", bis or "9999-12-31")
-    return [l for l in simulierte_ladungen(cfg)
+    if cfg["simulation"]:
+        liste = simulierte_ladungen(cfg)
+    elif von is None and bis is None:
+        return db.get_ladevorgaenge(limit=100000) + ladetarife.grundgebuehr_eintraege()
+    else:
+        liste = (db.get_ladevorgaenge_zeitraum(von or "0000-00-00", bis or "9999-12-31")
+                 + ladetarife.grundgebuehr_eintraege())
+    return [l for l in liste
             if (von is None or l["datum"] >= von) and (bis is None or l["datum"] <= bis)]
+
+
+def nur_ladungen(lade: list) -> list:
+    """Ohne die Grundgebuehr-Eintraege – fuer die Anzahl der Ladevorgaenge."""
+    return [l for l in lade if not l.get("grundgebuehr")]
 
 
 def benzin_liter(km: float, benziner_verbrauch: float) -> float:

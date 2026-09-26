@@ -88,7 +88,7 @@ def monate(z: dict, daten: dict) -> list:
 
 def _datenmonate(daten: dict) -> list:
     alle = {f["datum"][:7] for f in daten["fahrten"]}
-    alle |= {l["datum"][:7] for l in daten["lade"]}
+    alle |= {l["datum"][:7] for l in berechnung.nur_ladungen(daten["lade"])}
     alle |= {b["monat"][:7] for b in daten["benzin"]}
     alle |= {t["datum"][:7] for t in daten["thg"]}
     return sorted(m for m in alle if m)
@@ -186,7 +186,8 @@ def kennzahlen(z: dict, daten: dict) -> dict:
     # Verbrauch laut Ladung nur ueber Monate, in denen km und Ladung vorliegen
     kwh_m = {}
     for l in f["lade"]:
-        kwh_m[l["datum"][:7]] = kwh_m.get(l["datum"][:7], 0) + l["menge_kwh"]
+        if l["menge_kwh"]:          # Grundgebuehr-Eintraege haben keine kWh
+            kwh_m[l["datum"][:7]] = kwh_m.get(l["datum"][:7], 0) + l["menge_kwh"]
     beide = [m for m in km_m if m in kwh_m and km_m[m] > 0]
     v_km = sum(km_m[m] for m in beide)
     verbrauch = sum(kwh_m[m] for m in beide) / v_km * 100 if v_km else None
@@ -203,7 +204,7 @@ def kennzahlen(z: dict, daten: dict) -> dict:
         "monate":           len(mon),
         "gesamt_km":        km,
         "gesamt_kwh":       kwh,
-        "ladevorgaenge":    len(f["lade"]),
+        "ladevorgaenge":    len(berechnung.nur_ladungen(f["lade"])),
         "strom_kosten":     strom_kosten,
         "benzin_kosten":    benzin_kosten,
         "avg_benzin":       avg_benzin,

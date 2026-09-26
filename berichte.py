@@ -85,7 +85,7 @@ def _zeitraum_kennzahlen(von: str, bis: str, monate: list) -> dict:
     return {
         "km": km,
         "kwh": kwh,
-        "ladevorgaenge": len(lade),
+        "ladevorgaenge": len(berechnung.nur_ladungen(lade)),
         "strom_kosten": strom_kosten,
         "benzin_kosten": benzin_kosten,
         "ersparnis": benzin_kosten - strom_kosten,

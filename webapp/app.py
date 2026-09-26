@@ -1193,7 +1193,8 @@ def _monat_pruefen(jahr: int, monat: int) -> dict:
 
     fahrten = {f["monat"]: f["km"] for f in db.get_fahrten_monate()}
     preise = {b["monat"] for b in db.get_benzinpreise()}
-    lade = berechnung.ladevorgaenge(f"{schluessel}-01", f"{schluessel}-{letzter:02d}")
+    lade = berechnung.nur_ladungen(
+        berechnung.ladevorgaenge(f"{schluessel}-01", f"{schluessel}-{letzter:02d}"))
 
     offen = []
     if not fahrten.get(schluessel):
