@@ -5,8 +5,6 @@
 > ändern; vor größeren Updates lohnt sich eine Sicherung über Home Assistants eigene
 > Backups. Rückmeldungen und Fehlerberichte sind willkommen.
 
-[![Unterstütze das Projekt auf Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/daniel71292)
-
 Web-App zur Erfassung und Auswertung der Kosteneinsparungen eines Elektroautos
 gegenüber einem Benziner, Diesel oder Autogas-Auto. Fahrzeugname und -bild sind in den Einstellungen frei wählbar –
 nicht auf ein bestimmtes Modell festgelegt.
