@@ -3,6 +3,13 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.10.0] - 2026-09-26
+### Rechnungsimport fuer Charge myHyundai (DCS)
+- Rechnungsimport erkennt Rechnungen von Digital Charging Solutions (Charge myHyundai u.a.): jeder Ladevorgang aus der "Uebersicht der Ladevorgaenge" wird einzeln uebernommen, auch bei mehreren Laenderrechnungen in einer PDF
+- Die Nettopreise der Uebersicht werden mit der MwSt. der jeweiligen Laenderrechnung (z.B. AT 20 %, DE 19 %) auf brutto umgerechnet; abgebrochene Vorgaenge mit 0 kWh fallen weg
+- Eine "Kostenuebernahme durch Dritte" wird anteilig auf die Ladevorgaenge derselben Rechnung verteilt und in der Notiz vermerkt
+- Behoben: solche Rechnungen wurden bisher als EnBW mit pauschal 49 ct/kWh und falsch zugeordneten Daten eingelesen
+
 ## [2.9.0] - 2026-09-25
 ### Heimladungen einzeln aus Home Assistant
 - Home Assistant kann jede Ladung zuhause am Ladeende schicken (POST /api/ladung): Datum, Uhrzeit, kWh aus Netz und PV und optional die Kosten – in der Liste stehen Heimladungen dann einzeln statt nur als Monatssumme

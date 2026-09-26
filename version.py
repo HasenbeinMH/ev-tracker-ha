@@ -19,10 +19,21 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.9.0"
+VERSION = "2.10.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.10.0",
+        "datum": "2026-09-26",
+        "titel": "Rechnungsimport fuer Charge myHyundai (DCS)",
+        "aenderungen": [
+            "Rechnungsimport erkennt Rechnungen von Digital Charging Solutions (Charge myHyundai u.a.): jeder Ladevorgang aus der \"Uebersicht der Ladevorgaenge\" wird einzeln uebernommen, auch bei mehreren Laenderrechnungen in einer PDF",
+            "Die Nettopreise der Uebersicht werden mit der MwSt. der jeweiligen Laenderrechnung (z.B. AT 20 %, DE 19 %) auf brutto umgerechnet; abgebrochene Vorgaenge mit 0 kWh fallen weg",
+            "Eine \"Kostenuebernahme durch Dritte\" wird anteilig auf die Ladevorgaenge derselben Rechnung verteilt und in der Notiz vermerkt",
+            "Behoben: solche Rechnungen wurden bisher als EnBW mit pauschal 49 ct/kWh und falsch zugeordneten Daten eingelesen",
+        ],
+    },
     {
         "version": "2.9.0",
         "datum": "2026-09-25",

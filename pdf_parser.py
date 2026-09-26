@@ -1,5 +1,5 @@
 """
-PDF-Parser fuer Laderechnungen: EWE go, EnBW, medl
+PDF-Parser fuer Laderechnungen: EWE go, EnBW, medl, DCS (Charge myHyundai u.a.)
 Extrahiert Einzelvorgaenge und/oder Monatsübersichten.
 """
 import re
@@ -81,7 +81,74 @@ def detect_anbieter(text: str) -> str:
         return "EnBW"
     if any(kw in text_lower for kw in ["medl", "mülheimer energiedienstleistungen"]):
         return "medl"
+    if "digital charging solutions" in text_lower or "chargemy" in text_lower:
+        m = re.search(r"Charge\s?my\s?(\w+)", text)
+        return f"Charge my{m.group(1)}" if m else "DCS"
     return "Unbekannt"
+
+
+# ─────────────────────────────────────────────
+#  DCS PARSER (Charge myHyundai, Kia Charge, …)
+# ─────────────────────────────────────────────
+
+def parse_dcs(text: str, anbieter: str) -> list[Ladevorgang]:
+    """
+    Digital Charging Solutions – eine Rechnung je Land, jeweils mit Seite
+    "Übersicht der Ladevorgänge". Die Beträge dort sind netto; die MwSt.
+    steht auf der Rechnungsseite davor ("Gesamtbetrag (19% MwSt. DE)").
+    Datum und kWh-Zeile landen im Text versetzt, gehören aber in derselben
+    Reihenfolge zusammen. Eine "Kostenübernahme durch Dritte" wird anteilig
+    auf die Ladevorgänge derselben Länderrechnung verteilt.
+    """
+    vorgaenge = []
+    marker = re.compile(r"bersicht der Ladevorg")
+    ende = re.compile(r"Ihre Rechnung f|Seite 1 /")
+    for m in marker.finditer(text):
+        anfaenge = [a.start() for a in re.finditer(r"Ihre Rechnung f", text[:m.start()])]
+        rechnung = text[anfaenge[-1] if anfaenge else 0:m.start()]
+        vorher = re.findall(r"\((\d+)\s*%\s*MwSt", rechnung)
+        mwst = int(vorher[-1]) / 100 if vorher else 0.19
+        uebernahme = sum(abs(_parse_float_de(b) or 0) for b in
+                         re.findall(r"Kosten.bernahme durch\s+(-?[\d.,]+)\s*EUR", rechnung))
+        rest = text[m.end():]
+        e = ende.search(rest)
+        abschnitt = rest[:e.start()] if e else rest
+
+        daten = re.findall(r"(\d{2}\.\d{2}\.\d{4})\s+\d{1,2}:\d{2}h", abschnitt)
+        mengen = re.findall(
+            r"([\d.,]+)\s*kWh\s+(AC|DC|HPC)\b[^\n]*?([\d.,]+)\s*EUR\s+([\d.,]+)\s*EUR\s+([\d.,]+)\s*EUR",
+            abschnitt)
+        if len(daten) != len(mengen):
+            continue
+        neue = []
+        for datum_txt, (kwh_txt, produkt, _, _, netto_txt) in zip(daten, mengen):
+            kwh = _parse_float_de(kwh_txt)
+            netto = _parse_float_de(netto_txt)
+            if not kwh or kwh < 0.5 or netto is None:
+                continue
+            neue.append(Ladevorgang(
+                datum=_parse_datum_de(datum_txt),
+                menge_kwh=round(kwh, 3),
+                preis_kwh=0.0,
+                gesamtpreis=round(netto * (1 + mwst), 2),
+                anbieter=anbieter,
+                ladetyp="AC" if produkt == "AC" else "DC",
+                quelle="Einzelvorgang",
+                notiz=f"{anbieter} Import"
+            ))
+
+        # Kostenuebernahme anteilig nach Betrag; Rundungsrest auf den letzten Vorgang
+        summe = sum(v.gesamtpreis for v in neue)
+        rest_abzug = round(uebernahme, 2)
+        for i, v in enumerate(neue):
+            if rest_abzug and summe > 0:
+                abzug = rest_abzug if i == len(neue) - 1 else round(uebernahme * v.gesamtpreis / summe, 2)
+                rest_abzug = round(rest_abzug - abzug, 2)
+                v.gesamtpreis = round(v.gesamtpreis - abzug, 2)
+                v.notiz += f" (Kostenübernahme -{abzug:.2f} €".replace(".", ",") + ")"
+            v.preis_kwh = round(v.gesamtpreis / v.menge_kwh * 100, 2)
+        vorgaenge += neue
+    return vorgaenge
 
 
 # ─────────────────────────────────────────────
@@ -361,13 +428,14 @@ def parse_rechnung_pdf(pdf_path: str) -> tuple[str, list[Ladevorgang]]:
     except ImportError:
         raise ImportError("pdfplumber nicht installiert. Bitte: pip install pdfplumber")
 
-    text_parts = []
+    text_parts, seiten = [], []
     try:
         with pdfplumber.open(pdf_path) as pdf:
             for page in pdf.pages:
                 t = page.extract_text()
                 if t:
                     text_parts.append(t)
+                    seiten.append(t)
                 # Tabellen als Text extrahieren
                 tables = page.extract_tables()
                 for table in tables:
@@ -390,6 +458,9 @@ def parse_rechnung_pdf(pdf_path: str) -> tuple[str, list[Ladevorgang]]:
         vorgaenge = parse_enbw(full_text)
     elif anbieter == "medl":
         vorgaenge = parse_medl(full_text)
+    elif anbieter.startswith("Charge my") or anbieter == "DCS":
+        # Nur Seitentext – die zusaetzlich extrahierten Tabellen wuerden Vorgaenge doppeln
+        vorgaenge = parse_dcs("\n".join(seiten), anbieter)
     else:
         # Generischer Parser – versucht alle drei
         vorgaenge = (parse_ewe_go(full_text) or
@@ -409,6 +480,8 @@ def parse_rechnung_text(raw_text: str) -> tuple[str, list[Ladevorgang]]:
         vorgaenge = parse_enbw(raw_text)
     elif anbieter == "medl":
         vorgaenge = parse_medl(raw_text)
+    elif anbieter.startswith("Charge my") or anbieter == "DCS":
+        vorgaenge = parse_dcs(raw_text, anbieter)
     else:
         vorgaenge = _parse_monatsuebersicht(raw_text, "Unbekannt")
     return anbieter, vorgaenge

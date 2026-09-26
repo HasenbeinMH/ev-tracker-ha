@@ -503,6 +503,19 @@ t_ewe = "EWE go Abrechnung\n12.03.2026 14:32  Ladestation Oldenburg  32,50 kWh  
 a, vg = pdf_parser.parse_rechnung_text(t_ewe)
 check("Rechnung", "EWE go: Vorgang korrekt", vg and nah(vg[0].menge_kwh, 32.5) and nah(vg[0].gesamtpreis, 13.65),
       "; ".join(f"{x.datum} {x.menge_kwh} kWh {x.preis_kwh} ct {x.gesamtpreis} €" for x in vg))
+t_dcs = ("Digital Charging Solutions GmbH\nGesamtbetrag (19% MwSt. DE) 39,42 EUR 39,42 EUR\n"
+         "Übersicht der Ladevorgänge\n03.08.2026 06:58h\n"
+         "IONITY Rastanlage 48,846 kWh HPC 16,8293 EUR 16,8293 EUR 16,8293 EUR\n"
+         "03.08.2026 07:21h Hunderdorf (kWh)\n"
+         "IONITY Rastanlage 0,000 kWh HPC 0,0000 EUR 0,0000 EUR 0,0000 EUR\nCharge myHyundai Team\n")
+a, vg = pdf_parser.parse_rechnung_text(t_dcs)
+check("Rechnung", "DCS: Charge myHyundai brutto, 0-kWh-Vorgang ignoriert",
+      a == "Charge myHyundai" and len(vg) == 1 and nah(vg[0].gesamtpreis, 20.03) and vg[0].ladetyp == "DC",
+      "; ".join(f"{x.datum} {x.menge_kwh} kWh {x.gesamtpreis} € {x.ladetyp}" for x in vg))
+t_dcs2 = t_dcs.replace("39,42 EUR\n", "39,42 EUR\nKostenübernahme durch -1,00 EUR -1,00 EUR\n", 1)
+a, vg = pdf_parser.parse_rechnung_text(t_dcs2)
+check("Rechnung", "DCS: Kostenuebernahme durch Dritte wird abgezogen",
+      len(vg) == 1 and nah(vg[0].gesamtpreis, 19.03), "; ".join(f"{x.gesamtpreis} € {x.notiz}" for x in vg))
 r = c.post("/api/rechnung/parse", data={"text": t_enbw})
 check("Rechnung", "API parse", r.status_code == 200 and len(r.json()["vorgaenge"]) == 2)
 rows = r.json()["vorgaenge"]
