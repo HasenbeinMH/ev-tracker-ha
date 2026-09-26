@@ -36,7 +36,7 @@ from version import VERSION, CHANGELOG
 import datenquellen
 import heimladung
 from ha_client import HAClient, IST_ADDON, ha_verbindung as _ha_verbindung
-from pdf_parser import parse_rechnung_pdf, parse_rechnung_text
+from pdf_parser import auswerten_pdf, auswerten_text
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -1038,20 +1038,24 @@ async def rechnung_parse(pdf: UploadFile | None = File(None),
             with open(tmp, "wb") as f:
                 f.write(inhalt)
             try:
-                anbieter, vorgaenge = parse_rechnung_pdf(tmp)
+                anbieter, vorgaenge, hinweise = auswerten_pdf(tmp)
             finally:
                 os.remove(tmp)
         elif text.strip():
-            anbieter, vorgaenge = parse_rechnung_text(text)
+            anbieter, vorgaenge, hinweise = auswerten_text(text)
         else:
             return JSONResponse({"error": "Keine PDF und kein Text."}, status_code=400)
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=400)
-    return {"anbieter": anbieter,
+    for v in vorgaenge:
+        if v.datum and db.ladevorgang_exists(v.datum, v.menge_kwh, v.anbieter):
+            v.warnungen.append("Bereits importiert – wird beim Übernehmen übersprungen")
+    return {"anbieter": anbieter, "hinweise": hinweise,
             "vorgaenge": [{"datum": v.datum, "kwh": v.menge_kwh,
                            "ct": v.preis_kwh, "gesamt": v.gesamtpreis,
                            "anbieter": v.anbieter, "kw": v.ladeleistung_kw,
-                           "ladetyp": v.ladetyp, "notiz": v.notiz}
+                           "ladetyp": v.ladetyp, "notiz": v.notiz,
+                           "warnungen": v.warnungen}
                           for v in vorgaenge]}
 
 
@@ -1073,6 +1077,9 @@ def rechnung_apply(payload: dict):
         if db.ladevorgang_exists(datum, round(kwh, 3), anbieter):
             log.append(f"{datum}: bereits vorhanden – übersprungen")
             continue
+        # Neuer Anbieter aus der Rechnung soll auch in der Anbieterauswahl stehen
+        if anbieter != "Unbekannt":
+            db.add_lade_anbieter(anbieter)
         db.add_ladevorgang(datum, round(kwh, 3), round(ct or 0, 2),
                            round(gesamt, 2), anbieter,
                            parse_de(str(r.get("kw") or "")),

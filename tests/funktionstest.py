@@ -495,6 +495,8 @@ check("Rechnung", "EnBW-Text: 2 Vorgaenge erkannt", a == "EnBW" and len(vg) == 2
       "; ".join(f"{x.datum} {x.menge_kwh} kWh {x.gesamtpreis} € {x.ladetyp}" for x in vg))
 check("Rechnung", "EnBW: DC/AC nach Leistung", [x.ladetyp for x in vg] == ["DC", "AC"],
       str([x.ladetyp for x in vg]))
+check("Rechnung", "EnBW: Betrag je Zeile, nicht der des naechsten Vorgangs",
+      [x.gesamtpreis for x in vg] == [26.67, 6.49], str([x.gesamtpreis for x in vg]))
 t_medl = "medl GmbH\n05.02.2026 Ladesäule Rathaus 18,40 kWh 39 ct/kWh 7,18 €\n"
 a, vg = pdf_parser.parse_rechnung_text(t_medl)
 check("Rechnung", "medl-Text: Preis in ct erkannt", a == "medl" and vg and nah(vg[0].preis_kwh, 39),
@@ -516,6 +518,32 @@ t_dcs2 = t_dcs.replace("39,42 EUR\n", "39,42 EUR\nKostenübernahme durch -1,00 E
 a, vg = pdf_parser.parse_rechnung_text(t_dcs2)
 check("Rechnung", "DCS: Kostenuebernahme durch Dritte wird abgezogen",
       len(vg) == 1 and nah(vg[0].gesamtpreis, 19.03), "; ".join(f"{x.gesamtpreis} € {x.notiz}" for x in vg))
+t_shell = ("Shell Deutschland GmbH\nLadevorgang\nBeginn: 25/09/2026 07:02 Stollberg\n"
+           "Menge: 20.79kWh\nGezahlter Gesamtbetrag 11,23 EUR\n")
+t_vaylens = ("ZAHLUNGSBELEG\nvaylens GmbH\n--------- Ladepunktbetreiber ----------\nEnvia GmbH\n"
+             "Datum 29.08.2026\nGeladene Energie 12.597*kWh\nSumme 6.17 EUR\n"
+             "MwSt Satz Netto MwSt Brutto\nA=19% 5.19 0.98 6.17\nSumme 5.19 0.98 6.17\n")
+t_reev = ("REHAU Industries SE\nVielen Dank, dass Sie unsere E Ladesäulen genutzt haben.\n"
+          "B0e3s.c0h8r.e2ib0u2n6g 11 34 - 17 25 | SR_West_08 - 1 | 62,30900 kWh à 0,35000 €\n"
+          "Fälliger Betrag\n21,81 €\n")
+t_ewe2 = ("EWE Go GmbH\nMwSt. 19 % von 6,55 € 1,24 €\nGesamtbetrag Brutto 7,79 €\n"
+          "Ladevorgang Nr. 1 (ID: SNH-1):\nStart: 16.08.2026, 11:44:46 Ende: 16.08.2026, 12:18:10\n"
+          "Betreiber: EWE Ladeart: DC\nEnergiekosten 14,979 kWh 0,44 € / kWh 6,55 €\nGesamtkosten 6,55 €\n")
+for name, t, soll in [("Shell Recharge", t_shell, ("2026-09-25", 20.79, 11.23, "AC")),
+                      ("vaylens", t_vaylens, ("2026-08-29", 12.597, 6.17, "AC")),
+                      ("reev", t_reev, ("2026-08-03", 62.309, 21.81, "AC")),
+                      ("EWE go", t_ewe2, ("2026-08-16", 14.979, 7.79, "DC"))]:
+    a, vg = pdf_parser.parse_rechnung_text(t)
+    ist = [(x.datum, x.menge_kwh, x.gesamtpreis, x.ladetyp) for x in vg]
+    check("Rechnung", f"{name}: Beleg erkannt, Betrag brutto", a == name and ist == [soll], f"{a} {ist}")
+a, vg, hw = pdf_parser.auswerten_text("irgendein Text ohne Ladevorgang")
+check("Rechnung", "Hinweis: kein Vorgang erkannt", not vg and any("kein Ladevorgang" in h for h in hw), str(hw))
+a, vg, hw = pdf_parser.auswerten_text(t_ewe2.replace("Brutto 7,79", "Brutto 20,00"))
+check("Rechnung", "Hinweis: Summe weicht vom Rechnungsbetrag ab", any("20,00 €" in h for h in hw), str(hw))
+a, vg, hw = pdf_parser.auswerten_text("medl GmbH\n05.02.2099 Ladesäule 18,40 kWh 5 ct/kWh 0,92 €\n")
+check("Rechnung", "Warnung: Datum in der Zukunft und ungewoehnlicher Preis",
+      vg and any("Zukunft" in w for w in vg[0].warnungen) and any("Preis" in w for w in vg[0].warnungen),
+      str(vg and vg[0].warnungen))
 r = c.post("/api/rechnung/parse", data={"text": t_enbw})
 check("Rechnung", "API parse", r.status_code == 200 and len(r.json()["vorgaenge"]) == 2)
 rows = r.json()["vorgaenge"]
@@ -523,6 +551,10 @@ r1 = c.post("/api/rechnung/apply", json={"rows": rows}).json()
 r2 = c.post("/api/rechnung/apply", json={"rows": rows}).json()
 check("Rechnung", "Uebernehmen + Duplikatschutz", len(r1["log"]) == 2 and all("übersprungen" in x for x in r2["log"]),
       f'{r1["log"]} / {r2["log"]}')
+r = c.post("/api/rechnung/parse", data={"text": t_enbw}).json()
+check("Rechnung", "Vorschau warnt vor bereits importierten Vorgaengen",
+      all(any("Bereits importiert" in w for w in v["warnungen"]) for v in r["vorgaenge"]),
+      str([v["warnungen"] for v in r["vorgaenge"]]))
 
 # ── 13. Einstellungen Export/Import ────────────────────────────────────────
 c.post("/einstellungen/parameter", data={"benziner_verbrauch": "7", "ev_verbrauch": "16,5",

@@ -2,7 +2,7 @@
 {% block titel %}Rechnungen{% endblock %}
 {% block inhalt %}
 <h1>📄 Rechnungsimport</h1>
-<p class="hint">PDF-Laderechnung (EWE go, EnBW, medl, Charge myHyundai / DCS) hochladen oder Rechnungstext einfügen.
+<p class="hint">PDF-Laderechnung (EWE go, EnBW, medl, Charge myHyundai / DCS, Shell Recharge, vaylens, reev) hochladen oder Rechnungstext einfügen.
   Erkannte Vorgänge erscheinen als editierbare Vorschau.</p>
 
 <div class="card">
@@ -25,6 +25,7 @@
 
 <div id="vorschau" style="display:none">
   <h2 id="anbieter-info"></h2>
+  <ul class="hinweisbox" id="hinweise" style="display:none"></ul>
   <div class="tabelle-scroll"><table id="vorschau-tabelle">
     <tr><th>Datum</th><th>kWh</th><th>ct/kWh</th><th>Gesamt €</th><th>Anbieter</th><th>kW</th><th>Typ</th><th>Notiz</th><th></th></tr>
   </table></div>
@@ -47,7 +48,14 @@ async function parseRequest(formData) {
   document.getElementById("anbieter-info").textContent =
     data.anbieter !== "Unbekannt" ? "✓ Anbieter erkannt: " + data.anbieter
                                   : "⚠ Anbieter nicht eindeutig erkannt";
+  const box = document.getElementById("hinweise");
+  box.innerHTML = (data.hinweise || []).map(h => `<li>⚠ ${esc(h)}</li>`).join("");
+  box.style.display = data.hinweise && data.hinweise.length ? "block" : "none";
   zeigeVorschau(data.vorgaenge);
+}
+
+function esc(t) {
+  return String(t ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"})[c]);
 }
 
 document.getElementById("pdf-form").addEventListener("submit", (e) => {
@@ -61,23 +69,42 @@ document.getElementById("text-form").addEventListener("submit", (e) => {
 
 function zeile(v) {
   const tr = document.createElement("tr");
+  tr.className = "vorgang" + (v.warnungen && v.warnungen.length ? " mit-warnung" : "");
   tr.innerHTML =
-    `<td><input class="breit" data-key="datum" value="${v.datum ?? ""}" placeholder="JJJJ-MM-TT"></td>` +
-    `<td><input data-key="kwh" value="${v.kwh ?? ""}"></td>` +
-    `<td><input data-key="ct" value="${v.ct ?? ""}"></td>` +
-    `<td><input data-key="gesamt" value="${v.gesamt ?? ""}"></td>` +
-    `<td><input class="breit" data-key="anbieter" value="${v.anbieter ?? ""}"></td>` +
-    `<td><input data-key="kw" value="${v.kw ?? ""}" style="width:55px"></td>` +
+    `<td><input class="breit" data-key="datum" value="${esc(v.datum)}" placeholder="JJJJ-MM-TT"></td>` +
+    `<td><input data-key="kwh" value="${esc(v.kwh)}"></td>` +
+    `<td><input data-key="ct" value="${esc(v.ct)}"></td>` +
+    `<td><input data-key="gesamt" value="${esc(v.gesamt)}"></td>` +
+    `<td><input class="breit" data-key="anbieter" value="${esc(v.anbieter)}"></td>` +
+    `<td><input data-key="kw" value="${esc(v.kw)}" style="width:55px"></td>` +
     `<td><select data-key="ladetyp"><option${v.ladetyp === "AC" ? " selected" : ""}>AC</option><option${v.ladetyp === "DC" ? " selected" : ""}>DC</option></select></td>` +
-    `<td><input class="breit" data-key="notiz" value="${v.notiz ?? ""}"></td>` +
-    `<td><button class="danger" onclick="this.closest('tr').remove()">🗑</button></td>`;
+    `<td><input class="breit" data-key="notiz" value="${esc(v.notiz)}"></td>` +
+    `<td><button class="danger" onclick="zeileLoeschen(this)">🗑</button></td>`;
   return tr;
+}
+
+// Warnungen stehen in einer eigenen Zeile direkt unter dem Vorgang
+function warnzeile(warnungen) {
+  const tr = document.createElement("tr");
+  tr.className = "warnzeile";
+  tr.innerHTML = `<td colspan="9">⚠ ${warnungen.map(esc).join(" · ")}</td>`;
+  return tr;
+}
+
+function zeileLoeschen(btn) {
+  const tr = btn.closest("tr");
+  if (tr.nextElementSibling && tr.nextElementSibling.classList.contains("warnzeile"))
+    tr.nextElementSibling.remove();
+  tr.remove();
 }
 
 function zeigeVorschau(vorgaenge) {
   const tabelle = document.getElementById("vorschau-tabelle");
   tabelle.querySelectorAll("tr:not(:first-child)").forEach(tr => tr.remove());
-  for (const v of vorgaenge) tabelle.appendChild(zeile(v));
+  for (const v of vorgaenge) {
+    tabelle.appendChild(zeile(v));
+    if (v.warnungen && v.warnungen.length) tabelle.appendChild(warnzeile(v.warnungen));
+  }
   if (!vorgaenge.length) tabelle.appendChild(zeile({}));
   document.getElementById("vorschau").style.display = "block";
 }
@@ -88,7 +115,7 @@ document.getElementById("btn-add-row").addEventListener("click", () => {
 
 document.getElementById("btn-apply").addEventListener("click", async () => {
   const rows = [];
-  document.querySelectorAll("#vorschau-tabelle tr:not(:first-child)").forEach(tr => {
+  document.querySelectorAll("#vorschau-tabelle tr.vorgang").forEach(tr => {
     const r = {};
     tr.querySelectorAll("[data-key]").forEach(el => r[el.dataset.key] = el.value);
     rows.push(r);

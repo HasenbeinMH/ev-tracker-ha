@@ -348,6 +348,11 @@ details.erweitert[open] > summary { margin-bottom: 8px; }
   padding: 10px 12px;
   margin-top: 12px;
 }
+.hinweisbox { background: #c4963a14; border: 1px solid #c4963a66; border-radius: 6px;
+  color: var(--gelb); font-size: 13px; padding: 8px 14px; margin: 0 0 12px; list-style: none; }
+.hinweisbox li + li { margin-top: 4px; }
+tr.mit-warnung td { border-bottom: none; }
+tr.warnzeile td { color: var(--gelb); font-size: 12px; padding-top: 0; }
 progress { width: 100%; height: 6px; accent-color: var(--blau); }
 .tabelle-scroll { overflow-x: auto; }
 td input { width: 90px; padding: 4px 6px; font-size: 12px; }

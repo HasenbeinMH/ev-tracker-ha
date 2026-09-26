@@ -19,10 +19,23 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.10.1"
+VERSION = "2.11.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.11.0",
+        "datum": "2026-09-26",
+        "titel": "Rechnungsimport: neue Anbieter und Hinweise in der Vorschau",
+        "aenderungen": [
+            "Neue Rechnungsformate: Shell Recharge (Transaktionsbeleg), vaylens (Zahlungsbeleg beim Ad-hoc-Laden), reev/REHAU und die neue EWE-Go-Rechnung mit \"Ladevorgangsuebersicht\" (netto -> brutto, Ladeart AC/DC)",
+            "Vorschau zeigt Hinweise zur ganzen Rechnung: kein Ladevorgang erkannt, Anbieter unbekannt, nur Monatssumme, Summe der Vorgaenge weicht vom Rechnungsbetrag ab; bei Charge myHyundai je Laenderrechnung, welcher Betrag keinem Ladevorgang zugeordnet ist (z.B. Grundgebuehr IONITY Pro)",
+            "Warnung je Zeile: Datum fehlt oder in der Zukunft, ungewoehnlicher Preis (unter 15 oder ueber 120 ct/kWh), mehr als 150 kWh, Betrag 0 €, Standardpreis angenommen, bereits importiert",
+            "Unbekannte Rechnungen erscheinen als \"Unbekannt\" statt faelschlich als EnBW mit pauschal 49 ct/kWh",
+            "Behoben: bei EnBW-Rechnungen mit mehreren Vorgaengen bekam ein Vorgang den Betrag der naechsten Zeile",
+            "Anbieter aus einer importierten Rechnung werden in die Anbieterliste aufgenommen",
+        ],
+    },
     {
         "version": "2.10.1",
         "datum": "2026-09-26",

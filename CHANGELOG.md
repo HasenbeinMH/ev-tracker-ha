@@ -3,6 +3,15 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.11.0] - 2026-09-26
+### Rechnungsimport: neue Anbieter und Hinweise in der Vorschau
+- Neue Rechnungsformate: Shell Recharge (Transaktionsbeleg), vaylens (Zahlungsbeleg beim Ad-hoc-Laden), reev/REHAU und die neue EWE-Go-Rechnung mit "Ladevorgangsuebersicht" (netto -> brutto, Ladeart AC/DC)
+- Vorschau zeigt Hinweise zur ganzen Rechnung: kein Ladevorgang erkannt, Anbieter unbekannt, nur Monatssumme, Summe der Vorgaenge weicht vom Rechnungsbetrag ab; bei Charge myHyundai je Laenderrechnung, welcher Betrag keinem Ladevorgang zugeordnet ist (z.B. Grundgebuehr IONITY Pro)
+- Warnung je Zeile: Datum fehlt oder in der Zukunft, ungewoehnlicher Preis (unter 15 oder ueber 120 ct/kWh), mehr als 150 kWh, Betrag 0 €, Standardpreis angenommen, bereits importiert
+- Unbekannte Rechnungen erscheinen als "Unbekannt" statt faelschlich als EnBW mit pauschal 49 ct/kWh
+- Behoben: bei EnBW-Rechnungen mit mehreren Vorgaengen bekam ein Vorgang den Betrag der naechsten Zeile
+- Anbieter aus einer importierten Rechnung werden in die Anbieterliste aufgenommen
+
 ## [2.10.1] - 2026-09-26
 ### Ko-fi
 - Hilfe: neuer Abschnitt "Unterstuetzen" mit Link zu Ko-fi (freiwillig, das Add-on bleibt kostenlos)
