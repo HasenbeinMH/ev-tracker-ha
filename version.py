@@ -19,10 +19,19 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.12.0"
+VERSION = "2.12.1"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.12.1",
+        "datum": "2026-09-26",
+        "titel": "Statistik: Ersparnis je 100 km, Summen ohne Wertung",
+        "aenderungen": [
+            "Statistik-Vergleich: neue Zeile \"Ersparnis je 100 km\" (auch in Prognose gegen tatsaechlich)",
+            "Summen, die mit der Strecke und der Laenge des Zeitraums wachsen (Stromkosten, Kraftstoff-Ersparnis, THG-Ertrag, Gesamt-Ersparnis, CO2), bleiben ohne gruen/orange – gewertet werden nur streckenunabhaengige Werte wie Verbrauch, Kosten und Ersparnis je 100 km und Strompreis",
+        ],
+    },
     {
         "version": "2.12.0",
         "datum": "2026-09-26",

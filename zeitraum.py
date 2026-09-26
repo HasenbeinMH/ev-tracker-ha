@@ -217,6 +217,7 @@ def kennzahlen(z: dict, daten: dict) -> dict:
         "verbrauch":        verbrauch,
         "verbrauch_akku":   verbrauch_akku,
         "kosten_pro_100km": strom_kosten / km * 100 if km and strom_kosten else None,
+        "ersparnis_100km":  ersparnis_kraft / km * 100 if km else None,
         "strompreis_ct":    strom_kosten / kwh * 100 if kwh else None,
         "anteile":          {q: (v / kwh * 100 if kwh else None) for q, v in quellen.items()},
     }
@@ -241,14 +242,16 @@ def vorlagen() -> list:
 
 # Zeilen der Vergleichstabelle:
 # (Beschriftung – {name}/{fahrzeug} aus berechnung.KRAFTSTOFFE –, Schluessel in kennzahlen(), Nachkommastellen, Einheit, besser wenn …)
-# besser: "hoch", "niedrig" oder None (neutral, keine Wertung)
+# besser: "hoch", "niedrig" oder None (neutral, keine Wertung). Summen, die mit der
+# Strecke oder der Laenge des Zeitraums wachsen, bleiben neutral – weniger gefahren
+# ist weder besser noch schlechter; gewertet werden nur streckenunabhaengige Werte.
 VERGLEICH_ZEILEN = [
     ("Gefahrene Strecke", "gesamt_km", 0, "km", None),
     ("Ladevorgänge", "ladevorgaenge", 0, "", None),
     ("Geladene Energie", "gesamt_kwh", 1, "kWh", None),
     ("Verbrauch laut Ladung", "verbrauch", 1, "kWh/100 km", "niedrig"),
     ("Verbrauch laut Akku", "verbrauch_akku", 1, "kWh/100 km", "niedrig"),
-    ("Stromkosten", "strom_kosten", 2, "€", "niedrig"),
+    ("Stromkosten", "strom_kosten", 2, "€", None),
     ("Kosten je 100 km", "kosten_pro_100km", 2, "€", "niedrig"),
     ("Ø Strompreis", "strompreis_ct", 1, "ct/kWh", "niedrig"),
     ("Anteil PV-Strom", ("anteile", "PV-Strom"), 0, "%", "hoch"),
@@ -256,17 +259,18 @@ VERGLEICH_ZEILEN = [
     ("Anteil öffentlich", ("anteile", berechnung.OEFFENTLICH), 0, "%", "niedrig"),
     ("Ø {name}preis", "avg_benzin", 3, "€/L", None),
     ("{fahrzeug}-Kosten (fiktiv)", "benzin_kosten", 2, "€", None),
-    ("Kraftstoff-Ersparnis", "ersparnis_kraft", 2, "€", "hoch"),
+    ("Kraftstoff-Ersparnis", "ersparnis_kraft", 2, "€", None),
+    ("Ersparnis je 100 km", "ersparnis_100km", 2, "€", "hoch"),
     ("KFZ-Steuer-Ersparnis (anteilig)", "kfz_steuer", 2, "€", None),
-    ("THG-Ertrag", "thg_gesamt", 2, "€", "hoch"),
-    ("Gesamt-Ersparnis", "ersparnis_gesamt", 2, "€", "hoch"),
-    ("CO2 vermieden", "co2_gespart", 0, "kg", "hoch"),
+    ("THG-Ertrag", "thg_gesamt", 2, "€", None),
+    ("Gesamt-Ersparnis", "ersparnis_gesamt", 2, "€", None),
+    ("CO2 vermieden", "co2_gespart", 0, "kg", None),
 ]
 
 
 # Zeilen fuer "Prognose gegen tatsaechlich" – nur was vom Laden abhaengt
 PROGNOSE_ZEILEN = ("gesamt_kwh", "verbrauch", "strom_kosten", "kosten_pro_100km",
-                   "strompreis_ct", "ersparnis_kraft")
+                   "strompreis_ct", "ersparnis_kraft", "ersparnis_100km")
 
 
 def vergleich_zeilen(ka: dict, kb: dict, nur: tuple | None = None) -> list:

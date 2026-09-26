@@ -3,6 +3,11 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.12.1] - 2026-09-26
+### Statistik: Ersparnis je 100 km, Summen ohne Wertung
+- Statistik-Vergleich: neue Zeile "Ersparnis je 100 km" (auch in Prognose gegen tatsaechlich)
+- Summen, die mit der Strecke und der Laenge des Zeitraums wachsen (Stromkosten, Kraftstoff-Ersparnis, THG-Ertrag, Gesamt-Ersparnis, CO2), bleiben ohne gruen/orange – gewertet werden nur streckenunabhaengige Werte wie Verbrauch, Kosten und Ersparnis je 100 km und Strompreis
+
 ## [2.12.0] - 2026-09-26
 ### Grundgebuehr der Ladetarife in allen Kosten
 - Die Grundgebuehr eines Ladetarifs fliesst jetzt in Stromkosten, Ø Strompreis, Kosten je 100 km und Ersparnis ein – auf Dashboard, Statistik, in den Berichten und in der Kostenverteilung nach Anbieter
