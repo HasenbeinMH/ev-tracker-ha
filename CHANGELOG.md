@@ -3,6 +3,10 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.10.1] - 2026-09-26
+### Ko-fi
+- Hilfe: neuer Abschnitt "Unterstuetzen" mit Link zu Ko-fi (freiwillig, das Add-on bleibt kostenlos)
+
 ## [2.10.0] - 2026-09-26
 ### Rechnungsimport fuer Charge myHyundai (DCS)
 - Rechnungsimport erkennt Rechnungen von Digital Charging Solutions (Charge myHyundai u.a.): jeder Ladevorgang aus der "Uebersicht der Ladevorgaenge" wird einzeln uebernommen, auch bei mehreren Laenderrechnungen in einer PDF

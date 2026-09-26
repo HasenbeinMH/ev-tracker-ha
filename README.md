@@ -5,6 +5,8 @@
 > ändern; vor größeren Updates lohnt sich eine Sicherung über Home Assistants eigene
 > Backups. Rückmeldungen und Fehlerberichte sind willkommen.
 
+[![Unterstütze das Projekt auf Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/daniel71292)
+
 Web-App zur Erfassung und Auswertung der Kosteneinsparungen eines Elektroautos
 gegenüber einem Benziner, Diesel oder Autogas-Auto. Fahrzeugname und -bild sind in den Einstellungen frei wählbar –
 nicht auf ein bestimmtes Modell festgelegt.
@@ -120,6 +122,13 @@ Berechnung: `km / 100 × 7,0 L × Kraftstoffpreis`. Ob mit einem Benziner, einem
 Autogas-Auto verglichen wird, steht in den Einstellungen – das ändert die Beschriftungen und den
 Standard-CO2-Faktor (Benzin 2,37 kg/L, Diesel 2,65 kg/L, Autogas 1,64 kg/L).
 Standard-Referenzverbrauch: **15 kWh/100 km** (in den Einstellungen pro Fahrzeug anpassbar)
+
+## Unterstützen
+
+Der EV Tracker ist kostenlos und bleibt es auch. Wer die Weiterentwicklung unterstützen
+möchte, kann das freiwillig über [Ko-fi](https://ko-fi.com/daniel71292) tun – danke! ☕
+
+[![Unterstütze das Projekt auf Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/daniel71292)
 
 ---
 

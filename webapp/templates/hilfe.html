@@ -44,6 +44,9 @@
   .hb-rel-datum{font-size:11px;color:var(--muted)}
   .hb-rel ul{margin:0 0 14px;padding-left:18px}
   .hb-rel li{font-size:12.5px;color:var(--text)}
+  .hb-kofi{display:inline-block;background:#72a4f2;color:#fff;border-radius:6px;padding:7px 16px;
+           font-size:13px;font-weight:600;text-decoration:none;margin:4px 0 14px}
+  .hb-kofi:hover{background:#5a8de0;color:#fff}
 </style>
 
 <div class="hb">
@@ -75,6 +78,7 @@
   <a href="#simulation">Simulationsmodus</a>
   <a href="#annahmen">Annahmen &amp; Grenzen</a>
   <a href="#faq">FAQ</a>
+  <a href="#unterstuetzen">Unterstützen</a>
   <a href="#changelog">Änderungslog</a>
 </div>
 
@@ -449,6 +453,10 @@
 <p>{{ kf.name }}-Äquivalent und CO2 werden nie gespeichert, sondern bei jeder Anzeige neu gerechnet. Der Parameter wirkt deshalb auf die gesamte Historie.</p>
 <h3>Wo liegen meine Daten?</h3>
 <p>In einer SQLite-Datei im Datenverzeichnis des Containers, gesichert per Cronjob nach OneDrive. Über die Seite Backup lässt sie sich jederzeit herunterladen.</p>
+
+<h2 id="unterstuetzen">Unterstützen <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<p>Der EV Tracker ist kostenlos und bleibt es auch. Wer die Weiterentwicklung unterstützen möchte, kann das freiwillig über Ko-fi tun – danke!</p>
+<a class="hb-kofi" href="https://ko-fi.com/daniel71292" target="_blank" rel="noopener">☕ Auf Ko-fi unterstützen</a>
 
 <h2 id="changelog">Änderungslog <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Installierte Version: <b>v{{ VERSION }}</b> – die Nummer steht auch rechts in der Navigationsleiste.</p>

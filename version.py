@@ -19,10 +19,18 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.10.0"
+VERSION = "2.10.1"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.10.1",
+        "datum": "2026-09-26",
+        "titel": "Ko-fi",
+        "aenderungen": [
+            "Hilfe: neuer Abschnitt \"Unterstuetzen\" mit Link zu Ko-fi (freiwillig, das Add-on bleibt kostenlos)",
+        ],
+    },
     {
         "version": "2.10.0",
         "datum": "2026-09-26",
