@@ -1048,15 +1048,42 @@ async def rechnung_parse(pdf: UploadFile | None = File(None),
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=400)
     for v in vorgaenge:
-        if v.datum and db.ladevorgang_exists(v.datum, v.menge_kwh, v.anbieter):
+        if not v.datum:
+            continue
+        if v.menge_kwh and db.ladevorgang_exists(v.datum, v.menge_kwh, v.anbieter):
             v.warnungen.append("Bereits importiert – wird beim Übernehmen übersprungen")
+        elif not v.menge_kwh:
+            # Ohne kWh (Tesla nach Minuten): Duplikat am Betrag erkennen
+            if any(l["anbieter"] == v.anbieter and abs((l["gesamtpreis"] or 0) - v.gesamtpreis) < 0.005
+                   for l in db.get_ladevorgaenge_zeitraum(v.datum, v.datum)):
+                v.warnungen.append("Bereits importiert – gleicher Betrag am selben Tag")
+            else:
+                _kwh_aus_akkustand(v)
     return {"anbieter": anbieter, "hinweise": hinweise,
-            "vorgaenge": [{"datum": v.datum, "kwh": v.menge_kwh,
-                           "ct": v.preis_kwh, "gesamt": v.gesamtpreis,
+            "vorgaenge": [{"datum": v.datum, "kwh": v.menge_kwh or None,
+                           "ct": v.preis_kwh or None, "gesamt": v.gesamtpreis,
                            "anbieter": v.anbieter, "kw": v.ladeleistung_kw,
                            "ladetyp": v.ladetyp, "notiz": v.notiz,
                            "warnungen": v.warnungen}
                           for v in vorgaenge]}
+
+
+def _kwh_aus_akkustand(v):
+    """Rechnung ohne kWh: die kWh einer noch nicht erfassten Ladung aus dem
+    Akkustand (HA) am selben Tag vorschlagen – Schaetzung, der Nutzer prueft."""
+    try:
+        ergebnis = ladeerkennung.pruefe_monat(int(v.datum[:4]), int(v.datum[5:7]))
+    except Exception:
+        return
+    passend = [l for l in ergebnis.get("fehlend", [])
+               if ladeerkennung._tage_abstand(l["datum"], v.datum) <= ladeerkennung.TOLERANZ_TAGE]
+    if not passend:
+        return
+    l = max(passend, key=lambda l: l.get("leistung_kw") or 0)
+    v.menge_kwh = l["kwh"]
+    v.warnungen = [w for w in v.warnungen if "keine kWh" not in w]
+    v.warnungen.append(f"kWh aus dem Akkustand geschätzt ({l['von_prozent']:g} → {l['bis_prozent']:g} %, "
+                       f"{l['datum']}) – bitte mit der Fahrzeug-App vergleichen".replace(".", ","))
 
 
 @app.post("/api/rechnung/apply")

@@ -3,6 +3,13 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.13.0] - 2026-09-27
+### Rechnungsimport: Tesla Supercharger
+- Neues Rechnungsformat: Tesla Supercharger – Datum, Betrag brutto, Ladeleistung und Standort; Ladetyp DC
+- Rechnungen mit Minutenpreis nach Leistungsstufen (z.B. Oesterreich: "Stromgebuehr – Stufe 3, 1,01 €/min") weisen keine kWh aus: die Stufen stehen in der Notiz, die kWh bleiben in der Vorschau leer und werden eingetragen; ct/kWh rechnet der Import aus Betrag und kWh
+- Ist in Home Assistant am selben Tag eine noch nicht erfasste Ladung im Akkustand erkennbar, schlaegt die Vorschau deren kWh als Schaetzung vor
+- Vorgaenge ohne kWh werden in der Vorschau am gleichen Betrag am selben Tag als bereits importiert erkannt
+
 ## [2.12.1] - 2026-09-26
 ### Statistik: Ersparnis je 100 km, Summen ohne Wertung
 - Statistik-Vergleich: neue Zeile "Ersparnis je 100 km" (auch in Prognose gegen tatsaechlich)

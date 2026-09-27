@@ -1,6 +1,6 @@
 """
 PDF-Parser fuer Laderechnungen: EWE go, EnBW, medl, DCS (Charge myHyundai u.a.),
-Shell Recharge, vaylens, reev
+Shell Recharge, vaylens, reev, Tesla Supercharger
 Extrahiert Einzelvorgaenge und/oder Monatsübersichten.
 """
 import re
@@ -92,6 +92,8 @@ def detect_anbieter(text: str) -> str:
         return "vaylens"
     if "rehau" in text_lower and "ladesäule" in text_lower:
         return "reev"
+    if "tesla" in text_lower and ("stromgeb" in text_lower or "supercharg" in text_lower):
+        return "Tesla Supercharger"
     return "Unbekannt"
 
 
@@ -187,6 +189,52 @@ def parse_reev(text: str) -> list[Ladevorgang]:
     if not datum:
         return []
     return [_vorgang(datum, kwh, brutto, "reev")]
+
+
+def parse_tesla(text: str) -> list[Ladevorgang]:
+    """
+    Tesla Supercharger: ein Ladevorgang je Rechnung, Zahlen mit Punkt.
+    Positionen "Preis / Einheit  Anzahl", Preis brutto, Total je Zeile netto.
+    In Oesterreich wird nach Minuten in Leistungsstufen abgerechnet
+    ("Stromgebühr - Stufe 3  1.01 / min  13 min") – dann steht keine kWh-Menge
+    auf der Rechnung. Der Vorgang kommt mit 0 kWh, die kWh traegt der Nutzer
+    in der Vorschau ein (oder sie kommen aus dem Akkustand, siehe webapp).
+    """
+    brutto_m = (re.search(r"Gesamtbetrag \(EUR\)[ \t]+([\d.,]+)", text)
+                or re.search(r"([\d.,]+)\s*\n\s*Gesamtbetrag \(EUR\)", text))
+    datum_m = (re.search(r"(\d{4})/(\d{2})/(\d{2})\s+Stromgeb", text)
+               or re.search(r"Stromgeb.*\n(?:.*\n){0,3}?(\d{4})/(\d{2})/(\d{2})", text)
+               or re.search(r"Rechnungsdatum\s+(\d{4})/(\d{2})/(\d{2})", text))
+    if not (brutto_m and datum_m):
+        return []
+    brutto = _float_punkt(brutto_m.group(1))
+    if brutto is None:
+        return []
+    datum = f"{datum_m.group(1)}-{datum_m.group(2)}-{datum_m.group(3)}"
+
+    posten = re.findall(r"([\d.]+)\s*/\s*(min|kWh)\s+([\d.]+)\s*(min|kWh)", text)
+    stufen = re.findall(r"Stufe\s*(\d)", text)
+    kwh = sum(_float_punkt(menge) or 0 for _, _, menge, einheit in posten if einheit == "kWh")
+    teile = []
+    for i, (preis, einheit, menge, _) in enumerate(posten):
+        stufe = f"Stufe {stufen[i]} " if len(stufen) == len(posten) else ""
+        teile.append(f"{stufe}{menge} {einheit} × {preis.replace('.', ',')} €/{einheit}")
+
+    kw_m = re.search(r"(\d+)\s*kW\s*DC", text)
+    ort_m = re.search(r"^\s*([^\n,]+),\s*(?:Austria|Germany|Österreich|Deutschland|Switzerland|Schweiz"
+                      r"|Italy|Italia|France|Netherlands|Denmark)\s*$", text, re.M)
+    notiz = "Tesla Import" + (f" {ort_m.group(1).strip()}" if ort_m else "")
+    if teile:
+        notiz += " (" + ", ".join(teile) + ")"
+    v = Ladevorgang(datum=datum, menge_kwh=round(kwh, 3),
+                    preis_kwh=round(brutto / kwh * 100, 2) if kwh else 0.0,
+                    gesamtpreis=round(brutto, 2), anbieter="Tesla Supercharger",
+                    ladeleistung_kw=float(kw_m.group(1)) if kw_m else None,
+                    ladetyp="DC", quelle="Einzelvorgang", notiz=notiz)
+    if not kwh:
+        v.warnungen.append("Tesla rechnet hier nach Minuten ab und weist keine kWh aus – "
+                           "bitte die geladene Menge eintragen (Fahrzeug-App oder Akkustand)")
+    return [v]
 
 
 # ─────────────────────────────────────────────
@@ -675,6 +723,8 @@ def _parse_nach_anbieter(anbieter: str, text: str, seitentext: str,
         return parse_vaylens(seitentext)
     if anbieter == "reev":
         return parse_reev(seitentext)
+    if anbieter == "Tesla Supercharger":
+        return parse_tesla(seitentext)
     if not fallback:
         return _parse_monatsuebersicht(text, "Unbekannt")
     # Generischer Versuch – die Parser setzen ihren eigenen Anbieternamen,
@@ -722,7 +772,7 @@ def pruefe(anbieter: str, vorgaenge: list[Ladevorgang], text: str) -> list[str]:
             v.warnungen.append(f"Ungewöhnlich große Lademenge ({v.menge_kwh:g} kWh)".replace(".", ","))
         if v.gesamtpreis <= 0:
             v.warnungen.append("Betrag ist 0 €")
-        elif not PREIS_MIN_CT <= v.preis_kwh <= PREIS_MAX_CT:
+        elif v.menge_kwh and not PREIS_MIN_CT <= v.preis_kwh <= PREIS_MAX_CT:
             v.warnungen.append(f"Ungewöhnlicher Preis ({v.preis_kwh:.2f} ct/kWh)".replace(".", ","))
 
     # Summe der Vorgaenge gegen den Endbetrag – DCS prueft je Laenderrechnung selbst

@@ -578,6 +578,32 @@ a, vg, hw = pdf_parser.auswerten_text("medl GmbH\n05.02.2099 Ladesäule 18,40 kW
 check("Rechnung", "Warnung: Datum in der Zukunft und ungewoehnlicher Preis",
       vg and any("Zukunft" in w for w in vg[0].warnungen) and any("Preis" in w for w in vg[0].warnungen),
       str(vg and vg[0].warnungen))
+t_tesla = ("Rechnung\nTesla Motors Austria GmbH\nVerkauft an Ladestation\nFlachau, Austria\n"
+           "S/N: SC000000000004256 - 1 / 125 kW DC\n20 0.27\nStromgebühr -\n0.32 / min 1 min\nStufe 1\n"
+           "2026/08/27\n20 10.94\nStromgebühr -\n1.01 / min 13 min\nStufe 3\n2026/08/27\n11.21\n"
+           "Teilsumme\n2.24\nGesamtsumme Steuern\n13.45\nGesamtbetrag (EUR)\nBeschreibung\n")
+a, vg, hw = pdf_parser.auswerten_text(t_tesla)
+check("Rechnung", "Tesla (Minutenpreis, AT): Betrag brutto, DC, keine kWh",
+      a == "Tesla Supercharger" and len(vg) == 1 and vg[0].datum == "2026-08-27" and vg[0].gesamtpreis == 13.45
+      and vg[0].menge_kwh == 0 and vg[0].ladetyp == "DC" and vg[0].ladeleistung_kw == 125
+      and "Stufe 3 13 min" in vg[0].notiz and any("keine kWh" in w for w in vg[0].warnungen)
+      and not any("Preis" in w for w in vg[0].warnungen),
+      f"{a} {vg}")
+r = c.post("/api/rechnung/parse", data={"text": t_tesla}).json()
+tz = r["vorgaenge"][0]
+check("Rechnung", "Tesla: Vorschau mit leerer kWh und ct", tz["kwh"] is None and tz["ct"] is None, str(tz))
+check("Rechnung", "Tesla: ohne kWh nicht uebernehmen",
+      c.post("/api/rechnung/apply", json={"rows": [tz]}).json()["fehler"] != [])
+tz.update(kwh="21,5", ct="")
+r1 = c.post("/api/rechnung/apply", json={"rows": [tz]}).json()
+neu = [l for l in db.get_ladevorgaenge_zeitraum("2026-08-27", "2026-08-27") if l["anbieter"] == "Tesla Supercharger"]
+check("Rechnung", "Tesla: mit eingetragenen kWh uebernommen, ct berechnet",
+      len(neu) == 1 and nah(neu[0]["preis_kwh"], 62.56), f"{r1} {neu}")
+r = c.post("/api/rechnung/parse", data={"text": t_tesla}).json()
+check("Rechnung", "Tesla: Duplikat am Betrag erkannt",
+      any("Bereits importiert" in w for w in r["vorgaenge"][0]["warnungen"]), str(r["vorgaenge"][0]))
+for l in neu:
+    db.delete_ladevorgang(l["id"])
 r = c.post("/api/rechnung/parse", data={"text": t_enbw})
 check("Rechnung", "API parse", r.status_code == 200 and len(r.json()["vorgaenge"]) == 2)
 rows = r.json()["vorgaenge"]

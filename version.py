@@ -19,10 +19,21 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.12.1"
+VERSION = "2.13.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.13.0",
+        "datum": "2026-09-27",
+        "titel": "Rechnungsimport: Tesla Supercharger",
+        "aenderungen": [
+            "Neues Rechnungsformat: Tesla Supercharger – Datum, Betrag brutto, Ladeleistung und Standort; Ladetyp DC",
+            "Rechnungen mit Minutenpreis nach Leistungsstufen (z.B. Oesterreich: \"Stromgebuehr – Stufe 3, 1,01 €/min\") weisen keine kWh aus: die Stufen stehen in der Notiz, die kWh bleiben in der Vorschau leer und werden eingetragen; ct/kWh rechnet der Import aus Betrag und kWh",
+            "Ist in Home Assistant am selben Tag eine noch nicht erfasste Ladung im Akkustand erkennbar, schlaegt die Vorschau deren kWh als Schaetzung vor",
+            "Vorgaenge ohne kWh werden in der Vorschau am gleichen Betrag am selben Tag als bereits importiert erkannt",
+        ],
+    },
     {
         "version": "2.12.1",
         "datum": "2026-09-26",
