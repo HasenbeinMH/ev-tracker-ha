@@ -31,7 +31,7 @@ nicht auf ein bestimmtes Modell festgelegt.
 <tr>
 <td><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-bericht.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-bericht.png" alt="Monatsbericht per Mail" width="70%"></a>
 <br><b>Monatsbericht per Mail</b> – kommt automatisch, sobald der Monat vollständig ist.</td>
-<td valign="top"><br><b>Und außerdem:</b> Import aus Home Assistant oder einer Datenbank (InfluxDB 1.x/2.x/3.x, PostgreSQL/TimescaleDB, Prometheus/VictoriaMetrics), jede Nacht automatisch · Rechnungs-PDFs einlesen · Ladeerkennung am Akkustand (meldet Ladungen unterwegs ohne Beleg) · THG-Quote und KFZ-Steuer · Instandhaltung und Versicherung · Backup und Wiederherstellen</td>
+<td valign="top"><br><b>Und außerdem:</b> Import aus Home Assistant oder einer Datenbank (InfluxDB 1.x/2.x/3.x, PostgreSQL/TimescaleDB, Prometheus/VictoriaMetrics), jede Nacht automatisch · Rechnungs-PDFs einlesen ([Musterrechnungen gesucht](#-rechnungsimport-musterrechnungen-gesucht)) · Ladeerkennung am Akkustand (meldet Ladungen unterwegs ohne Beleg) · THG-Quote und KFZ-Steuer · Instandhaltung und Versicherung · Backup und Wiederherstellen</td>
 </tr>
 </table>
 
@@ -120,6 +120,54 @@ Berechnung: `km / 100 × 7,0 L × Kraftstoffpreis`. Ob mit einem Benziner, einem
 Autogas-Auto verglichen wird, steht in den Einstellungen – das ändert die Beschriftungen und den
 Standard-CO2-Faktor (Benzin 2,37 kg/L, Diesel 2,65 kg/L, Autogas 1,64 kg/L).
 Standard-Referenzverbrauch: **15 kWh/100 km** (in den Einstellungen pro Fahrzeug anpassbar)
+
+## 🧾 Rechnungsimport: Musterrechnungen gesucht!
+
+Der EV Tracker liest Ladeabrechnungen (PDF) automatisch ein. Damit das bei möglichst vielen
+Anbietern klappt, brauche ich eure Hilfe: Wer bei einem dieser Anbieter lädt, kann mir gerne eine
+Rechnung als PDF zur Verfügung stellen – gerne auch mehrere oder ältere, da sich die Layouts mit
+der Zeit ändern.
+
+| Anbieter | Stand |
+|----------|-------|
+| EnBW mobility+ | ✅ wird schon erkannt – weitere/ältere Layouts willkommen |
+| Tesla Supercharger | ✅ wird schon erkannt – weitere/ältere Layouts willkommen |
+| Shell Recharge | ✅ wird schon erkannt – weitere/ältere Layouts willkommen |
+| EWE Go | ✅ wird schon erkannt – weitere/ältere Layouts willkommen |
+| ADAC e-Charge | 🔍 gesucht |
+| IONITY | 🔍 gesucht |
+| Elli / Volkswagen Charging | 🔍 gesucht |
+| Aral pulse | 🔍 gesucht |
+| Maingau EinfachStromLaden | 🔍 gesucht |
+| E.ON Drive | 🔍 gesucht |
+
+Rechnungen von anderen Anbietern (z. B. Stadtwerke, Lidl, Plugsurfing) nehme ich ebenfalls gerne.
+Schon erkannt werden außerdem medl, Charge myHyundai (Digital Charging Solutions), vaylens und reev.
+
+**Bitte vorher persönliche Daten schwärzen:**
+- Name und Anschrift
+- Kunden-, Vertrags- und Rechnungsnummer
+- Ladekarten-ID / EMA-ID
+- IBAN bzw. Zahlungsdaten
+- E-Mail-Adresse und Telefonnummer
+- Kennzeichen bzw. Fahrzeug-ID (falls vorhanden)
+- Ladeort (falls er Rückschlüsse auf euren Wohnort zulässt)
+
+**Bitte NICHT schwärzen:**
+- Anbietername und Firmenadresse des Anbieters
+- Datum und Uhrzeit des Ladevorgangs
+- geladene kWh, Preis pro kWh, Gesamtbetrag, MwSt.
+- Ladeart (AC/DC) und, wenn möglich, die Ladeleistung
+
+> ⚠️ **Wichtig:** Bitte richtig schwärzen und nicht einfach nur schwarze Kästen darüberlegen – bei
+> vielen PDF-Programmen bleibt der Text darunter sonst auslesbar. Am sichersten ist die
+> Schwärzen-Funktion (z. B. in Adobe Acrobat oder PDF24) oder ein Ausdruck, der danach wieder
+> eingescannt wird.
+
+Schickt mir die Rechnungen gerne per PN in der
+[simon42-Community (Thread zum EV Tracker)](https://community.simon42.com/t/ev-tracker-was-spart-mein-e-auto-wirklich-tester-gesucht/93110/29).
+Bitte **nicht** als Anhang in einem GitHub-Issue – dort wäre die Rechnung für alle sichtbar.
+Vielen Dank vorab, jede Rechnung hilft!
 
 ## Unterstützen
 
