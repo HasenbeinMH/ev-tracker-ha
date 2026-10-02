@@ -258,6 +258,28 @@ for key, (mon, kfz_mon) in FAELLE.items():
     check(b, "Ø Strompreis plausibel (10–60 ct)", kz["strompreis_ct"] and 10 <= kz["strompreis_ct"] <= 60,
           f'{kz["strompreis_ct"]:.1f} ct/kWh')
 
+
+# KFZ-Steuer E-Auto: ab 2026-03 steuerpflichtig, mindert die Ersparnis nur ab dann
+c.post("/steuer/eauto", data={"betrag": "120", "ab": "2026-03"}, follow_redirects=False)
+d_st = zeitraum.laden()
+k25 = zeitraum.kennzahlen(zeitraum.aufloesen("2025"), d_st)
+kq1 = zeitraum.kennzahlen(zeitraum.aufloesen("2026-Q1"), d_st)
+check("Steuer E-Auto", "Vor Ende der Befreiung unveraendert",
+      nah(k25["kfz_steuer"], KFZ) and nah(k25["kfz_steuer_eauto"], 0), f'{k25["kfz_steuer"]:.2f}')
+check("Steuer E-Auto", "Q1 2026: nur Maerz steuerpflichtig",
+      nah(kq1["kfz_steuer_eauto"], 10.0) and nah(kq1["kfz_steuer"], KFZ * 3 / 12 - 10.0),
+      f'E-Auto {kq1["kfz_steuer_eauto"]:.2f} / Ersparnis {kq1["kfz_steuer"]:.2f}')
+check("Steuer E-Auto", "Gesamt-Ersparnis enthaelt Netto-Steuer",
+      nah(kq1["ersparnis_gesamt"], kq1["ersparnis_kraft"] + kq1["kfz_steuer"] + kq1["thg_gesamt"]))
+r = c.get("/steuer")
+check("Steuer E-Auto", "Seite zeigt Betrag und Monat", "120,00" in r.text and "2026-03" in r.text)
+r = c.get("/statistik?a=2025&b=2026-Q1")
+check("Steuer E-Auto", "Statistik zeigt Zeile E-Auto-Steuer",
+      r.status_code == 200 and "davon KFZ-Steuer E-Auto" in r.text)
+c.post("/steuer/eauto", data={"betrag": "0", "ab": ""}, follow_redirects=False)
+check("Steuer E-Auto", "0 € = wieder steuerfrei",
+      nah(zeitraum.kennzahlen(zeitraum.aufloesen("2026-Q1"), zeitraum.laden())["kfz_steuer"], KFZ * 3 / 12))
+
 kz_all = zeitraum.kennzahlen(zeitraum.aufloesen("alles"), daten)
 
 # Monatschart-Summe vs. Kennzahl Kraftstoff-Ersparnis

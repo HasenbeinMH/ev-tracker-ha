@@ -571,6 +571,8 @@ def ladetarife_delete(id: int = Form(...)):
 def steuer(request: Request):
     return render(request, "steuer_thg.html",
                   kfz=db.get_einstellung("kfz_steuer_benziner") or 0.0,
+                  kfz_eauto=db.get_einstellung("kfz_steuer_eauto") or 0.0,
+                  kfz_eauto_ab=db.get_einstellung_str("kfz_steuer_eauto_ab") or "",
                   rows=db.get_thg_eintraege(), thg_gesamt=db.get_thg_gesamt(),
                   aktiv="steuer", heute=datetime.now().strftime("%Y-%m-%d"))
 
@@ -580,6 +582,21 @@ def steuer_kfz(betrag: str = Form(...)):
     v = parse_de(betrag, tausender=True)
     if v is not None and v >= 0:
         db.set_einstellung("kfz_steuer_benziner", v)
+    return RedirectResponse("../steuer", status_code=303)
+
+
+@app.post("/steuer/eauto")
+def steuer_eauto(betrag: str = Form(...), ab: str = Form("")):
+    """Jahressteuer des E-Autos, sobald die Steuerbefreiung endet. Ab-Monat 'YYYY-MM';
+    ohne Angabe ab dem laufenden Monat (nicht rueckwirkend auf alle Daten)."""
+    v = parse_de(betrag, tausender=True)
+    if v is None or v < 0:
+        return RedirectResponse("../steuer", status_code=303)
+    ab = ab.strip()[:7]
+    if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", ab):
+        ab = datetime.now().strftime("%Y-%m")
+    db.set_einstellung("kfz_steuer_eauto", v)
+    db.set_einstellung("kfz_steuer_eauto_ab", ab if v > 0 else "")
     return RedirectResponse("../steuer", status_code=303)
 
 

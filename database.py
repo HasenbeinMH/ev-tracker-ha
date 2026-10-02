@@ -169,6 +169,7 @@ def init_db():
         # Defaults
         c.execute("INSERT OR IGNORE INTO einstellungen VALUES ('benziner_verbrauch', '7.0')")
         c.execute("INSERT OR IGNORE INTO einstellungen VALUES ('kfz_steuer_benziner', '0.0')")
+        c.execute("INSERT OR IGNORE INTO einstellungen VALUES ('kfz_steuer_eauto', '0.0')")
         c.execute("INSERT OR IGNORE INTO einstellungen VALUES ('ev_verbrauch_default', '15.0')")
         c.execute("INSERT OR IGNORE INTO einstellungen VALUES ('co2_strommix', '401')")
         c.execute("INSERT OR IGNORE INTO einstellungen VALUES ('pv_preis_ct', '13.0')")

@@ -12,7 +12,32 @@
     <button type="submit">💾 Speichern</button>
     {% if kfz > 0 %}
     <span class="gruen" style="align-self:center">
-      Ersparnis: {{ "%.2f"|format(kfz)|replace(".", ",") }} €/Jahr (E-Auto: 0,00 €)
+      Ersparnis: {{ "%.2f"|format(kfz - kfz_eauto)|replace(".", ",") }} €/Jahr
+      (E-Auto: {{ "%.2f"|format(kfz_eauto)|replace(".", ",") }} €)
+    </span>
+    {% endif %}
+  </form>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">KFZ-Steuer E-Auto</h2>
+  <p class="hint" style="margin-top:0">
+    Elektroautos sind in Deutschland zeitlich befristet von der KFZ-Steuer befreit. Endet die
+    Befreiung, hier den Jahresbetrag laut Steuerbescheid und den ersten steuerpflichtigen Monat
+    eintragen. Er wird ab diesem Monat anteilig von der Steuer-Ersparnis abgezogen.
+    0 = steuerfrei.
+  </p>
+  <form class="inline" method="post" action="steuer/eauto">
+    <label class="feld">€/Jahr
+      <input name="betrag" value="{{ '%.2f'|format(kfz_eauto)|replace('.', ',') }}" required>
+    </label>
+    <label class="feld">steuerpflichtig ab
+      <input type="month" name="ab" value="{{ kfz_eauto_ab or heute[:7] }}">
+    </label>
+    <button type="submit">💾 Speichern</button>
+    {% if kfz_eauto > 0 %}
+    <span class="muted" style="align-self:center">
+      seit {{ kfz_eauto_ab[5:7] }}/{{ kfz_eauto_ab[:4] }} steuerpflichtig
     </span>
     {% endif %}
   </form>

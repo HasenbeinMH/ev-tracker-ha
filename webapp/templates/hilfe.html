@@ -114,7 +114,7 @@
   <tr><td>Gesamtstrecke</td><td>Summe der Monats-km im Zeitraum.</td></tr>
   <tr><td>Geladene Energie</td><td>Summe der kWh aller Ladevorgänge im Zeitraum.</td></tr>
   <tr><td>Kraftstoff-Ersparnis</td><td>Hochgerechnete {{ kf.name }}kosten − tatsächliche Stromkosten.</td></tr>
-  <tr><td>Steuer-Ersparnis</td><td>KFZ-Steuer des {{ kf.fahrzeug_gen }} (Jahresbetrag), anteilig nach Monaten im Zeitraum.</td></tr>
+  <tr><td>Steuer-Ersparnis</td><td>KFZ-Steuer des {{ kf.fahrzeug_gen }} (Jahresbetrag), anteilig nach Monaten im Zeitraum; abzüglich der KFZ-Steuer des E-Autos, sobald dessen Befreiung endet.</td></tr>
   <tr><td>THG-Ertrag</td><td>Summe der THG-Auszahlungen im Zeitraum.</td></tr>
   <tr><td>CO2 gespart</td><td>{{ kf.name }}-Äquivalent in Litern × CO2-Faktor.</td></tr>
 </table>
@@ -127,7 +127,7 @@
   <tr><td>Sommer</td><td>April bis September.</td></tr>
   <tr><td>Winter</td><td>Oktober bis März des Folgejahres – „Winter 2025/26“ ist Okt 2025 bis Mär 2026.</td></tr>
 </table>
-<div class="hb-formel"><span class="lbl">KFZ-Steuer</span>Steuer-Ersparnis = KFZ-Steuer [€/Jahr] × Monate im Zeitraum ÷ 12</div>
+<div class="hb-formel"><span class="lbl">KFZ-Steuer</span>Steuer-Ersparnis = KFZ-Steuer [€/Jahr] × Monate im Zeitraum ÷ 12 − KFZ-Steuer E-Auto [€/Jahr] × steuerpflichtige Monate ÷ 12</div>
 <div class="hb-info"><b>Warum anteilig?</b> Die KFZ-Steuer ist ein Jahresbetrag. Sonst bekäme jedes Quartal die Steuer eines ganzen Jahres gutgeschrieben – und mehrere Jahre nur einmal. Im Gesamtzeitraum zählen die Monate vom ersten bis zum letzten Monat mit Daten. Der Stromtarif-Verlauf zeigt ab Zeitraumbeginn den dann gültigen Tarif, auch wenn er früher eingetragen wurde; Tarifwechsel innerhalb des Zeitraums erscheinen als Stufe.</div>
 
 <h2 id="statistik">Statistik <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
@@ -230,8 +230,9 @@
 
 <h2 id="steuer">Steuer &amp; THG <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„💶 KFZ-Steuer &amp; THG-Quote"</b></p>
-<div class="hb-formel"><span class="lbl">Steuer-Ersparnis</span>Ersparnis [€] = KFZ-Steuer {{ kf.fahrzeug }} − 0 € (E-Auto)</div>
-<div class="hb-warn"><b>Jahreswert ohne Zeitanteilung:</b> Der Betrag geht ungekürzt in die Gesamt-Ersparnis ein – unabhängig davon, wie lange du schon trackst. Bei kürzerer Laufzeit anteilig eintragen.</div>
+<div class="hb-formel"><span class="lbl">Steuer-Ersparnis</span>Ersparnis [€] = KFZ-Steuer {{ kf.fahrzeug }} × Monate ÷ 12 − KFZ-Steuer E-Auto × steuerpflichtige Monate ÷ 12</div>
+<p>Beide Beträge sind Jahreswerte und werden nach Monaten im Zeitraum anteilig gerechnet. Solange das E-Auto steuerbefreit ist, bleibt seine Steuer bei 0 €.</p>
+<div class="hb-info"><b>Ende der Steuerbefreiung:</b> Unter „KFZ-Steuer E-Auto“ den Jahresbetrag aus dem Steuerbescheid und den ersten steuerpflichtigen Monat eintragen. Abgezogen wird erst ab diesem Monat – frühere Zeiträume bleiben unverändert. Ändert sich der Betrag später, gilt der neue Wert für alle Monate ab dem eingetragenen Monat.</div>
 <div class="hb-formel"><span class="lbl">THG-Ertrag</span>THG-Ertrag [€] = Σ aller erfassten Beträge</div>
 <p>Jede Auszahlung als eigener Eintrag mit Datum – so landet sie im richtigen Monats- und Jahresbericht.</p>
 
@@ -336,7 +337,7 @@
   <tr><td>EV-Referenz</td><td>15,0 kWh/100 km</td><td>Nur Ziellinie im Verbrauchsdiagramm – keine Kostenwirkung.</td></tr>
   <tr><td>PV-Preis</td><td>13 ct/kWh</td><td>Bewertung des PV-Eigenverbrauchs.</td></tr>
   <tr><td>CO2-Faktor</td><td>2,37 kg/L (Diesel 2,65, Autogas 1,64)</td><td>Verbrennungs- plus Vorkettenemission je Liter. Beim Wechsel des Kraftstoffs springt der Standardwert mit um; ein eigener Wert bleibt stehen.</td></tr>
-  <tr><td>KFZ-Steuer</td><td>0 €</td><td>Jahressteuer des Vergleichs-{{ kf.fahrzeug_gen }}.</td></tr>
+  <tr><td>KFZ-Steuer</td><td>0 € bzw. ab Ende der Befreiung der eingetragene Jahresbetrag</td><td>Jahressteuer des Vergleichs-{{ kf.fahrzeug_gen }}.</td></tr>
 </table>
 <ul>
   <li><b>Einstellungen sichern / laden</b> – Export als JSON, wahlweise mit oder ohne Zugangsdaten.</li>
@@ -356,7 +357,7 @@
   <tr><td>{{ kf.name }}kosten hochgerechnet</td><td><code>Σ Monat: km ÷ 100 × Verbrauch × Monatspreis</code></td></tr>
   <tr><td>Ø {{ kf.name }}preis (km-gewichtet)</td><td><code>{{ kf.name }}kosten ÷ Liter</code></td></tr>
   <tr><td>Kraftstoff-Ersparnis</td><td><code>{{ kf.name }}kosten − Σ Ladekosten</code></td></tr>
-  <tr><td>Steuer-Ersparnis</td><td><code>KFZ-Steuer {{ kf.fahrzeug }} × Monate ÷ 12</code></td></tr>
+  <tr><td>Steuer-Ersparnis</td><td><code>KFZ-Steuer {{ kf.fahrzeug }} × Monate ÷ 12 − KFZ-Steuer E-Auto × steuerpflichtige Monate ÷ 12</code></td></tr>
   <tr><td>THG-Ertrag</td><td><code>Σ THG-Beträge</code></td></tr>
   <tr><td><b>Gesamt-Ersparnis</b></td><td><code>Kraftstoff + Steuer + THG</code></td></tr>
   <tr><td>Verbrauch je Monat</td><td><code>kWh (Monat) ÷ km (Monat) × 100</code></td></tr>

@@ -19,10 +19,21 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.13.0"
+VERSION = "2.14.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.14.0",
+        "datum": "2026-10-02",
+        "titel": "KFZ-Steuer fuer das E-Auto",
+        "aenderungen": [
+            "Steuer & THG: neue Eingabe \"KFZ-Steuer E-Auto\" – Jahresbetrag und erster steuerpflichtiger Monat, fuer die Zeit nach Ende der Steuerbefreiung",
+            "Die E-Auto-Steuer wird ab diesem Monat anteilig nach Monaten von der Steuer-Ersparnis abgezogen – auf Dashboard, Statistik und in der Gesamt-Ersparnis; fruehere Zeitraeume bleiben unveraendert",
+            "Statistik-Vergleich: Zeile \"davon KFZ-Steuer E-Auto\", sobald in einem der Zeitraeume Steuer anfaellt",
+            "Hilfe: Formeln zur Steuer-Ersparnis aktualisiert; veralteter Hinweis \"Jahreswert ohne Zeitanteilung\" entfernt",
+        ],
+    },
     {
         "version": "2.13.0",
         "datum": "2026-09-27",

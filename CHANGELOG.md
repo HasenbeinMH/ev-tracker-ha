@@ -3,6 +3,13 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.14.0] - 2026-10-02
+### KFZ-Steuer fuer das E-Auto
+- Steuer & THG: neue Eingabe "KFZ-Steuer E-Auto" – Jahresbetrag und erster steuerpflichtiger Monat, fuer die Zeit nach Ende der Steuerbefreiung
+- Die E-Auto-Steuer wird ab diesem Monat anteilig nach Monaten von der Steuer-Ersparnis abgezogen – auf Dashboard, Statistik und in der Gesamt-Ersparnis; fruehere Zeitraeume bleiben unveraendert
+- Statistik-Vergleich: Zeile "davon KFZ-Steuer E-Auto", sobald in einem der Zeitraeume Steuer anfaellt
+- Hilfe: Formeln zur Steuer-Ersparnis aktualisiert; veralteter Hinweis "Jahreswert ohne Zeitanteilung" entfernt
+
 ## [2.13.0] - 2026-09-27
 ### Rechnungsimport: Tesla Supercharger
 - Neues Rechnungsformat: Tesla Supercharger – Datum, Betrag brutto, Ladeleistung und Standort; Ladetyp DC

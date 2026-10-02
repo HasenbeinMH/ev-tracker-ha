@@ -18,6 +18,8 @@ KFZ-Steuer: ein Jahresbetrag, daher immer nach Monaten anteilig (Monate ÷ 12) �
 auch im Gesamtzeitraum (erster bis letzter Monat mit Daten). Sonst waere die
 Steuer-Ersparnis eines Quartals so hoch wie die eines ganzen Jahres, und
 mehrere Jahre bekaemen die Steuer nur einmal gutgeschrieben.
+Endet die Steuerbefreiung des E-Autos, wird dessen Jahressteuer ab dem
+eingetragenen Monat ebenso anteilig abgezogen.
 """
 import re
 from datetime import date
@@ -133,6 +135,8 @@ def laden() -> dict:
         "akku": akkuverbrauch.pro_monat(),
         "cfg": db.get_config(),
         "kfz_steuer": db.get_einstellung("kfz_steuer_benziner") or 0.0,
+        "kfz_steuer_eauto": db.get_einstellung("kfz_steuer_eauto") or 0.0,
+        "kfz_steuer_eauto_ab": db.get_einstellung_str("kfz_steuer_eauto_ab") or "",
     }
 
 
@@ -181,7 +185,8 @@ def kennzahlen(z: dict, daten: dict) -> dict:
     ersparnis_kraft = benzin_kosten - strom_kosten
 
     # Jahresbetrag, anteilig nach Monaten (Gesamtzeitraum: erster bis letzter Datenmonat)
-    kfz = daten["kfz_steuer"] * len(mon) / 12
+    kfz_eauto = steuer_eauto(mon, daten)
+    kfz = daten["kfz_steuer"] * len(mon) / 12 - kfz_eauto
 
     # Verbrauch laut Ladung nur ueber Monate, in denen km und Ladung vorliegen
     kwh_m = {}
@@ -211,6 +216,7 @@ def kennzahlen(z: dict, daten: dict) -> dict:
         "liter":            liter,
         "thg_gesamt":       thg,
         "kfz_steuer":       kfz,
+        "kfz_steuer_eauto": kfz_eauto,
         "ersparnis_kraft":  ersparnis_kraft,
         "ersparnis_gesamt": ersparnis_kraft + kfz + thg,
         "co2_gespart":      berechnung.co2_kg(liter, cfg["co2_faktor_benzin"]),
@@ -221,6 +227,16 @@ def kennzahlen(z: dict, daten: dict) -> dict:
         "strompreis_ct":    strom_kosten / kwh * 100 if kwh else None,
         "anteile":          {q: (v / kwh * 100 if kwh else None) for q, v in quellen.items()},
     }
+
+
+def steuer_eauto(mon: list, daten: dict) -> float:
+    """KFZ-Steuer des E-Autos in den Monaten `mon`: Jahresbetrag anteilig, aber nur
+    fuer Monate ab Ende der Steuerbefreiung ('YYYY-MM'; leer = alle Monate)."""
+    betrag = daten.get("kfz_steuer_eauto") or 0.0
+    if not betrag:
+        return 0.0
+    ab = (daten.get("kfz_steuer_eauto_ab") or "")[:7]
+    return betrag * len([m for m in mon if m >= ab]) / 12
 
 
 def vorlagen() -> list:
@@ -262,6 +278,7 @@ VERGLEICH_ZEILEN = [
     ("Kraftstoff-Ersparnis", "ersparnis_kraft", 2, "€", None),
     ("Ersparnis je 100 km", "ersparnis_100km", 2, "€", "hoch"),
     ("KFZ-Steuer-Ersparnis (anteilig)", "kfz_steuer", 2, "€", None),
+    ("davon KFZ-Steuer E-Auto", "kfz_steuer_eauto", 2, "€", None),
     ("THG-Ertrag", "thg_gesamt", 2, "€", None),
     ("Gesamt-Ersparnis", "ersparnis_gesamt", 2, "€", None),
     ("CO2 vermieden", "co2_gespart", 0, "kg", None),
@@ -286,6 +303,8 @@ def vergleich_zeilen(ka: dict, kb: dict, nur: tuple | None = None) -> list:
             a, b = ka[schluessel[0]][schluessel[1]], kb[schluessel[0]][schluessel[1]]
         else:
             a, b = ka.get(schluessel), kb.get(schluessel)
+        if schluessel == "kfz_steuer_eauto" and not a and not b:
+            continue        # solange das E-Auto steuerfrei ist, nur Rauschen
         diff = prozent = None
         wertung = ""
         if a is not None and b is not None:
