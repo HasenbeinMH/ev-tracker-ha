@@ -11,9 +11,9 @@
 > Add-on erstellen und zusätzlich unter **Backup** die Datenbank herunterladen. Ohne Sicherung
 > gibt es keinen Weg zurück auf eine ältere Version.
 
-Web-App zur Erfassung und Auswertung der Kosteneinsparungen eines Elektroautos
+Web-App zur Erfassung und Auswertung der Kosteneinsparungen eines oder mehrerer Elektroautos
 gegenüber einem Benziner, Diesel oder Autogas-Auto. Fahrzeugname und -bild sind in den Einstellungen frei wählbar –
-nicht auf ein bestimmtes Modell festgelegt.
+nicht auf ein bestimmtes Modell festgelegt. Oberfläche, Hilfe und Berichte gibt es auf Deutsch oder Englisch.
 
 ![Dashboard des EV Trackers](https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-dashboard.png)
 
@@ -86,6 +86,8 @@ Grundeinstellungen und zeigt bei jedem Schritt, ob er schon erledigt ist.
    oder Autogas, dessen Verbrauch, PV-Preis, KFZ-Steuer. Dazu ein **Fahrzeugbild**: fertige
    Bilder und ein Prompt für Bild-KIs unter
    [fahrzeugbilder](https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/fahrzeugbilder).
+   Hier auch die **Sprache** (Deutsch/English). Mehr als ein E-Auto? Unter **Einstellungen →
+   Fahrzeuge** auf „Mehrere Fahrzeuge“ umschalten – vorher legt die App eine Sicherung an.
 2. **Verbindung zu Home Assistant** – im Add-on automatisch.
 3. **Sensoren zuordnen** – Kilometerstand, PV und Netz ins Auto (kWh), Kraftstoffpreis,
    optional Batteriestand. Am einfachsten über „In HA suchen“ bzw. „In Datenbank suchen“.
@@ -100,7 +102,7 @@ Danach holt der nächtliche Abruf km, kWh und Kraftstoffpreis jeden Monat von se
 
 | Seite | Beschreibung |
 |-------|-------------|
-| 📊 Dashboard | Gesamtübersicht, Kennzahlen, alle Charts |
+| 📊 Dashboard | Gesamtübersicht, Kennzahlen, alle Charts – je Fahrzeug oder für alle zusammen |
 | 🚗 Fahrten | km erfassen, Kraftstoff-Äquivalent, Verbrauch kWh/100 km |
 | 🔌 Laden | Ladevorgänge mit kWh, Preis, Anbieter, AC/DC, Blockiergebühr |
 | 🔋 Ladetarife | Eigene Lade-Abos mit Preisverlauf |
@@ -112,6 +114,7 @@ Danach holt der nächtliche Abruf km, kWh und Kraftstoffpreis jeden Monat von se
 | 📥 HA Import | Nächtlicher Abruf aus Home Assistant, mit Protokoll |
 | 🧾 Rechnungen | PDF-Rechnungen einlesen |
 | 📄 Berichte | Monatsbericht als PDF, optional per Mail |
+| ⚙️ Einstellungen | Fahrzeuge (eins oder mehrere), Sensoren, Vergleichsfahrzeug, Sprache, Simulationsmodus |
 | 💾 Backup | Datenbank sichern und zurückspielen |
 | ❓ Hilfe | Handbuch, Herleitung jeder Kennzahl, Änderungslog (Deutsch und Englisch) |
 

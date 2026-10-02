@@ -5,7 +5,7 @@
 name: EV Tracker
 version: "3.1.0"
 slug: ev_tracker
-description: Ladekosten, Ersparnis und Statistik fürs Elektroauto – als Add-on direkt in Home Assistant.
+description: Ladekosten, Ersparnis und Statistik für ein oder mehrere E-Autos – als Add-on direkt in Home Assistant, auf Deutsch oder Englisch.
 url: "https://github.com/HasenbeinMH/ev-tracker-ha"
 arch:
   - amd64
