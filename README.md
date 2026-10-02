@@ -48,12 +48,12 @@ vorher in Home Assistant eingerichtet sein:
 | ☀️ **Geladene kWh aus der PV** | Anteil des Solarstroms am Laden (mit eigenem PV-Preis bewertet) | Ebenfalls **außerhalb** des Tools zu ermitteln, z. B. über die Wallbox-/PV-Steuerung (evcc, go-e, OpenWB …) oder einen Template-/Utility-Meter-Sensor. Fortlaufender oder täglich zurückgesetzter kWh-Zähler. Oder mit den [Vorlagen](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/README.md) aus Netz- und Wallbox-Leistung berechnen. |
 | 🚗 **Kilometerstand** | Gefahrene km pro Monat | Z. B. über die Fahrzeug-Integration des Herstellers |
 | 💶 *Kosten Netz ins Auto (optional)* | Tatsächliche Stromkosten bei **dynamischem Tarif** (Tibber, aWATTar, Octopus …) statt eines festen Tarifs | Fortlaufender €-Zähler: jede kWh aus dem Netz × Preis in diesem Moment. Die Vorlage [`ev_netzkosten.yaml`](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/homeassistant/ev_netzkosten.yaml) legt ihn aus dem Preissensor an. |
-| 📨 *Ladungen einzeln senden (optional)* | Heimladungen einzeln mit Datum statt als Monatssumme | Die Vorlage [`ev_ladung_senden.yaml`](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/homeassistant/ev_ladung_senden.yaml) schickt am Ladeende kWh und Kosten an den EV Tracker; Adresse und Token stehen in den Einstellungen. |
+| 📨 *Ladungen einzeln senden (optional)* | Heimladungen einzeln mit Datum statt als Monatssumme | Die Vorlage [`ev_ladung_senden.yaml`](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/homeassistant/ev_ladung_senden.yaml) – oder der [Blueprint](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/blueprints/README.md) – schickt am Ladeende kWh und Kosten an den EV Tracker; Adresse und Token stehen in den Einstellungen. |
 | 🔋 *Batteriestand (optional)* | Ladeerkennung und Verbrauch aus dem Akkustand | Ebenfalls über die Fahrzeug-Integration |
 
 Die Entity-IDs werden anschließend in den **Einstellungen** des EV Trackers eingetragen.
 
-**PV/Netz ins Auto selbst berechnen:** Die [Vorlagen](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/README.md) – als Node-RED-Flow oder als Home-Assistant-Paket – teilen die Ladeleistung der Wallbox nach „Haus zuerst, das Auto bekommt den Überschuss“ in PV und Netz auf (ein Hausakku zählt als PV) und legen die beiden kWh-Zähler an. Es genügen die Netzleistung und die Ladeleistung der Wallbox.
+**PV/Netz ins Auto selbst berechnen:** Die [Vorlagen](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/README.md) – als Node-RED-Flow, als Home-Assistant-Paket oder zum Einfügen in die `configuration.yaml` – teilen die Ladeleistung der Wallbox nach „Haus zuerst, das Auto bekommt den Überschuss“ in PV und Netz auf (ein Hausakku zählt als PV) und legen die beiden kWh-Zähler an. Es genügen die Netzleistung und die Ladeleistung der Wallbox.
 Die Aufteilung Netz/PV kann der EV Tracker nicht selbst berechnen – ohne diese beiden
 Zähler fehlen die Kosten fürs Laden zu Hause. Ladevorgänge unterwegs (öffentliche
 Ladesäulen) werden dagegen direkt in der App erfasst.
@@ -167,7 +167,7 @@ suchen, wenn unklar ist, wo genau sich beide Wege unterscheiden.
 | `testdaten.py`, `testdaten.bat` | Testdaten anlegen |
 | `tests/funktionstest.py` | Funktions- und Plausibilitätstest mit eigener Test-DB: `python tests/funktionstest.py` (braucht zusätzlich `httpx`) |
 | `tests/datenquellen_test.py` | Test der Datenbank-Anbindungen gegen nachgebaute Server: `python tests/datenquellen_test.py` |
-| `vorlagen/` | Node-RED-Flow und HA-Paket: PV-/Netz-Anteil beim Laden (`node-red/quellen/flow_bauen.py` baut den Flow aus den `.js`-Quellen) |
+| `vorlagen/` | Node-RED-Flow, HA-Pakete, Fassungen für die `configuration.yaml` und Blueprint: PV-/Netz-Anteil beim Laden, Netzkosten, Ladung senden (`node-red/quellen/flow_bauen.py` baut den Flow aus den `.js`-Quellen, `configuration_yaml/quellen/bauen.py` die configuration.yaml-Fassungen aus den Paketen) |
 | `fahrzeugbilder/` | Galerie der Fahrzeugbilder (im Add-on enthalten, `galerie.py` liest Namen aus der README und Nachweise aus `CREDITS.md`) und der Prompt für eigene Bilder |
 | `tests/vorlagen_test.py` | Test der Vorlagen (Node.js + Jinja2): `python tests/vorlagen_test.py` |
 | `tests/datenquellen_docker_test.py` | Dieselben Anbindungen gegen echte Server in Docker (InfluxDB 1.8/2.7, TimescaleDB, VictoriaMetrics, Prometheus): `python tests/datenquellen_docker_test.py` |

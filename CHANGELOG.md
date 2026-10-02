@@ -3,6 +3,13 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.15.0] - 2026-10-02
+### Vorlagen fuer die configuration.yaml und als Blueprint
+- Alle Home-Assistant-Vorlagen gibt es zusaetzlich zum Einfuegen in die configuration.yaml (vorlagen/configuration_yaml/) – ohne Pakete einzurichten
+- sensor und automation stehen dort unter eigenem Schluessel ("sensor ev_tracker:", "automation ev_tracker:") und vertragen sich mit vorhandenen Eintraegen; bei template, input_number usw. zeigt ein Kommentar, wie man an einen vorhandenen Schluessel anhaengt
+- Die Fassungen werden aus den Paketen erzeugt (configuration_yaml/quellen/bauen.py), der Vorlagentest prueft, dass sie aktuell und inhaltsgleich sind
+- Neu: Blueprint "EV Tracker – Ladung senden" mit Import-Button – Sensoren, Adresse und Token per Auswahlfeld, Ladeerkennung direkt an der Wallbox-Leistung, Zaehlerstaende in einem Text-Helfer statt vier Helfern; dazu ein rest_command ohne Platzhalter
+
 ## [2.14.0] - 2026-10-02
 ### KFZ-Steuer fuer das E-Auto
 - Steuer & THG: neue Eingabe "KFZ-Steuer E-Auto" – Jahresbetrag und erster steuerpflichtiger Monat, fuer die Zeit nach Ende der Steuerbefreiung

@@ -215,7 +215,7 @@
     Die Entity-ID gilt für alle Datenquellen (auch PostgreSQL und Prometheus speichern sie so);
     bei InfluxDB kommt der Name dazu, unter dem der Sensor dort steht.
     <strong>Keine eigenen Zähler für PV/Netz ins Auto?</strong> Die
-    <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen" target="_blank" rel="noopener">Vorlagen</a> (<a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen/node-red" target="_blank" rel="noopener">Node-RED</a> oder HA-Paket)
+    <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen" target="_blank" rel="noopener">Vorlagen</a> (<a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen/node-red" target="_blank" rel="noopener">Node-RED</a>, HA-Paket oder configuration.yaml)
     berechnen sie aus Netz- und Wallbox-Leistung – dann <code>sensor.ev_ladung_pv</code> und
     <code>sensor.ev_ladung_netz</code> eintragen.
     <strong>Dynamischer Stromtarif?</strong> Optional „Kosten Netz ins Auto (€)“ eintragen – einen
@@ -416,10 +416,12 @@
     Einzelladung ankam – nichts wird doppelt gezählt, und eine verlorene Ladung steckt im Rest.
     Vorlage für HA:
     <a href="https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/homeassistant/ev_ladung_senden.yaml"
-       target="_blank" rel="noopener">ev_ladung_senden.yaml</a>.
+       target="_blank" rel="noopener">ev_ladung_senden.yaml</a> oder als
+    <a href="https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/blueprints/README.md"
+       target="_blank" rel="noopener">Blueprint</a> (Sensoren, Adresse und Token per Auswahlfeld).
   </p>
   {% if push_token %}
-  <p class="gruen" style="font-size:13px">✓ Empfang eingeschaltet. In der Vorlage diese beiden Werte eintragen:</p>
+  <p class="gruen" style="font-size:13px">✓ Empfang eingeschaltet. In der Vorlage bzw. im Blueprint diese beiden Werte eintragen:</p>
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end">
     <label class="feld">Adresse (ersetzt <code>ADRESSE_EV_TRACKER</code>)
       <input id="push-url" readonly value="{{ push_url }}" style="width:340px">

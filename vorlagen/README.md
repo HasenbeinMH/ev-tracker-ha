@@ -9,6 +9,7 @@ gleichwertige Wege, **nur einen davon** verwenden:
 |-----|---------|-------|
 | **Node-RED** | wer Node-RED nutzt – nur ein Knoten auszufüllen, Einheiten werden erkannt | [`node-red/ev_pv_anteil_flow.json`](node-red/ev_pv_anteil_flow.json) · [Anleitung](node-red/README.md) |
 | **Home Assistant** (ohne Node-RED) | alle anderen – ein Paket mit Template-Sensoren | [`homeassistant/ev_pv_anteil.yaml`](homeassistant/ev_pv_anteil.yaml) bzw. [`…_mit_zaehler.yaml`](homeassistant/ev_pv_anteil_mit_zaehler.yaml) |
+| **Home Assistant** ohne Pakete | wer alles in der `configuration.yaml` hat | [`configuration_yaml/ev_pv_anteil.yaml`](configuration_yaml/ev_pv_anteil.yaml) bzw. [`…_mit_zaehler.yaml`](configuration_yaml/ev_pv_anteil_mit_zaehler.yaml) |
 
 Beide legen dieselben Sensoren an:
 
@@ -78,6 +79,23 @@ eingerichtet hat (`contextStorage` mit `file`), nutzt ihn automatisch.
 3. Vorzeichen prüfen (`netz_bezug_positiv` im Sensor „EV Ladeleistung Netz“).
 4. Home Assistant neu starten.
 
+### Ohne Pakete: direkt in die configuration.yaml
+
+Jede HA-Vorlage gibt es auch als Fassung für die `configuration.yaml` im Ordner
+[`configuration_yaml/`](configuration_yaml/) – gleicher Inhalt, gleiche Sensoren:
+
+1. Alles unterhalb des Kommentarkastens ans **Ende der `configuration.yaml`** kopieren.
+2. Jeder Schlüssel darf dort nur **einmal** vorkommen. Steht z.B. `template:` schon in der
+   Datei, nur die Einträge darunter (ab `-`) beim vorhandenen `template:` anhängen. Die
+   Kommentare `# ▼ …` in der Vorlage zeigen das an jeder Stelle.
+   `sensor` und `automation` haben einen eigenen Schlüssel (`sensor ev_tracker:`,
+   `automation ev_tracker:`) – die funktionieren neben einem vorhandenen `sensor:` bzw.
+   `automation: !include automations.yaml` ohne Umbau.
+3. Platzhalter ersetzen, Vorzeichen prüfen und neu starten wie oben.
+
+Die Dateien werden aus den Paketen erzeugt
+(`python vorlagen/configuration_yaml/quellen/bauen.py`) – Änderungen immer im Paket machen.
+
 ## Dynamischer Stromtarif: Kosten „Netz ins Auto“ (optional)
 
 Bei Tibber, aWATTar, Octopus & Co. ändert sich der Preis stündlich bzw. viertelstündlich.
@@ -112,8 +130,17 @@ Monatssumme.
 
 1. EV Tracker → **Einstellungen → Ladungen aus Home Assistant empfangen** →
    **Token erzeugen**. Dort stehen Adresse und Token zum Kopieren.
-2. Datei nach `/config/packages/ev_ladung_senden.yaml` kopieren, `ADRESSE_EV_TRACKER`
-   und `DEIN_TOKEN` ersetzen, Home Assistant neu starten.
+2. Datei nach `/config/packages/ev_ladung_senden.yaml` kopieren (oder die Fassung aus
+   [`configuration_yaml/`](configuration_yaml/ev_ladung_senden.yaml) in die
+   `configuration.yaml`), `ADRESSE_EV_TRACKER` und `DEIN_TOKEN` ersetzen, Home Assistant
+   neu starten.
+
+**Oder als Blueprint** – Sensoren, Adresse und Token per Auswahlfeld statt Suchen & Ersetzen:
+
+[![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2FHasenbeinMH%2Fev-tracker-ha%2Fblob%2Fmain%2Fvorlagen%2Fblueprints%2Fev_tracker_ladung_senden.yaml)
+
+Anleitung: [`blueprints/README.md`](blueprints/README.md). Nur **einen** Weg nutzen – Paket
+oder Blueprint –, sonst kommt jede Ladung doppelt an.
 
 - Nutzt die Zähler der PV-Anteil-Vorlagen (`sensor.ev_ladung_netz`, `sensor.ev_ladung_pv`)
   und – falls vorhanden – den Kostenzähler aus `ev_netzkosten.yaml`.

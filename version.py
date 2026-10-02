@@ -19,10 +19,21 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.14.0"
+VERSION = "2.15.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.15.0",
+        "datum": "2026-10-02",
+        "titel": "Vorlagen fuer die configuration.yaml und als Blueprint",
+        "aenderungen": [
+            "Alle Home-Assistant-Vorlagen gibt es zusaetzlich zum Einfuegen in die configuration.yaml (vorlagen/configuration_yaml/) – ohne Pakete einzurichten",
+            "sensor und automation stehen dort unter eigenem Schluessel (\"sensor ev_tracker:\", \"automation ev_tracker:\") und vertragen sich mit vorhandenen Eintraegen; bei template, input_number usw. zeigt ein Kommentar, wie man an einen vorhandenen Schluessel anhaengt",
+            "Die Fassungen werden aus den Paketen erzeugt (configuration_yaml/quellen/bauen.py), der Vorlagentest prueft, dass sie aktuell und inhaltsgleich sind",
+            "Neu: Blueprint \"EV Tracker – Ladung senden\" mit Import-Button – Sensoren, Adresse und Token per Auswahlfeld, Ladeerkennung direkt an der Wallbox-Leistung, Zaehlerstaende in einem Text-Helfer statt vier Helfern; dazu ein rest_command ohne Platzhalter",
+        ],
+    },
     {
         "version": "2.14.0",
         "datum": "2026-10-02",

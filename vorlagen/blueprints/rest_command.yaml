@@ -1,0 +1,24 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  EV Tracker – Befehl zum Senden einer Ladung (für den Blueprint
+#  „EV Tracker – Ladung senden“)
+#
+#  Einmalig ans Ende der configuration.yaml kopieren und Home Assistant neu
+#  starten. Nichts zu ersetzen: Adresse und Token trägst du im Blueprint ein.
+#  Steht „rest_command:“ schon in der Datei, nur den Eintrag ev_tracker_ladung
+#  (eingerückt) dort anhängen.
+#
+#  Wer das Paket ev_ladung_senden.yaml nutzt, hat diesen Befehl schon und
+#  braucht den Blueprint nicht.
+# ═══════════════════════════════════════════════════════════════════════════
+
+rest_command:
+  ev_tracker_ladung:
+    url: "{{ url }}"
+    method: post
+    headers:
+      Authorization: "Bearer {{ token }}"
+    content_type: "application/json"
+    timeout: 20
+    payload: >-
+      {{ {"start": start, "ende": ende, "kwh_netz": kwh_netz, "kwh_pv": kwh_pv,
+          "kosten": kosten} | to_json }}

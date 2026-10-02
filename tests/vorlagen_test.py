@@ -417,6 +417,137 @@ ok, _ = senden({**START, **ENDE, "binary_sensor.ev_ladesitzung": Zustand("off")}
                "mitternacht", _dt(2026, 10, 1, 0, 0))
 check("Senden-Paket", "Monatswechsel ohne Ladung: nichts senden", not ok)
 
+
+# ═══ configuration.yaml-Fassungen (aus den Paketen gebaut) ═══════════════════
+sys.path.insert(0, os.path.join(REPO, "vorlagen", "configuration_yaml", "quellen"))
+import bauen as cfg_bauen
+CFG = os.path.join(REPO, "vorlagen", "configuration_yaml")
+for name, soll in cfg_bauen.bauen().items():
+    pfad = os.path.join(CFG, name)
+    ist = open(pfad, encoding="utf-8").read() if os.path.exists(pfad) else ""
+    check("configuration.yaml", f"{name} aktuell (bauen.py gelaufen)", ist == soll)
+    paket = yaml.safe_load(open(os.path.join(REPO, "vorlagen", "homeassistant", name), encoding="utf-8"))
+    cfg = yaml.safe_load(ist) if ist else {}
+    umbenannt = {k.split(" ")[0]: v for k, v in cfg.items()}
+    check("configuration.yaml", f"{name}: gleicher Inhalt wie das Paket", umbenannt == paket,
+          f"{sorted(cfg)} / {sorted(paket)}")
+    check("configuration.yaml", f"{name}: kein Kopierschritt nach packages/",
+          "/config/packages/" not in ist)
+    check("configuration.yaml", f"{name}: sensor/automation mit eigenem Schluessel",
+          not any(k in ("sensor", "automation") for k in cfg))
+
+# ═══ Blueprint „Ladung senden“ ════════════════════════════════════════════════
+class _Input(str):
+    pass
+
+
+class _BpLoader(yaml.SafeLoader):
+    pass
+
+
+_BpLoader.add_constructor("!input", lambda l, n: _Input(l.construct_scalar(n)))
+BP = os.path.join(REPO, "vorlagen", "blueprints", "ev_tracker_ladung_senden.yaml")
+bp = yaml.load(open(BP, encoding="utf-8"), Loader=_BpLoader)
+eingaben = {}
+for gruppe in bp["blueprint"]["input"].values():
+    eingaben.update(gruppe["input"])
+
+
+def _alle_inputs(o):
+    if isinstance(o, _Input):
+        yield str(o)
+    elif isinstance(o, dict):
+        for v_ in o.values():
+            yield from _alle_inputs(v_)
+    elif isinstance(o, list):
+        for v_ in o:
+            yield from _alle_inputs(v_)
+
+
+benutzt = set(_alle_inputs({k: v_ for k, v_ in bp.items() if k != "blueprint"}))
+check("Blueprint", "Jede !input-Stelle ist als Eingabe definiert", benutzt <= set(eingaben),
+      str(benutzt - set(eingaben)))
+check("Blueprint", "Jede Eingabe wird benutzt", set(eingaben) <= benutzt, str(set(eingaben) - benutzt))
+check("Blueprint", "source_url fuer den Import gesetzt",
+      bp["blueprint"]["source_url"].endswith("vorlagen/blueprints/ev_tracker_ladung_senden.yaml"))
+rc = yaml.safe_load(open(os.path.join(REPO, "vorlagen", "blueprints", "rest_command.yaml"),
+                         encoding="utf-8"))["rest_command"]["ev_tracker_ladung"]
+check("Blueprint", "rest_command ohne Platzhalter, gleiche Nutzdaten wie das Paket",
+      "{{ url }}" in rc["url"] and "{{ token }}" in rc["headers"]["Authorization"]
+      and rc["payload"] == ps["rest_command"]["ev_tracker_ladung"]["payload"])
+
+BP_EIN = {"adresse": "http://ev/api/ladung", "token": "geheim", "zaehler_netz": "sensor.n",
+          "zaehler_pv": "sensor.p", "zaehler_kosten": "sensor.k", "speicher": "input_text.ev"}
+
+
+def bp_lauf(zust, trigger_id, jetzt, eingabe=None):
+    """Spielt die Blueprint-Automation durch. Rueckgabe: (gesendet JSON | None, Speicher)"""
+    ein = {**BP_EIN, **(eingabe or {})}
+    env = renderer_s(zust, jetzt)
+    env.filters["from_json"] = json.loads
+    trig = {"id": trigger_id}
+    v = {}
+    for k, t in bp["variables"].items():
+        v[k] = str(ein[t]) if isinstance(t, _Input) else ha_wert_s(env.from_string(t).render(trigger=trig, **v))
+        if k == "gemerkt" and isinstance(v[k], str):
+            import ast
+            v[k] = ast.literal_eval(v[k])
+    v["monatswechsel"] = v["monatswechsel"] == "True"
+    speicher, gesendet = zust.get(ein["speicher"], Zustand("")).state, None
+    for schritt in bp["actions"]:
+        if env.from_string(schritt["if"][0]["value_template"]).render(trigger=trig, **v).strip() != "True":
+            continue
+        for a in schritt["then"]:
+            if "variables" in a:
+                for k, t in a["variables"].items():
+                    v[k] = ha_wert_s(env.from_string(t).render(trigger=trig, **v))
+            elif "if" in a:
+                if env.from_string(a["if"][0]["value_template"]).render(**v).strip() == "True":
+                    daten = {k: ha_wert_s(env.from_string(t).render(**v))
+                             for k, t in a["then"][0]["data"].items()}
+                    gesendet = {"url": daten["url"], "token": daten["token"],
+                                **json.loads(env.from_string(rc["payload"]).render(**daten))}
+            elif a["action"] == "input_text.set_value":
+                speicher = env.from_string(a["data"]["value"]).render(**v).strip()
+    return gesendet, speicher
+
+
+T_START = _dt(2026, 9, 24, 22, 10)
+STAENDE = {"sensor.n": Zustand("100.0"), "sensor.p": Zustand("25.0"), "sensor.k": Zustand("34.0")}
+_, sp = bp_lauf(STAENDE, "start", T_START)
+gem = json.loads(sp)
+check("Blueprint", "Ladebeginn: Staende im Text-Helfer (max. 255 Zeichen)",
+      gem == {"start": "2026-09-24 22:10:00", "netz": 100.0, "pv": 25.0, "kosten": 34.0}
+      and len(sp) <= 255, sp)
+ENDE_BP = {"sensor.n": Zustand("120.5"), "sensor.p": Zustand("30.2"), "sensor.k": Zustand("40.1"),
+           "input_text.ev": Zustand(sp)}
+j, sp2 = bp_lauf(ENDE_BP, "ende", _dt(2026, 9, 25, 5, 30))
+check("Blueprint", "Ladeende: 20,5 kWh Netz, 5,2 kWh PV, 6,10 €, Adresse und Token",
+      j and j["url"] == "http://ev/api/ladung" and j["token"] == "geheim"
+      and j["start"] == "2026-09-24 22:10:00" and j["ende"] == "2026-09-25 05:30:00"
+      and nah(j["kwh_netz"], 20.5) and nah(j["kwh_pv"], 5.2) and nah(j["kosten"], 6.1), str(j))
+check("Blueprint", "Nach dem Ladeende ist nichts mehr offen", sp2 == "{}", sp2)
+j, _ = bp_lauf({**ENDE_BP, "input_text.ev": Zustand("unknown")}, "ende", _dt(2026, 9, 25, 5, 30))
+check("Blueprint", "Ohne gemerkten Ladebeginn: nichts senden", j is None, str(j))
+j, _ = bp_lauf({**ENDE_BP, "sensor.n": Zustand("100.01"), "sensor.p": Zustand("25.0")},
+               "ende", _dt(2026, 9, 25, 5, 30))
+check("Blueprint", "Unter 0,05 kWh: nichts senden", j is None, str(j))
+j, _ = bp_lauf(ENDE_BP, "ende", _dt(2026, 9, 25, 5, 30), {"zaehler_kosten": ""})
+check("Blueprint", "Ohne Kostenzaehler: kosten = null", j and j["kosten"] is None, str(j))
+j, sp3 = bp_lauf(ENDE_BP, "mitternacht", _dt(2026, 10, 1, 0, 0))
+check("Blueprint", "Monatswechsel mit offener Ladung: Teil senden und neu merken",
+      j and nah(j["kwh_netz"], 20.5) and json.loads(sp3)["start"] == "2026-10-01 00:00:00"
+      and json.loads(sp3)["netz"] == 120.5, f"{j} / {sp3}")
+j, sp4 = bp_lauf(ENDE_BP, "mitternacht", _dt(2026, 9, 25, 0, 0))
+check("Blueprint", "Mitternacht mitten im Monat: nichts", j is None and sp4 == sp, str(j))
+j, sp5 = bp_lauf({**ENDE_BP, "input_text.ev": Zustand("{}")}, "mitternacht", _dt(2026, 10, 1, 0, 0))
+check("Blueprint", "Monatswechsel ohne Ladung: nichts", j is None and sp5 == "{}", str(j))
+env_ = renderer_s({}, _dt.now())
+vt = bp["triggers"][0]["value_template"]
+check("Blueprint", "Ladeleistung in kW wird in W umgerechnet",
+      env_.from_string(vt).render(state={"state": "7.2", "attributes": {"unit_of_measurement": "kW"}}).strip()
+      == "7200.0")
+
 # ── Ausgabe ──────────────────────────────────────────────────────────────────
 ok_n = sum(1 for e in ERG if e[2])
 print(f"\n{ok_n}/{len(ERG)} Pruefungen bestanden\n")

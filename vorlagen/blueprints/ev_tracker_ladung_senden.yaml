@@ -1,0 +1,227 @@
+blueprint:
+  name: EV Tracker – Ladung senden
+  description: >
+    Schickt jede Ladung zuhause einzeln an den EV Tracker: kWh aus dem Netz, kWh aus
+    der PV und optional die Kosten seit Ladebeginn. Am Monatswechsel wird eine
+    laufende Ladung geteilt, damit jeder Teil im richtigen Monat zählt.
+
+
+    **Vorher einrichten** (Anleitung: vorlagen/blueprints/README.md):
+
+    1. In der configuration.yaml einmalig den Befehl `rest_command.ev_tracker_ladung`
+       aus vorlagen/blueprints/rest_command.yaml einfügen und neu starten.
+
+    2. Einstellungen → Geräte & Dienste → Helfer → Text anlegen
+       (z.B. „EV Tracker Ladung“, maximale Länge 255). Darin merkt sich die
+       Automation die Zählerstände beim Ladebeginn.
+
+    3. EV Tracker → Einstellungen → „Ladungen aus Home Assistant empfangen“ →
+       Token erzeugen. Adresse und Token unten eintragen.
+
+
+    Kommt eine Ladung nicht an, erscheint eine Benachrichtigung. Verloren ist sie
+    nicht: der nächtliche Abruf zählt sie in der Monatssumme mit.
+  domain: automation
+  source_url: https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/blueprints/ev_tracker_ladung_senden.yaml
+  input:
+    verbindung:
+      name: EV Tracker
+      icon: mdi:web
+      input:
+        adresse:
+          name: Adresse
+          description: >
+            Aus den Einstellungen des EV Trackers, z.B.
+            http://a0d7b954-ev-tracker:8099/api/ladung (Add-on)
+          selector:
+            text:
+              type: url
+        token:
+          name: Token
+          description: Aus den Einstellungen des EV Trackers („Token erzeugen“)
+          selector:
+            text:
+              type: password
+    zaehler:
+      name: Sensoren
+      icon: mdi:counter
+      input:
+        ladeleistung:
+          name: Ladeleistung der Wallbox
+          description: >
+            Erkennt Ladebeginn und -ende (W oder kW – wird erkannt). Mit den
+            PV-Anteil-Vorlagen z.B. sensor.ev_ladeleistung_wallbox.
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+                  device_class: power
+        zaehler_netz:
+          name: kWh aus dem Netz (fortlaufend)
+          default: sensor.ev_ladung_netz
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+        zaehler_pv:
+          name: kWh aus der PV (fortlaufend)
+          default: sensor.ev_ladung_pv
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+        zaehler_kosten:
+          name: Kosten Netz ins Auto in € (optional)
+          description: Fortlaufender €-Zähler, z.B. sensor.ev_ladung_netz_kosten aus ev_netzkosten.yaml
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+        speicher:
+          name: Text-Helfer für die Zählerstände
+          description: Einstellungen → Geräte & Dienste → Helfer → Text (maximale Länge 255)
+          selector:
+            entity:
+              filter:
+                - domain: input_text
+    erkennung:
+      name: Ladeerkennung
+      icon: mdi:ev-station
+      collapsed: true
+      input:
+        schwelle_w:
+          name: Ab dieser Leistung wird geladen
+          default: 50
+          selector:
+            number:
+              min: 10
+              max: 2000
+              unit_of_measurement: W
+              mode: box
+        start_min:
+          name: Ladebeginn nach
+          default: 1
+          selector:
+            number:
+              min: 0
+              max: 30
+              unit_of_measurement: min
+              mode: box
+        ende_min:
+          name: Ladeende nach so vielen Minuten ohne Leistung
+          description: Kurze Pausen beim PV-Überschussladen bleiben so eine Ladung.
+          default: 15
+          selector:
+            number:
+              min: 1
+              max: 120
+              unit_of_measurement: min
+              mode: box
+
+mode: queued
+
+variables:
+  adresse: !input adresse
+  token: !input token
+  e_netz: !input zaehler_netz
+  e_pv: !input zaehler_pv
+  e_kosten: !input zaehler_kosten
+  e_speicher: !input speicher
+  netz: "{{ states(e_netz) | float(none) }}"
+  pv: "{{ states(e_pv) | float(none) }}"
+  kosten_stand: "{{ states(e_kosten) | float(none) if e_kosten else none }}"
+  # Gemerkte Stände beim Ladebeginn, {} = keine Ladung offen
+  gemerkt: >
+    {% set s = states(e_speicher) %}
+    {{ s | from_json if s.startswith('{') and s.endswith('}') else {} }}
+  # Am 1. um 0 Uhr eine laufende Ladung teilen
+  monatswechsel: >
+    {{ trigger.id == 'mitternacht' and now().day == 1 and gemerkt.get('start') is not none }}
+
+triggers:
+  - trigger: numeric_state
+    entity_id: !input ladeleistung
+    value_template: >
+      {{ state.state | float(0) * (1000 if state.attributes.unit_of_measurement == 'kW' else 1) }}
+    above: !input schwelle_w
+    for:
+      minutes: !input start_min
+    id: start
+  - trigger: numeric_state
+    entity_id: !input ladeleistung
+    value_template: >
+      {{ state.state | float(0) * (1000 if state.attributes.unit_of_measurement == 'kW' else 1) }}
+    below: !input schwelle_w
+    for:
+      minutes: !input ende_min
+    id: ende
+  - trigger: time
+    at: "00:00:00"
+    id: mitternacht
+
+actions:
+  # Ladeende oder Monatswechsel: Differenzen seit dem Ladebeginn schicken
+  - if:
+      - condition: template
+        value_template: "{{ trigger.id == 'ende' or monatswechsel }}"
+    then:
+      - variables:
+          start: "{{ gemerkt.get('start', '') }}"
+          kwh_netz: >
+            {{ ([netz - gemerkt.get('netz', 0) | float(0), 0] | max) | round(3)
+               if netz is not none else 0 }}
+          kwh_pv: >
+            {{ ([pv - gemerkt.get('pv', 0) | float(0), 0] | max) | round(3)
+               if pv is not none else 0 }}
+          kosten: >
+            {{ (kosten_stand - gemerkt.get('kosten', 0) | float(0)) | round(4)
+               if kosten_stand is not none and gemerkt.get('kosten') is not none else none }}
+      - if:
+          - condition: template
+            value_template: "{{ start != '' and 0.05 <= kwh_netz + kwh_pv <= 200 }}"
+        then:
+          - action: rest_command.ev_tracker_ladung
+            continue_on_error: true
+            response_variable: antwort
+            data:
+              url: "{{ adresse }}"
+              token: "{{ token }}"
+              start: "{{ start }}"
+              ende: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+              kwh_netz: "{{ kwh_netz }}"
+              kwh_pv: "{{ kwh_pv }}"
+              kosten: "{{ kosten }}"
+          - if:
+              - condition: template
+                value_template: "{{ antwort is not defined or antwort.status != 200 }}"
+            then:
+              - action: persistent_notification.create
+                data:
+                  title: "EV Tracker: Ladung nicht angekommen"
+                  notification_id: ev_tracker_ladung
+                  message: >
+                    Ladung ab {{ start }} ({{ kwh_netz }} kWh Netz, {{ kwh_pv }} kWh PV)
+                    wurde nicht angenommen:
+                    {{ antwort.content if antwort is defined else 'keine Antwort' }}.
+                    Sie fehlt nicht – der nächtliche Abruf zählt sie in der Monatssumme mit.
+      # Ladung abgeschlossen: nichts mehr offen (beim Monatswechsel folgt unten der neue Teil)
+      - action: input_text.set_value
+        target:
+          entity_id: "{{ e_speicher }}"
+        data:
+          value: "{}"
+  # Ladebeginn (auch der zweite Teil nach dem Monatswechsel): Stände merken
+  - if:
+      - condition: template
+        value_template: "{{ trigger.id == 'start' or monatswechsel }}"
+    then:
+      - action: input_text.set_value
+        target:
+          entity_id: "{{ e_speicher }}"
+        data:
+          value: >
+            {{ {"start": now().strftime('%Y-%m-%d %H:%M:%S'),
+                "netz": (netz or 0) | round(3), "pv": (pv or 0) | round(3),
+                "kosten": kosten_stand | round(4) if kosten_stand is not none else none}
+               | to_json }}
