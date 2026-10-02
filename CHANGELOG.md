@@ -3,6 +3,14 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [2.16.0] - 2026-10-02
+### Schutz vor Downgrade, Versicherungstest datumsunabhaengig
+- Vorbereitung fuer mehrere Fahrzeuge: die Datenbank merkt sich ihren Struktur-Stand. Stammt sie aus einer neueren Version des EV Trackers, wird sie nur lesend geoeffnet – Seiten bleiben sichtbar, aber nichts wird gespeichert, importiert oder per Mail verschickt. Schuetzt vor still falschen Zahlen nach einem Downgrade
+- Orangefarbenes Banner "Nur lesbar" mit Hinweis: neue Version installieren oder unter Backup eine Sicherung wiederherstellen (das Wiederherstellen bleibt erlaubt)
+- Ladungen aus Home Assistant werden in diesem Zustand mit Fehlermeldung abgelehnt (HA zeigt eine Benachrichtigung) – sie fehlen nicht, der naechste Abruf in der neuen Version zaehlt sie mit
+- Hilfe → Backup: Abschnitt zum Zustand "Nur lesbar"
+- Funktionstest: Pruefung der hochgerechneten Jahres-km (Versicherung) haengt nicht mehr vom heutigen Datum ab
+
 ## [2.15.0] - 2026-10-02
 ### Vorlagen fuer die configuration.yaml und als Blueprint
 - Alle Home-Assistant-Vorlagen gibt es zusaetzlich zum Einfuegen in die configuration.yaml (vorlagen/configuration_yaml/) – ohne Pakete einzurichten

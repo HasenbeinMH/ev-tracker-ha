@@ -54,7 +54,7 @@ db.init_mail_settings()
 
 # Einmalig (ab 2.0.7): Netzbezug aus dem Import wurde frueher immer mit dem neuesten
 # Stromtarif bewertet – jetzt mit dem Tarif des jeweiligen Monats
-if db.get_einstellung_str("migration_netzpreis_monat") != "1":
+if not db.SCHEMA_ZU_NEU and db.get_einstellung_str("migration_netzpreis_monat") != "1":
     berechnung.heimladungen_neu_bewerten()
     db.set_einstellung("migration_netzpreis_monat", "1")
 
@@ -62,6 +62,32 @@ if db.get_einstellung_str("migration_netzpreis_monat") != "1":
 # weil auch akkuverbrauch.py und ladeerkennung.py sie brauchen.
 
 app =FastAPI(title="EV Tracker")
+
+
+SCHREIBSPERRE_TEXT = ("Die Datenbank stammt aus einer neueren Version des EV Trackers und ist "
+                      "deshalb nur lesbar. Bitte die neue Version installieren oder unter "
+                      "Backup eine Sicherung wiederherstellen.")
+
+
+@app.middleware("http")
+async def schreibsperre(request: Request, call_next):
+    """Schema-Waechter: Ist die Datenbank neuer als diese Version, wird nichts
+    geschrieben (sonst falsche Zahlen nach einem Downgrade). Nur das Wiederherstellen
+    eines Backups bleibt erlaubt – es ist der Weg zurueck."""
+    if (db.SCHEMA_ZU_NEU and request.method not in ("GET", "HEAD", "OPTIONS")
+            and not request.url.path.endswith("/api/backup/restore")):
+        if "/api/" in request.url.path:
+            return JSONResponse({"ok": False, "error": SCHREIBSPERRE_TEXT}, status_code=503)
+        # Formular: zurueck zur Seite, das Banner meldet "nicht gespeichert"
+        # nur Pfad und Query des Referers – nie auf eine fremde Adresse umleiten
+        from urllib.parse import urlsplit
+        teile = urlsplit(request.headers.get("referer") or "")
+        ziel = (teile.path or ".") + (f"?{teile.query}" if teile.query else "")
+        ziel += ("&" if "?" in ziel else "?") + "nicht_gespeichert=1"
+        return RedirectResponse(ziel, status_code=303)
+    return await call_next(request)
+
+
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 templates.env.globals["MONATE"] = MONATE
@@ -77,6 +103,8 @@ def render(request, template, **ctx):
     cfg = db.get_config()
     ctx.setdefault("kf", berechnung.kraftstoff(cfg["kraftstoff"]))
     ctx.setdefault("simulation", cfg["simulation"])
+    ctx.setdefault("schema_zu_neu", db.SCHEMA_ZU_NEU)
+    ctx.setdefault("nicht_gespeichert", request.query_params.get("nicht_gespeichert") == "1")
     # Versionsmarke fuer api/auto-bild: aendert sich mit jedem Bildwechsel, damit der
     # Browser nicht das alte Bild aus dem Cache zeigt
     voll = _auto_bild_pfad()
@@ -1373,6 +1401,8 @@ def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> lis
     vervollstaendigt, falls spaet Daten nachkommen.
     Jeder Lauf wird in import.log protokolliert.
     """
+    if db.SCHEMA_ZU_NEU:
+        return ["Übersprungen: Datenbank aus einer neueren Version, nur lesbar"]
     cfg = db.get_ha_settings()
     name = datenquellen.QUELLEN.get(cfg.get("datasource"))
     quelle_text = f"{name} (Fallback HA-API)" if name else "Home Assistant API"
@@ -1527,6 +1557,8 @@ def import_log(zeilen: int = 200):
 
 def _versand_pruefen():
     """Verschickt faellige Berichte. Merker verhindert Doppelversand."""
+    if db.SCHEMA_ZU_NEU:      # Merker waere nicht speicherbar -> sonst taeglich dieselbe Mail
+        return
     cfg = db.get_mail_settings()
     if cfg.get("mail_aktiv") != "1":
         return
@@ -1603,7 +1635,7 @@ def _zeitplan_schleife():
         time.sleep(schlafen)
         # 1. Daten aus Home Assistant nachziehen
         try:
-            if db.get_mail_settings().get("auto_import", "1") == "1":
+            if not db.SCHEMA_ZU_NEU and db.get_mail_settings().get("auto_import", "1") == "1":
                 protokoll = _auto_import()
                 db.set_einstellung(
                     "auto_import_letzter",

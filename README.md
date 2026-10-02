@@ -170,5 +170,7 @@ suchen, wenn unklar ist, wo genau sich beide Wege unterscheiden.
 | `vorlagen/` | Node-RED-Flow, HA-Pakete, Fassungen für die `configuration.yaml` und Blueprint: PV-/Netz-Anteil beim Laden, Netzkosten, Ladung senden (`node-red/quellen/flow_bauen.py` baut den Flow aus den `.js`-Quellen, `configuration_yaml/quellen/bauen.py` die configuration.yaml-Fassungen aus den Paketen) |
 | `fahrzeugbilder/` | Galerie der Fahrzeugbilder (im Add-on enthalten, `galerie.py` liest Namen aus der README und Nachweise aus `CREDITS.md`) und der Prompt für eigene Bilder |
 | `tests/vorlagen_test.py` | Test der Vorlagen (Node.js + Jinja2): `python tests/vorlagen_test.py` |
+| `tests/migrationstest.py` | Datenbanken der letzten Versionen (per `git worktree`) mit dem aktuellen Code öffnen und Kennzahlen, Berichte und Tabellensummen vergleichen: `python tests/migrationstest.py` |
+| `tests/oberflaeche_test.py` | Alle Seiten im echten Browser (Playwright/Chromium), JS-Fehler, Formular, Zustand „Nur lesbar“; optional Screenshots: `python tests/oberflaeche_test.py [ordner]` |
 | `tests/datenquellen_docker_test.py` | Dieselben Anbindungen gegen echte Server in Docker (InfluxDB 1.8/2.7, TimescaleDB, VictoriaMetrics, Prometheus): `python tests/datenquellen_docker_test.py` |
 | `version.py` | Versionsnummer und Änderungslog |

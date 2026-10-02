@@ -19,10 +19,22 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.15.0"
+VERSION = "2.16.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "2.16.0",
+        "datum": "2026-10-02",
+        "titel": "Schutz vor Downgrade, Versicherungstest datumsunabhaengig",
+        "aenderungen": [
+            "Vorbereitung fuer mehrere Fahrzeuge: die Datenbank merkt sich ihren Struktur-Stand. Stammt sie aus einer neueren Version des EV Trackers, wird sie nur lesend geoeffnet – Seiten bleiben sichtbar, aber nichts wird gespeichert, importiert oder per Mail verschickt. Schuetzt vor still falschen Zahlen nach einem Downgrade",
+            "Orangefarbenes Banner \"Nur lesbar\" mit Hinweis: neue Version installieren oder unter Backup eine Sicherung wiederherstellen (das Wiederherstellen bleibt erlaubt)",
+            "Ladungen aus Home Assistant werden in diesem Zustand mit Fehlermeldung abgelehnt (HA zeigt eine Benachrichtigung) – sie fehlen nicht, der naechste Abruf in der neuen Version zaehlt sie mit",
+            "Hilfe → Backup: Abschnitt zum Zustand \"Nur lesbar\"",
+            "Funktionstest: Pruefung der hochgerechneten Jahres-km (Versicherung) haengt nicht mehr vom heutigen Datum ab",
+        ],
+    },
     {
         "version": "2.15.0",
         "datum": "2026-10-02",

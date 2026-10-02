@@ -9,13 +9,52 @@ DB_PATH = os.environ.get(
     os.path.join(os.path.dirname(__file__), "ev_tracker.db"))
 
 
+# Struktur-Stand der Datenbank. Steigt nur, wenn eine aeltere Version die Datenbank
+# nicht mehr korrekt beschreiben koennte (z.B. geaenderte Eindeutigkeit einer Tabelle).
+# Findet diese Version einen hoeheren Stand vor, oeffnet sie die DB nur lesend:
+# sonst wuerde sie nach einem Downgrade still falsche Daten schreiben.
+SCHEMA_VERSION = 2
+SCHEMA_ZU_NEU = None    # gespeicherter Stand, wenn neuer als SCHEMA_VERSION, sonst None
+
+
+def schema_pruefen() -> int | None:
+    """Setzt SCHEMA_ZU_NEU anhand der Datenbank und gibt es zurueck."""
+    global SCHEMA_ZU_NEU
+    SCHEMA_ZU_NEU = None
+    if not os.path.exists(DB_PATH):
+        return None
+    with closing(sqlite3.connect(DB_PATH)) as conn:
+        try:
+            row = conn.execute(
+                "SELECT value FROM einstellungen WHERE key='schema_version'").fetchone()
+        except sqlite3.OperationalError:      # neue oder leere Datenbank
+            return None
+    try:
+        stand = int(row[0]) if row else 0
+    except (TypeError, ValueError):
+        stand = 0
+    if stand > SCHEMA_VERSION:
+        SCHEMA_ZU_NEU = stand
+    return SCHEMA_ZU_NEU
+
+
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
+    if SCHEMA_ZU_NEU:
+        # nur lesend – jeder Schreibversuch scheitert, statt Daten zu verfaelschen
+        from pathlib import Path
+        conn = sqlite3.connect(Path(DB_PATH).resolve().as_uri() + "?mode=ro", uri=True)
+    else:
+        conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def init_db():
+    if schema_pruefen():
+        print(f"[DB] Datenbank hat Struktur-Stand {SCHEMA_ZU_NEU}, diese Version kennt "
+              f"{SCHEMA_VERSION}: nur lesend geoeffnet. Neue Version installieren oder "
+              f"ein Backup wiederherstellen.", flush=True)
+        return
     with closing(get_connection()) as conn:
         c = conn.cursor()
 
@@ -196,6 +235,12 @@ def init_db():
             pass
         c.execute("""CREATE UNIQUE INDEX IF NOT EXISTS idx_ladevorgang_extern
                      ON ladevorgang(extern_id) WHERE extern_id IS NOT NULL""")
+
+        # Struktur-Stand merken (nie herabsetzen)
+        c.execute("INSERT OR IGNORE INTO einstellungen VALUES ('schema_version', ?)",
+                  (str(SCHEMA_VERSION),))
+        c.execute("""UPDATE einstellungen SET value=? WHERE key='schema_version'
+                     AND CAST(value AS INTEGER) < ?""", (str(SCHEMA_VERSION), SCHEMA_VERSION))
 
         # Migration: alten mEDL-Eintrag korrigieren
         c.execute("UPDATE lade_anbieter SET name='medl', gruenstrom=1 WHERE name='mEDL'")
@@ -887,6 +932,8 @@ MAIL_DEFAULTS = {
 
 
 def init_mail_settings():
+    if SCHEMA_ZU_NEU:
+        return
     with closing(get_connection()) as conn:
         for key, val in MAIL_DEFAULTS.items():
             conn.execute("INSERT OR IGNORE INTO einstellungen VALUES (?,?)", (key, val))
@@ -904,6 +951,8 @@ def get_mail_settings() -> dict:
 
 
 def init_ha_settings():
+    if SCHEMA_ZU_NEU:
+        return
     with closing(get_connection()) as conn:
         for key, val in HA_ENTITY_DEFAULTS.items():
             conn.execute("INSERT OR IGNORE INTO einstellungen VALUES (?,?)", (key, val))

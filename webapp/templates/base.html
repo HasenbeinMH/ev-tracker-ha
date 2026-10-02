@@ -54,6 +54,12 @@
   <a href="hilfe#changelog" class="version" title="Änderungslog anzeigen">v{{ VERSION }}</a>
 </nav>
 <main>
+{% if schema_zu_neu %}
+<div class="sim-banner warn-banner" role="alert">{% if nicht_gespeichert %}⛔ <b>Nicht gespeichert.</b> {% endif %}⚠️ <b>Nur lesbar</b> – die Datenbank stammt aus einer neueren
+  Version des EV Trackers (Struktur-Stand {{ schema_zu_neu }}). Damit keine falschen Zahlen entstehen,
+  wird nichts gespeichert und nichts importiert. Neue Version installieren oder unter
+  <a href="backup">Backup</a> eine Sicherung wiederherstellen.</div>
+{% endif %}
 {% if simulation %}
 <div class="sim-banner">🧪 <b>Simulationsmodus</b> – die Ladungen sind aus den gefahrenen km gerechnet,
   so als wäre es ein E-Auto. <a href="einstellungen#simulation">Einstellungen</a></div>

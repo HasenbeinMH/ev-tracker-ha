@@ -320,6 +320,7 @@
   <li><b>„Datenbank herunterladen"</b> liefert eine konsistente Kopie, auch während die App schreibt.</li>
 </ul>
 <div class="hb-warn"><b>Wiederherstellen ersetzt die laufende Datenbank.</b> Die bisherige wird vorher automatisch als <code>vor_restore_….db</code> gesichert. Die hochgeladene Datei wird geprüft – nur echte EV-Tracker-Datenbanken werden akzeptiert.</div>
+<div class="hb-info"><b>„Nur lesbar“ nach einem Downgrade:</b> Die Datenbank merkt sich ihren Struktur-Stand. Stammt sie aus einer neueren Version des EV Trackers (z.B. nach dem Zurückgehen auf eine ältere Add-on-Version), öffnet die App sie nur lesend: Alle Seiten sind sichtbar, aber nichts wird gespeichert, importiert oder per Mail verschickt – ein orangefarbenes Banner weist darauf hin. Sonst könnte die ältere Version die neuere Struktur falsch beschreiben (z.B. Kilometer doppelt). Abhilfe: die neue Version wieder installieren oder hier eine Sicherung aus der älteren Version wiederherstellen – das Wiederherstellen bleibt erlaubt.</div>
 <p class="hint"><b>Messdaten zurücksetzen</b> – für den Fahrzeugwechsel oder zum Entfernen von Testdaten:</p>
 <ul>
   <li>Je Bereich einzeln wählbar: gefahrene Kilometer, Ladevorgänge, {{ kf.name }}preise, Akku-Abschnitte, THG-Einträge. Leere Bereiche lassen sich nicht anhaken.</li>
