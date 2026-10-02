@@ -5,6 +5,12 @@
 > ändern; vor größeren Updates lohnt sich eine Sicherung über Home Assistants eigene
 > Backups. Rückmeldungen und Fehlerberichte sind willkommen.
 
+> [!WARNING]
+> **Update auf 3.x: vorher unbedingt ein Backup anlegen!** Version 3.0 baut die Datenbank
+> für mehrere E-Autos um. Vor dem Update eine Home-Assistant-Sicherung mit dem EV Tracker
+> Add-on erstellen und zusätzlich unter **Backup** die Datenbank herunterladen. Ohne Sicherung
+> gibt es keinen Weg zurück auf eine ältere Version.
+
 Web-App zur Erfassung und Auswertung der Kosteneinsparungen eines Elektroautos
 gegenüber einem Benziner, Diesel oder Autogas-Auto. Fahrzeugname und -bild sind in den Einstellungen frei wählbar –
 nicht auf ein bestimmtes Modell festgelegt.

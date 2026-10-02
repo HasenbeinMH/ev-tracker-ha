@@ -4,6 +4,15 @@ Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [3.1.0] - 2026-10-02
+
+> ⚠️ **VOR DEM UPDATE UNBEDINGT EIN BACKUP ANLEGEN!**
+>
+> Wer von 2.13 oder aelter kommt, bekommt mit einem Schritt fuenf Versionen auf einmal – darunter den groessten Umbau bisher (3.0.0 "Mehrere E-Autos", neue Datenbankstruktur). Bitte vorher sichern:
+> - **Home Assistant:** Einstellungen → System → Sicherungen → "Sicherung erstellen" (mit dem EV Tracker Add-on), oder im Update-Dialog den Haken "Sicherung erstellen" setzen
+> - **zusaetzlich** im EV Tracker unter Backup die Datenbank herunterladen und aufbewahren
+>
+> Ohne Sicherung gibt es keinen Weg zurueck auf eine aeltere Version: nach dem Umschalten auf "Mehrere Fahrzeuge" kann eine Version vor 3.0 die Datenbank nur noch lesen.
+
 ### Sprachumschaltung Deutsch / Englisch
 - Neue Einstellung "Sprache / Language" (Einstellungen → Berechnungsparameter) und Umschalter DE | EN oben rechts in der Navigationsleiste – eine Sprache fuer die ganze App, gilt fuer alle Fahrzeuge
 - Standard bleibt Deutsch: nach dem Update sieht niemand eine Aenderung
