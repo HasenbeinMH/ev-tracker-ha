@@ -10,6 +10,7 @@ import calendar
 from datetime import datetime
 
 import database as db
+from i18n import _
 
 # Ein Anstieg gilt ab dieser Höhe als Ladevorgang (Prozentpunkte)
 MIN_ANSTIEG = 5.0
@@ -96,6 +97,9 @@ def erkenne_ladungen(verlauf: list, min_anstieg: float = MIN_ANSTIEG,
             stunden = 0
         ladungen.append({
             "datum": start_zeit[:10],
+            # Zeitfenster des Anstiegs: letzter Wert davor bis Hoechststand ('YYYY-MM-DDTHH:MM')
+            "start": str(vor_zeit)[:16],
+            "ende": str(ende_zeit)[:16],
             "von_prozent": round(start_wert, 1),
             "bis_prozent": round(bis_wert, 1),
             "kwh": kwh,
@@ -178,7 +182,8 @@ def pruefe_monat(jahr: int, monat: int) -> dict:
       "fehlend"   – es fehlen Ladevorgänge (vermutlich auswärts geladen)
       "unbekannt" – keine Batteriedaten verfügbar, keine Aussage möglich
     """
-    cfg_alle = db.get_alle_einstellungen()
+    # Werte des aktuellen Fahrzeugs (bei mehreren Fahrzeugen je Auto eigene)
+    cfg_alle = db.get_mail_settings()
     try:
         kapazitaet = float(cfg_alle.get("akku_kapazitaet_kwh") or 58.3)
     except ValueError:
@@ -191,7 +196,7 @@ def pruefe_monat(jahr: int, monat: int) -> dict:
     verlauf = batterie_verlauf(jahr, monat)
     if not verlauf:
         return {"status": "unbekannt", "erkannt": [], "fehlend": [],
-                "meldung": "Keine Batteriedaten aus Home Assistant verfügbar."}
+                "meldung": _("Keine Batteriedaten aus Home Assistant verfügbar.")}
 
     erkannt = erkenne_ladungen(verlauf, min_anstieg, kapazitaet)
 
@@ -202,12 +207,12 @@ def pruefe_monat(jahr: int, monat: int) -> dict:
 
     if fehlend:
         summe = sum(f["kwh"] for f in fehlend)
-        meldung = (f"{len(fehlend)} Ladevorgang(e) erkannt, aber nicht erfasst "
-                   f"(~{summe:.0f} kWh) – vermutlich auswärts geladen.")
+        meldung = _("{0} Ladevorgang(e) erkannt, aber nicht erfasst (~{1} kWh) – vermutlich "
+                    "auswärts geladen.", len(fehlend), f"{summe:.0f}")
         status = "fehlend"
     else:
-        meldung = f"Alle {len(erkannt)} erkannten Ladevorgänge sind erfasst"
-        meldung += f" (davon {zuhause} zuhause)." if zuhause else "."
+        meldung = (_("Alle {0} erkannten Ladevorgänge sind erfasst (davon {1} zuhause).", len(erkannt), zuhause)
+                   if zuhause else _("Alle {0} erkannten Ladevorgänge sind erfasst.", len(erkannt)))
         status = "ok"
 
     return {"status": status, "erkannt": erkannt, "fehlend": fehlend,

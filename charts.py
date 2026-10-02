@@ -13,6 +13,8 @@ import calendar
 import math
 from datetime import date
 
+from i18n import _, N_
+
 # Gedaempfte, professionelle Farbpalette (passend zu webapp/static/style.css)
 COLORS = {
     "bg":       "#12141a",
@@ -130,13 +132,13 @@ def _werkzeuge(umschalten=True):
         "itemGap": 10,
         "iconStyle": {"borderColor": COLORS["subtext"]},
         "emphasis": {"iconStyle": {"borderColor": COLORS["text"]}},
-        "feature": {"restore": {"title": "Zurücksetzen"}},
+        "feature": {"restore": {"title": _("Zurücksetzen")}},
     }
     if umschalten:
         werkzeug["feature"] = {
             "magicType": {"type": ["bar", "line"],
-                          "title": {"bar": "Als Balken", "line": "Als Linie"}},
-            "restore": {"title": "Zurücksetzen"},
+                          "title": {"bar": _("Als Balken"), "line": _("Als Linie")}},
+            "restore": {"title": _("Zurücksetzen")},
         }
     return werkzeug
 
@@ -219,16 +221,20 @@ def _leer(msg):
 def _kf() -> dict:
     """Beschriftungen des Vergleichsfahrzeugs (Benzin oder Diesel)."""
     from berechnung import kraftstoff
-    return kraftstoff()
+    k = kraftstoff()
+    # Diagramm-Beschriftungen stehen allein: gross anfangen (englisch "petrol car" -> "Petrol car")
+    return {**k, "fahrzeug": k["fahrzeug"][:1].upper() + k["fahrzeug"][1:]}
 
 
 def chart_monatliche_ersparnis(fahrten_daten, benzinpreise_daten, lade_daten,
-                               benziner_l=7.0, ersatzpreis=None):
+                               benziner_l=7.0, ersatzpreis=None, liter_je_monat=None):
     """Benziner- und Stromkosten je Monat. Alle Monate mit km oder Ladungen, damit die
     Summe der Ersparnis-Linie der Kachel „Kraftstoff-Ersparnis“ entspricht; Monate
-    ohne Benzinpreis werden mit `ersatzpreis` (Ø aller erfassten Preise) gerechnet."""
+    ohne Benzinpreis werden mit `ersatzpreis` (Ø aller erfassten Preise) gerechnet.
+    liter_je_monat: Liter des Vergleichs-Verbrenners je Monat, falls schon gerechnet
+    (mehrere Fahrzeuge mit unterschiedlichem Verbrauch) – sonst km × benziner_l."""
     if not fahrten_daten:
-        return _leer("Keine Fahrtdaten")
+        return _leer(_("Keine Fahrtdaten"))
 
     km_pro_monat = {d["datum"]: d["km"] for d in fahrten_daten}
     bp = {d["monat"]: d["preis_liter"] for d in benzinpreise_daten or []}
@@ -245,7 +251,9 @@ def chart_monatliche_ersparnis(fahrten_daten, benzinpreise_daten, lade_daten,
     benzin_k, strom_k, ersparnis = [], [], []
     for m in monate:
         km = km_pro_monat.get(m, 0)
-        bk = round((km / 100) * benziner_l * bp.get(m, ersatzpreis), 2)
+        liter = (liter_je_monat.get(m, 0) if liter_je_monat is not None
+                 else (km / 100) * benziner_l)
+        bk = round(liter * bp.get(m, ersatzpreis), 2)
         sk = round(strom_pro_monat.get(m, 0), 2)
         benzin_k.append(bk)
         strom_k.append(sk)
@@ -260,8 +268,8 @@ def chart_monatliche_ersparnis(fahrten_daten, benzinpreise_daten, lade_daten,
                                       "formatter": "fn:euro0"})],
         series=[
             _balken(_kf()["fahrzeug"], "orange", benzin_k, "fn:euro2"),
-            _balken("Strom", "blue", strom_k, "fn:euro2"),
-            _linie("Ersparnis", "green", ersparnis, "fn:euro2", yAxisIndex=1, z=3),
+            _balken(_("Strom"), "blue", strom_k, "fn:euro2"),
+            _linie(_("Ersparnis"), "green", ersparnis, "fn:euro2", yAxisIndex=1, z=3),
         ],
     )
     opt["legend"]["show"] = True
@@ -275,10 +283,10 @@ def chart_monatliche_ersparnis(fahrten_daten, benzinpreise_daten, lade_daten,
 def chart_kosten_vergleich(benzin_kosten, strom_kosten):
     # Liegende Balken: bei nur zwei Werten besser lesbar als stehende
     opt = _basis(
-        grid={"left": 8, "right": 70, "top": 16, "bottom": 8, "containLabel": True},
+        grid={"left": 24, "right": 70, "top": 16, "bottom": 8, "containLabel": True},
         xAxis=_achse_wert(axisLabel={"color": COLORS["subtext"], "fontSize": 10,
                                      "formatter": "fn:euro0"}),
-        yAxis=_achse_kategorie(["E-Auto (tatsächlich)", f"{_kf()['fahrzeug']} (hochgerechnet)"],
+        yAxis=_achse_kategorie([_("E-Auto (tatsächlich)"), _("{0} (hochgerechnet)", _kf()['fahrzeug'])],
                                formatter=None,
                                axisLabel={"color": COLORS["text"], "fontSize": 11}),
         series=[{
@@ -301,11 +309,13 @@ def chart_kosten_vergleich(benzin_kosten, strom_kosten):
     return opt
 
 
-def chart_co2_ersparnis(fahrten_daten, benziner_l=7.0, co2_faktor=2.37):
+def chart_co2_ersparnis(fahrten_daten, benziner_l=7.0, co2_faktor=2.37, co2_je_monat=None):
+    """co2_je_monat: kg je Monat, falls schon je Fahrzeug gerechnet (mehrere Fahrzeuge)."""
     if not fahrten_daten:
-        return _leer("Keine Fahrtdaten")
+        return _leer(_("Keine Fahrtdaten"))
     monate = [d["datum"] for d in fahrten_daten]
-    co2_werte = [(d["km"] / 100) * benziner_l * co2_faktor for d in fahrten_daten]
+    co2_werte = [co2_je_monat.get(d["datum"], 0) if co2_je_monat is not None
+                 else (d["km"] / 100) * benziner_l * co2_faktor for d in fahrten_daten]
     kumulativ, total = [], 0
     for v in co2_werte:
         total += v
@@ -315,8 +325,8 @@ def chart_co2_ersparnis(fahrten_daten, benziner_l=7.0, co2_faktor=2.37):
         xAxis=_achse_kategorie(monate),
         yAxis=[_achse_wert(), _achse_wert(splitLine={"show": False})],
         series=[
-            _balken("CO2/Monat (kg)", "green", [round(v, 1) for v in co2_werte], "fn:kg1"),
-            _linie("Kumuliert (kg)", "teal", kumulativ, "fn:kg1", yAxisIndex=1, z=3),
+            _balken(_("CO2/Monat (kg)"), "green", [round(v, 1) for v in co2_werte], "fn:kg1"),
+            _linie(_("Kumuliert (kg)"), "teal", kumulativ, "fn:kg1", yAxisIndex=1, z=3),
         ],
     )
     opt["legend"]["show"] = True
@@ -345,14 +355,14 @@ def chart_verbrauch_100km(lade_daten, fahrten_daten, ev_ref=15.0, akku_monate=No
 
     monate = sorted(set(ladung) | set(akku))
     if not monate:
-        return _leer("Lade- und Fahrtdaten oder Akkustand erforderlich")
+        return _leer(_("Lade- und Fahrtdaten oder Akkustand erforderlich"))
 
     serien = []
     if ladung:
-        serien.append(_linie("laut Ladung", "purple", [ladung.get(m) for m in monate],
+        serien.append(_linie(_("laut Ladung"), "purple", [ladung.get(m) for m in monate],
                              "fn:kwh100", flaeche=not akku))
     if akku:
-        serien.append(_linie("laut Akku", "teal", [akku.get(m) for m in monate],
+        serien.append(_linie(_("laut Akku"), "teal", [akku.get(m) for m in monate],
                              "fn:kwh100", flaeche=not ladung))
     serie = serien[0]
     serie["markLine"] = {
@@ -380,17 +390,22 @@ def chart_verbrauch_100km(lade_daten, fahrten_daten, ev_ref=15.0, akku_monate=No
     return _bedienung(opt, len(monate))
 
 
-MONATSKUERZEL = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
-                  "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
+MONATSKUERZEL = [N_("Jan"), N_("Feb"), N_("Mär"), N_("Apr"), N_("Mai"), N_("Jun"),
+                  N_("Jul"), N_("Aug"), N_("Sep"), N_("Okt"), N_("Nov"), N_("Dez")]
+
+
+def monatskuerzel(monat: int) -> str:
+    """Monatskuerzel (1–12) in der eingestellten Sprache."""
+    return _(MONATSKUERZEL[monat - 1])
 
 # Kennzahlen des Verlaufsvergleichs: schluessel -> (Beschriftung, Formatierer, Balken?)
 VERGLEICH_METRIKEN = {
-    "km":             ("Kilometer", "fn:km0", True),
-    "verbrauch":      ("Verbrauch laut Ladung", "fn:kwh100", False),
-    "verbrauch_akku": ("Verbrauch laut Akku", "fn:kwh100", False),
-    "kwh":            ("Geladene kWh", "fn:kwh1", True),
-    "strom_kosten":   ("Stromkosten", "fn:euro2", True),
-    "ersparnis":      ("Kraftstoff-Ersparnis", "fn:euro2", True),
+    "km":             (N_("Kilometer"), "fn:km0", True),
+    "verbrauch":      (N_("Verbrauch laut Ladung"), "fn:kwh100", False),
+    "verbrauch_akku": (N_("Verbrauch laut Akku"), "fn:kwh100", False),
+    "kwh":            (N_("Geladene kWh"), "fn:kwh1", True),
+    "strom_kosten":   (N_("Stromkosten"), "fn:euro2", True),
+    "ersparnis":      (N_("Kraftstoff-Ersparnis"), "fn:euro2", True),
 }
 
 
@@ -401,10 +416,10 @@ def chart_vergleich(werte_a, werte_b, titel_a, titel_b, metrik):
     beschriftung, formatierer, balken = VERGLEICH_METRIKEN[metrik]
     laenge = max(len(werte_a), len(werte_b))
     if laenge == 0:
-        return _leer("Keine Monate in den gewählten Zeiträumen")
+        return _leer(_("Keine Monate in den gewählten Zeiträumen"))
 
     def kuerzel(werte, i):
-        return MONATSKUERZEL[int(werte[i]["monat"][5:7]) - 1] if i < len(werte) else None
+        return monatskuerzel(int(werte[i]["monat"][5:7])) if i < len(werte) else None
 
     achse = []
     for i in range(laenge):
@@ -439,15 +454,15 @@ def chart_vergleich(werte_a, werte_b, titel_a, titel_b, metrik):
 def chart_strommix(lade_daten):
     """Anteil der geladenen kWh nach Quelle: PV, Netzbezug zuhause, oeffentlich."""
     from berechnung import stromquelle
-    summen = {"PV-Strom": 0.0, "Netzbezug": 0.0, "Öffentlich": 0.0}
+    summen = {N_("PV-Strom"): 0.0, N_("Netzbezug"): 0.0, N_("Öffentlich"): 0.0}
     for l in lade_daten or []:
         summen[stromquelle(l["anbieter"])] += l["menge_kwh"] or 0
     if sum(summen.values()) <= 0:
-        return _leer("Keine Ladedaten")
+        return _leer(_("Keine Ladedaten"))
 
     farben = {"PV-Strom": "#c4963a", "Netzbezug": COLORS["blue"],
               "Öffentlich": COLORS["purple"]}
-    daten = [{"name": q, "value": round(kwh, 1), "itemStyle": {"color": farben[q]}}
+    daten = [{"name": _(q), "value": round(kwh, 1), "itemStyle": {"color": farben[q]}}
              for q, kwh in summen.items() if kwh > 0]
     opt = _basis(
         tooltip={
@@ -475,8 +490,8 @@ def chart_strommix(lade_daten):
 
 def chart_benzinpreise(daten):
     if not daten:
-        return _leer(f"Keine {_kf()['name']}preisdaten")
-    serie = _linie(f"{_kf()['name']}preis", "orange", [d["preis_liter"] for d in daten],
+        return _leer(_("Keine {0}preisdaten", _kf()['name']))
+    serie = _linie(_("{0}preis", _kf()['name']), "orange", [d["preis_liter"] for d in daten],
                    "fn:euroLiter", flaeche=True)
     # Flaeche bis zum unteren Achsenende statt bis 0 – sonst wirken Schwankungen platt
     serie["areaStyle"]["origin"] = "start"
@@ -495,7 +510,7 @@ def chart_stromtarif(daten, von=None, bis=None):
     Der zu Beginn gueltige Tarif wird ab Zeitraumbeginn gezeigt, auch wenn er
     frueher eingetragen wurde."""
     if not daten:
-        return _leer("Keine Stromtarifeinträge")
+        return _leer(_("Keine Stromtarifeinträge"))
     daten_sorted = sorted(daten, key=lambda x: x["gueltig_ab"])
     heute = date.today().isoformat()
     ende = heute
@@ -507,14 +522,14 @@ def chart_stromtarif(daten, von=None, bis=None):
         daten_sorted = ([{"gueltig_ab": start, "preis_kwh": davor[-1]["preis_kwh"]}]
                         if davor else []) + drin
         if not daten_sorted:
-            return _leer("Im Zeitraum galt noch kein Stromtarif")
+            return _leer(_("Im Zeitraum galt noch kein Stromtarif"))
     punkte = [[d["gueltig_ab"], d["preis_kwh"]] for d in daten_sorted]
     # Der letzte Tarif gilt bis heute bzw. Zeitraumende – Linie weiterfuehren (ohne Punkt)
     if punkte[-1][0] < ende:
         punkte.append({"value": [ende, punkte[-1][1]],
                        "symbol": "none", "label": {"show": False}})
 
-    serie = _linie("Stromtarif", "teal", punkte, "fn:ctKwh", step="end")
+    serie = _linie(_("Stromtarif"), "teal", punkte, "fn:ctKwh", step="end")
     serie["showSymbol"] = True
     serie["label"] = {"show": True, "position": "top", "color": COLORS["subtext"],
                       "fontSize": 10, "formatter": "fn:labelCt"}
@@ -543,7 +558,7 @@ def chart_ladetarife(tarife, stromtarife=None):
     """Treppenkurve ct/kWh (AC) je eigenem Ladetarif; der Heimstrompreis als
     gestrichelte Vergleichslinie."""
     if not tarife:
-        return _leer("Noch keine Ladetarife erfasst")
+        return _leer(_("Noch keine Ladetarife erfasst"))
     heute = date.today().isoformat()
     gruppen = {}
     for t in sorted(tarife, key=lambda t: t["gueltig_ab"]):
@@ -574,7 +589,7 @@ def chart_ladetarife(tarife, stromtarife=None):
             punkte = [[d["gueltig_ab"], d["preis_kwh"]] for d in heim]
             if punkte[-1][0] < heute:
                 punkte.append([heute, punkte[-1][1]])
-            serie = _linie("Heimstrom", "teal", punkte, "fn:ctKwh", step="end")
+            serie = _linie(_("Heimstrom"), "teal", punkte, "fn:ctKwh", step="end")
             serie["lineStyle"]["type"] = "dashed"
             serie["lineStyle"]["width"] = 1.5
             serie["showSymbol"] = False
@@ -601,7 +616,7 @@ def chart_ladetarife(tarife, stromtarife=None):
 
 def chart_anbieter_verteilung(lade_daten):
     if not lade_daten:
-        return _leer("Keine Ladedaten")
+        return _leer(_("Keine Ladedaten"))
     anbieter_k = {}
     for l in lade_daten:
         a = l["anbieter"]
@@ -637,8 +652,8 @@ def chart_anbieter_verteilung(lade_daten):
 
 def chart_thg(thg_daten):
     if not thg_daten:
-        return _leer("Keine THG-Einträge")
-    serie = _balken("THG-Quote", "green", [d["betrag"] for d in thg_daten], "fn:euro2",
+        return _leer(_("Keine THG-Einträge"))
+    serie = _balken(_("THG-Quote"), "green", [d["betrag"] for d in thg_daten], "fn:euro2",
                     barMaxWidth=60)
     serie["label"] = {"show": True, "position": "top", "color": COLORS["text"],
                       "fontSize": 11, "formatter": "fn:labelEuro0"}

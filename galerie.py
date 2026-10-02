@@ -12,6 +12,8 @@ import io
 import os
 import re
 
+from i18n import _, N_
+
 ORDNER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fahrzeugbilder")
 ERLAUBT = {".jpg", ".jpeg", ".png", ".webp"}
 VORSCHAU_BREITE = 320
@@ -39,6 +41,23 @@ def _lesen(name: str) -> str:
             return f.read()
     except OSError:
         return ""
+
+
+# Woerter in den Anzeigenamen der README ("Modell, Farbe (Zusatz)"), die die Anzeige uebersetzt
+FARBEN = [N_("Schwarz"), N_("Grau"), N_("Weiß"), N_("Silber"), N_("Blau"), N_("Hellblau"), N_("Orange"),
+          N_("Kupfer"), N_("Gelb"), N_("Grün"), N_("Orange-Weiß"), N_("Rot")]
+ZUSAETZE = [N_("(elektrisch)"), N_("(Standardbild der App)")]
+
+
+def anzeigename(name: str) -> str:
+    """Name in der eingestellten Sprache: Farbe nach dem letzten Komma und Zusaetze in Klammern."""
+    for z in ZUSAETZE:
+        name = name.replace(z, _(z))
+    modell, komma, rest = name.rpartition(", ")
+    if not komma:
+        return name
+    farbe, leer, zusatz = rest.partition(" ")
+    return f"{modell}, {_(farbe) if farbe in FARBEN else farbe}{leer}{zusatz}"
 
 
 def _namen() -> dict:
@@ -76,7 +95,10 @@ def bilder() -> list:
     namen, alle = _namen(), nachweise()
     liste = [{"datei": d, "name": namen.get(d) or _name_aus_datei(d),
               "nachweis": _nachweis_fuer(d, alle)} for d in dateien]
-    return sorted(liste, key=lambda b: b["name"].lower())
+    liste.sort(key=lambda b: b["name"].lower())
+    for b in liste:
+        b["name"] = anzeigename(b["name"])
+    return liste
 
 
 def pfad(datei: str) -> str | None:

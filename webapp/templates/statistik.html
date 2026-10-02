@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block titel %}Statistik{% endblock %}
+{% block titel %}{{ _("Statistik") }}{% endblock %}
 {% block inhalt %}
 {% macro auswahl(name, gewaehlt) %}
 <select name="{{ name }}" onchange="this.form.submit()">
@@ -13,10 +13,10 @@
 </select>
 {% endmacro %}
 
-<h1>📈 Statistik – Zeiträume vergleichen</h1>
+<h1>{{ _("📈 Statistik – Zeiträume vergleichen") }}</h1>
 
 <div class="vorlagen">
-  <span class="muted">Schnellauswahl:</span>
+  <span class="muted">{{ _("Schnellauswahl:") }}</span>
   {% for text, a, b in vorlagen %}
   <a class="vorlage{% if a == za.schluessel and b == zb.schluessel %} aktiv{% endif %}"
      href="statistik?a={{ a }}&b={{ b }}">{{ text }}</a>
@@ -25,19 +25,19 @@
 
 <form class="vergleich-wahl" method="get" action="statistik">
   <span class="punkt punkt-a"></span>{{ auswahl("a", za.schluessel) }}
-  <span class="muted">gegen</span>
+  <span class="muted">{{ _("gegen") }}</span>
   <span class="punkt punkt-b"></span>{{ auswahl("b", zb.schluessel) }}
   <a class="secondary-link" href="statistik?a={{ zb.schluessel }}&b={{ za.schluessel }}"
-     title="Zeiträume tauschen">⇄ tauschen</a>
-  <noscript><button type="submit" class="secondary">Vergleichen</button></noscript>
+     title="{{ _t("Zeiträume tauschen") }}">{{ _("⇄ tauschen</a>") }}
+  <noscript><button type="submit" class="secondary">{{ _("Vergleichen") }}</button></noscript>
 </form>
 
 <div class="tabelle-scroll"><table class="vergleich">
   <tr>
-    <th>Kennzahl</th>
-    <th class="zahl"><span class="punkt punkt-a"></span>{{ za.titel }}<div class="muted klein">{{ ka.monate }} Monat{{ "e" if ka.monate != 1 }}</div></th>
-    <th class="zahl"><span class="punkt punkt-b"></span>{{ zb.titel }}<div class="muted klein">{{ kb.monate }} Monat{{ "e" if kb.monate != 1 }}</div></th>
-    <th class="zahl">Differenz</th>
+    <th>{{ _("Kennzahl") }}</th>
+    <th class="zahl"><span class="punkt punkt-a"></span>{{ za.titel }}<div class="muted klein">{{ _("{0} Monat", ka.monate) if ka.monate == 1 else _("{0} Monate", ka.monate) }}</div></th>
+    <th class="zahl"><span class="punkt punkt-b"></span>{{ zb.titel }}<div class="muted klein">{{ _("{0} Monat", kb.monate) if kb.monate == 1 else _("{0} Monate", kb.monate) }}</div></th>
+    <th class="zahl">{{ _("Differenz") }}</th>
     <th class="zahl"></th>
   </tr>
   {% for z in zeilen %}
@@ -51,18 +51,15 @@
   {% endfor %}
 </table></div>
 <p class="hint">
-  Differenz = <span class="punkt punkt-a"></span>{{ za.titel }} minus <span class="punkt punkt-b"></span>{{ zb.titel }}.
-  <span class="gruen">Grün</span> heißt besser, <span class="orange">orange</span> schlechter;
-  ohne Farbe gibt es kein Besser oder Schlechter. Summen wie km, Kosten, Ersparnis oder CO2
-  hängen von der gefahrenen Strecke und der Länge des Zeitraums ab und bleiben deshalb ohne Farbe –
-  aussagekräftig sind Verbrauch, Kosten und Ersparnis je 100 km sowie der Strompreis. Die KFZ-Steuer ist nach Monaten anteilig gerechnet.
+  {{ _("Differenz =") }} <span class="punkt punkt-a"></span>{{ _("{0} minus", za.titel) }} <span class="punkt punkt-b"></span>{{ zb.titel }}.
+  <span class="gruen">{{ _("Grün") }}</span> {{ _("heißt besser,") }} <span class="orange">{{ _("orange") }}</span> {{ _("schlechter; ohne Farbe gibt es kein Besser oder Schlechter. Summen wie km, Kosten, Ersparnis oder CO2 hängen von der gefahrenen Strecke und der Länge des Zeitraums ab und bleiben deshalb ohne Farbe – aussagekräftig sind Verbrauch, Kosten und Ersparnis je 100 km sowie der Strompreis. Die KFZ-Steuer ist nach Monaten anteilig gerechnet.") }}
 </p>
 
 {% if prognose %}
-<h2>Prognose gegen tatsächlich · {{ za.titel }}</h2>
+<h2>{{ _("Prognose gegen tatsächlich · {0}", za.titel) }}</h2>
 <div class="tabelle-scroll"><table class="vergleich">
-  <tr><th>Kennzahl</th><th class="zahl">Tatsächlich</th><th class="zahl">Prognose</th>
-      <th class="zahl">Differenz</th><th class="zahl"></th></tr>
+  <tr><th>{{ _("Kennzahl") }}</th><th class="zahl">{{ _("Tatsächlich") }}</th><th class="zahl">{{ _("Prognose") }}</th>
+      <th class="zahl">{{ _("Differenz") }}</th><th class="zahl"></th></tr>
   {% for z in prognose %}
   <tr>
     <td>{{ z.text }}</td>
@@ -73,16 +70,15 @@
   </tr>
   {% endfor %}
 </table></div>
-<p class="hint">Prognose = was der Simulationsmodus aus denselben km errechnet
-  (<a href="einstellungen#simulation">EV-Verbrauch, Lademix und Ladeverluste</a> nach heutiger Einstellung).
-  <span class="gruen">Grün</span>: in Wirklichkeit besser als vorhergesagt.</p>
+<p class="hint">{{ _("Prognose = was der Simulationsmodus aus denselben km errechnet (<a href=\"einstellungen#simulation\">EV-Verbrauch, Lademix und Ladeverluste</a> nach heutiger Einstellung).") }}
+  <span class="gruen">{{ _("Grün") }}</span>{{ _(": in Wirklichkeit besser als vorhergesagt.") }}</p>
 {% endif %}
 
-<h2>Verlauf Monat für Monat</h2>
+<h2>{{ _("Verlauf Monat für Monat") }}</h2>
 <div class="kennzahl-tabs">
   {% for schluessel, metrik in metriken.items() %}
   <button type="button" class="tab{% if loop.first %} aktiv{% endif %}"
-          onclick="kennzahlWaehlen(this, 'verlauf-{{ schluessel }}')">{{ metrik[0] }}</button>
+          onclick="kennzahlWaehlen(this, 'verlauf-{{ schluessel }}')">{{ _t(metrik[0]) }}</button>
   {% endfor %}
 </div>
 <div class="chart">
@@ -92,24 +88,22 @@
 <script type="application/json" id="verlauf-{{ schluessel }}">{{ verlauf[schluessel] | tojson }}</script>
 {% endfor %}
 <p class="hint">
-  Der erste Monat des einen Zeitraums steht neben dem ersten des anderen. Bei gleichen
-  Kalendermonaten steht nur der Monatsname, sonst beide – etwa „Apr · Okt“ beim
-  Vergleich Sommer gegen Winter.
+  {{ _("Der erste Monat des einen Zeitraums steht neben dem ersten des anderen. Bei gleichen Kalendermonaten steht nur der Monatsname, sonst beide – etwa „Apr · Okt“ beim Vergleich Sommer gegen Winter.") }}
 </p>
 
-<h2>Verbrauch aus dem Akkustand je Monat</h2>
+<h2>{{ _("Verbrauch aus dem Akkustand je Monat") }}</h2>
 {% if akku_zeilen %}
 <div class="tabelle-scroll"><table class="vergleich akku-monate">
   <tr>
-    <th rowspan="2">Monat</th>
+    <th rowspan="2">{{ _("Monat") }}</th>
     <th colspan="3" class="zahl"><span class="punkt punkt-a"></span>{{ za.titel }}</th>
     <th colspan="3" class="zahl"><span class="punkt punkt-b"></span>{{ zb.titel }}</th>
   </tr>
   <tr>
-    {% for _ in [1, 2] %}
-    <th class="zahl klein">km</th>
-    <th class="zahl klein">kWh</th>
-    <th class="zahl klein">kWh/100 km</th>
+    {% for _spalte in [1, 2] %}
+    <th class="zahl klein">{{ _("km") }}</th>
+    <th class="zahl klein">{{ _("kWh") }}</th>
+    <th class="zahl klein">{{ _("kWh/100 km") }}</th>
     {% endfor %}
   </tr>
   {% for z in akku_zeilen %}
@@ -124,18 +118,12 @@
   {% endfor %}
 </table></div>
 <p class="hint">
-  Akku-Abfall × Akkukapazität ÷ gefahrene km – der Verbrauch <b>ohne Ladeverluste</b>,
-  daher niedriger als „Verbrauch laut Ladung“. Die km sind hier nur die der gewerteten
-  Fahrtabschnitte, nicht die monatlich erfassten Gesamtkilometer: Abschnitte unter
-  {{ "%.0f"|format(akku_min_km) }} km und solche ohne Akku-Abfall bleiben draußen, weil
-  das Stundenmittel aus Home Assistant sie zu ungenau macht. Die Summenzeile ist über
-  Σ kWh ÷ Σ km gewichtet. Die Abschnitte einzeln stehen unter
-  <a href="fahrten#akku">Fahrten</a>.
+  {{ _("Akku-Abfall × Akkukapazität ÷ gefahrene km – der Verbrauch <b>ohne Ladeverluste</b>, daher niedriger als „Verbrauch laut Ladung“. Die km sind hier nur die der gewerteten Fahrtabschnitte, nicht die monatlich erfassten Gesamtkilometer: Abschnitte unter {0} km und solche ohne Akku-Abfall bleiben draußen, weil das Stundenmittel aus Home Assistant sie zu ungenau macht. Die Summenzeile ist über Σ kWh ÷ Σ km gewichtet. Die Abschnitte einzeln stehen unter <a href=\"fahrten#akku\">Fahrten</a>.", "%.0f"|format(akku_min_km)) }}
 </p>
 {% else %}
 <div class="card">
-  <span class="gelb">Noch keine Fahrtabschnitte aus dem Akkustand berechnet.</span>
-  Sie entstehen beim nächtlichen Abruf oder per Knopf unter <a href="fahrten#akku">Fahrten</a>.
+  <span class="gelb">{{ _("Noch keine Fahrtabschnitte aus dem Akkustand berechnet.") }}</span>
+  {{ _("Sie entstehen beim nächtlichen Abruf oder per Knopf unter <a href=\"fahrten#akku\">Fahrten</a>.") }}
 </div>
 {% endif %}
 

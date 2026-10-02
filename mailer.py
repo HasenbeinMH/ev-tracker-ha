@@ -8,6 +8,7 @@ import ssl
 from email.message import EmailMessage
 
 import database as db
+from i18n import _
 
 
 def sende_mail(betreff: str, html: str, text: str = "",
@@ -22,22 +23,22 @@ def sende_mail(betreff: str, html: str, text: str = "",
     ziel = (empfaenger or cfg.get("mail_empfaenger") or "").strip()
 
     if not server:
-        return False, "Kein SMTP-Server hinterlegt."
+        return False, _("Kein SMTP-Server hinterlegt.")
     if not ziel:
-        return False, "Kein Empfänger hinterlegt."
+        return False, _("Kein Empfänger hinterlegt.")
     if not absender:
-        return False, "Kein Absender hinterlegt."
+        return False, _("Kein Absender hinterlegt.")
 
     try:
         port = int(cfg.get("mail_smtp_port") or 587)
     except ValueError:
-        return False, "Port ist keine Zahl."
+        return False, _("Port ist keine Zahl.")
 
     nachricht = EmailMessage()
     nachricht["Subject"] = betreff
     nachricht["From"] = absender
     nachricht["To"] = ziel
-    nachricht.set_content(text or "Dieser Bericht benötigt einen HTML-fähigen Mailclient.")
+    nachricht.set_content(text or _("Dieser Bericht benötigt einen HTML-fähigen Mailclient."))
     nachricht.add_alternative(html, subtype="html")
 
     kontext = ssl.create_default_context()
@@ -56,12 +57,12 @@ def sende_mail(betreff: str, html: str, text: str = "",
                     s.login(benutzer, passwort)
                 s.send_message(nachricht)
     except smtplib.SMTPAuthenticationError:
-        return False, ("Anmeldung abgelehnt. Bei web.de/GMX muss der SMTP-Zugang "
-                       "im Postfach freigeschaltet sein; ggf. wird ein separates "
-                       "App-Passwort benötigt.")
+        return False, _("Anmeldung abgelehnt. Bei web.de/GMX muss der SMTP-Zugang "
+                        "im Postfach freigeschaltet sein; ggf. wird ein separates "
+                        "App-Passwort benötigt.")
     except smtplib.SMTPException as e:
-        return False, f"SMTP-Fehler: {e}"
+        return False, _("SMTP-Fehler: {0}", e)
     except OSError as e:
-        return False, f"Verbindungsfehler: {e}"
+        return False, _("Verbindungsfehler: {0}", e)
 
-    return True, f"Mail an {ziel} verschickt."
+    return True, _("Mail an {0} verschickt.", ziel)

@@ -1,173 +1,274 @@
 {% extends "base.html" %}
-{% block titel %}Einstellungen{% endblock %}
+{% block titel %}{{ _("Einstellungen") }}{% endblock %}
 {% block inhalt %}
-<h1>⚙️ Einstellungen</h1>
+<h1>{{ _("⚙️ Einstellungen") }}</h1>
+{% if meldung %}<div class="sim-banner" role="status">{{ meldung }}</div>{% endif %}
 
-<h2>Berechnungsparameter</h2>
+<h2 id="fahrzeuge">{{ _("🚗 Fahrzeuge") }}</h2>
 <div class="card">
-  <form class="inline" method="post" action="einstellungen/parameter">
-    <label class="feld">Fahrzeugname
-      <input name="fahrzeug_name" value="{{ fahrzeug_name }}" placeholder="z.B. Mein Elektroauto" style="width:160px">
+  <form class="inline" method="post" action="einstellungen/fahrzeuge/modus" id="fz-modus-form">
+    <label class="feld">{{ _("Wie viele E-Autos erfasst du?") }}
+      <select name="modus" id="fz-modus">
+        <option value="ein" {% if not mehrere %}selected{% endif %}>{{ _("Ein Fahrzeug") }}</option>
+        <option value="mehrere" {% if mehrere %}selected{% endif %}>{{ _("Mehrere Fahrzeuge") }}</option>
+      </select>
     </label>
-    <label class="feld">Vergleich mit
-      <select name="kraftstoff">
-        {% for art, k in kraftstoffe.items() %}
-        <option value="{{ art }}" {% if kf.art == art %}selected{% endif %}>{{ k.fahrzeug }}</option>
+    {% if mehrere and fahrzeuge_alle | length > 1 %}
+    <label class="feld" id="fz-haupt-feld">{{ _("Bei einem Fahrzeug weiter anzeigen") }}
+      <select name="haupt">
+        {% for f in fahrzeuge_alle %}
+        <option value="{{ f.id }}" {% if f.id == hauptfahrzeug %}selected{% endif %}>{{ f.name }}</option>
         {% endfor %}
       </select>
     </label>
-    <label class="feld">{{ kf.fahrzeug }} L/100km
+    {% endif %}
+    <button type="submit">{{ _("💾 Übernehmen") }}</button>
+  </form>
+  <p class="hint">
+    {% if not mehrere %}
+    {{ _("<b>Ein Fahrzeug</b>: alles wie gewohnt.") }}
+    {% if fahrzeuge_alle | length > 1 %}{{ _("{0} weitere(s) Fahrzeug(e) ausgeblendet – ihre Daten bleiben vollständig erhalten und sind nach dem Umschalten auf „Mehrere“ sofort wieder da.", fahrzeuge_alle | length - 1) }}{% endif %}
+    {{ _("„Mehrere Fahrzeuge“ legt vorher automatisch eine Sicherung der Datenbank an und stellt zwei Tabellen um. Danach kann eine ältere Version des Add-ons die Datenbank nur noch lesen (zurück nur über eine Sicherung). Zurückschalten auf „Ein Fahrzeug“ geht jederzeit und löscht nichts.") }}
+    {% else %}
+    {{ _("<b>Mehrere Fahrzeuge</b>: oben rechts wählst du das Fahrzeug oder „Alle Fahrzeuge“ (Summe). Zurück auf „Ein Fahrzeug“ löscht nichts – die anderen werden nur ausgeblendet.") }}
+    {% endif %}
+  </p>
+  <script>
+  document.getElementById("fz-modus-form").addEventListener("submit", function (e) {
+    const neu = document.getElementById("fz-modus").value;
+    {% if not mehrere %}
+    if (neu === "mehrere" && !confirm({{ _t("Mehrere Fahrzeuge einschalten?\n\nVorher wird die Datenbank gesichert. Danach kann eine ältere Add-on-Version sie nur noch lesen (zurück nur über die Sicherung).") | tojson }})) e.preventDefault();
+    {% else %}
+    if (neu === "ein" && !confirm({{ _t("Auf ein Fahrzeug umschalten?\n\nEs wird nichts gelöscht – die anderen Fahrzeuge werden nur ausgeblendet.") | tojson }})) e.preventDefault();
+    {% endif %}
+  });
+  </script>
+
+  {% if mehrere %}
+  <div class="tabelle-scroll"><table>
+    <tr><th>{{ _("Fahrzeug") }}</th><th>{{ _("Heimladung") }}</th><th>{{ _("Eingeblendet") }}</th><th>{{ _("Haupt&shy;fahrzeug") }}</th><th></th><th></th></tr>
+    {% for f in fahrzeuge_alle %}
+    {# Felder ueber form="…" mit dem Formular verbunden – ein <form> darf nicht direkt in <tr> stehen #}
+    {% set fid = "fz-" ~ f.id %}
+    <tr>
+      <td><input form="{{ fid }}" name="name" value="{{ f.name }}" required style="width:150px"
+                 aria-label="{{ _t("Name") }}"></td>
+      <td><select form="{{ fid }}" name="heimladung" aria-label="{{ _t("Heimladung") }}">
+        {% for k, text in heimladung_modi.items() %}
+        <option value="{{ k }}" {% if f.heimladung == k %}selected{% endif %}>{{ _(text) }}</option>
+        {% endfor %}
+      </select>
+      {% if f.heimladung == "akku" and f.ohne_akku %}<div class="gelb" style="font-size:12px">{{ _("⚠ Kein Batteriesensor eingetragen – ohne Akkustand wird nach km aufgeteilt.") }}</div>{% endif %}</td>
+      <td>{% if f.id == hauptfahrzeug %}<input type="checkbox" checked disabled title="{{ _t("Das Hauptfahrzeug ist immer eingeblendet") }}">
+          <input form="{{ fid }}" type="hidden" name="aktiv" value="1">
+          {% else %}<input form="{{ fid }}" type="checkbox" name="aktiv" value="1" {% if f.aktiv %}checked{% endif %}
+                 aria-label="{{ _t("Eingeblendet") }}">{% endif %}</td>
+      <td>{% if f.id == hauptfahrzeug %}<input type="checkbox" checked disabled title="{{ _t("Hauptfahrzeug") }}">
+          {% else %}<input form="{{ fid }}" type="checkbox" name="haupt" value="1" aria-label="{{ _t("Hauptfahrzeug") }}">{% endif %}</td>
+      <td><form method="post" action="einstellungen/fahrzeuge/aendern" id="{{ fid }}">
+            <input type="hidden" name="id" value="{{ f.id }}">
+            <button type="submit" class="secondary" title="{{ _t("Speichern") }}">💾</button>
+          </form></td>
+      <td>
+        {% if f.id != hauptfahrzeug %}
+        <form method="post" action="einstellungen/fahrzeuge/loeschen" class="fz-loeschen"
+              data-name="{{ f.name }}">
+          <input type="hidden" name="id" value="{{ f.id }}">
+          <input type="hidden" name="bestaetigung" value="">
+          <button class="danger" title="{{ _t("Fahrzeug mit allen Daten löschen") }}">🗑</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  <form class="inline" method="post" action="einstellungen/fahrzeuge/neu" style="margin-top:10px">
+    <label class="feld">{{ _("Neues Fahrzeug") }}
+      <input name="name" placeholder="{{ _t("z.B. Zweitwagen") }}" required style="width:160px">
+    </label>
+    <button type="submit">{{ _("➕ Anlegen") }}</button>
+  </form>
+  <p class="hint">
+    {{ _("<b>Heimladung</b>: <i>Gemeinsame Wallbox</i> – die Zähler unten unter „Sensoren“ gehören allen Fahrzeugen damit; die Monatssumme wird nach den gefahrenen km aufgeteilt (eine Schätzung). Mit <i>Einzelladungen per Push</i> schickt Home Assistant jede Ladung mit Fahrzeug-Kennung (Blueprint/Vorlage), aufgeteilt wird nur der Rest. Mit <i>Zuordnung über den Akkustand</i> bekommt jede Wallbox-Stunde das Auto, dessen Akkustand gerade stieg (Batteriesensor nötig); was nicht eindeutig ist, wird nach km verteilt. <i>Eigene Zähler</i>: das Fahrzeug hat eigene kWh-Zähler (eigene Wallbox) – sie stehen unter „Sensoren“, wenn dieses Fahrzeug gewählt ist. <br><b>Ausblenden</b> statt löschen: Daten bleiben, es wird nichts mehr importiert. Löschen entfernt das Fahrzeug mit allen Daten (vorher wird gesichert).") }}
+  </p>
+  <script>
+  document.querySelectorAll(".fz-loeschen").forEach(function (form) {
+    form.addEventListener("submit", function (e) {
+      const name = form.dataset.name;
+      const eingabe = prompt(T({{ _t("„{0}“ mit ALLEN Daten (Fahrten, Ladungen, THG, Instandhaltung, Versicherung) löschen?\n\nZur Bestätigung den Namen eintippen:") | tojson }}, name));
+      if (eingabe === null || eingabe.trim() !== name) { e.preventDefault(); return; }
+      form.querySelector("[name=bestaetigung]").value = eingabe.trim();
+    });
+  });
+  </script>
+  {% endif %}
+</div>
+
+<h2>{{ _("Berechnungsparameter") }}{% if mehrere and fahrzeuge | length > 1 %} · {{ fahrzeug_name or _("Fahrzeug") }}{% endif %}</h2>
+<div class="card">
+  {# Sprache: global fuer alle Fahrzeuge, Oberflaeche, Hilfe und Mails – wie DE | EN oben rechts #}
+  <form class="inline" method="post" action="einstellungen/sprache" id="sprache" style="margin-bottom:12px">
+    <input type="hidden" name="zurueck" value="einstellungen">
+    <label class="feld">Sprache / Language
+      <select name="sprache" onchange="this.form.submit()">
+        <option value="de" lang="de" {% if sprache() == "de" %}selected{% endif %}>Deutsch</option>
+        <option value="en" lang="en" {% if sprache() == "en" %}selected{% endif %}>English</option>
+      </select>
+    </label>
+    <noscript><button type="submit" class="secondary">{{ _("OK") }}</button></noscript>
+    <span class="hint" style="margin:0">{{ _("Gilt für Oberfläche, Hilfe und Mail-Berichte. Zahlen und Datum bleiben im deutschen Format (1.234,56 · 31.12.2026).") }}</span>
+  </form>
+  {% if mehrere and fahrzeuge | length > 1 and fahrzeug_aktuell is none %}
+  <p class="hint" style="margin-top:0">{{ _("Gesamtsicht gewählt – die Werte gelten für das Hauptfahrzeug. Für ein anderes Fahrzeug oben rechts umschalten. Der PV-Preis gilt für alle.") }}</p>
+  {% endif %}
+  <form class="inline" method="post" action="einstellungen/parameter">
+    {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ einstellungs_fahrzeug }}">{% endif %}
+    <label class="feld">{{ _("Fahrzeugname") }}
+      <input name="fahrzeug_name" value="{{ fahrzeug_name }}" placeholder="{{ _t("z.B. Mein Elektroauto") }}" style="width:160px">
+    </label>
+    <label class="feld">{{ _("Vergleich mit") }}
+      <select name="kraftstoff">
+        {% for art, k in kraftstoffe.items() %}
+        <option value="{{ art }}" {% if kf.art == art %}selected{% endif %}>{{ k.fahrzeug[:1] | upper }}{{ k.fahrzeug[1:] }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="feld">{{ _("{0} L/100km", kf.fahrzeug) }}
       <input name="benziner_verbrauch" value="{{ '%.1f'|format(cfg.benziner_verbrauch)|replace('.', ',') }}" style="width:80px">
     </label>
-    <label class="feld">EV Referenz kWh/100km
+    <label class="feld">{{ _("EV Referenz kWh/100km") }}
       <input name="ev_verbrauch" value="{{ '%.1f'|format(cfg.ev_verbrauch)|replace('.', ',') }}" style="width:80px">
     </label>
-    <label class="feld">PV-Preis ct/kWh
+    <label class="feld">{{ _("PV-Preis ct/kWh") }}
       <input name="pv_preis" value="{{ '%.1f'|format(cfg.pv_preis_ct)|replace('.', ',') }}" style="width:80px">
     </label>
-    <label class="feld">CO2 kg/L {{ kf.name }}
+    <label class="feld">{{ _("CO2 kg/L {0}", kf.name) }}
       <input name="co2_benzin" value="{{ '%.3f'|format(cfg.co2_faktor_benzin)|replace('.', ',') }}" style="width:80px">
     </label>
-    <label class="feld">KFZ-Steuer €/Jahr
+    <label class="feld">{{ _("KFZ-Steuer €/Jahr") }}
       <input name="kfz_steuer" value="{{ '%.2f'|format(kfz)|replace('.', ',') }}" style="width:90px">
     </label>
-    <button type="submit">💾 Speichern</button>
+    <button type="submit">{{ _("💾 Speichern") }}</button>
   </form>
 </div>
 
-<h2 id="simulation">🧪 Simulationsmodus – noch kein E-Auto</h2>
+<h2 id="simulation">{{ _("🧪 Simulationsmodus – noch kein E-Auto") }}</h2>
 <div class="card">
   <p class="hint" style="margin-top:0">
-    Für alle, die noch einen {{ kf.fahrzeug }} fahren und wissen wollen, was ein E-Auto sparen würde.
-    Die <b>km</b> und der <b>{{ kf.name }}preis</b> kommen wie gewohnt aus Home Assistant – vom jetzigen Auto.
-    Die Ladungen rechnet die App daraus: km ÷ 100 × <b>EV Referenz</b>
-    ({{ '%.1f'|format(cfg.ev_verbrauch)|replace('.', ',') }} kWh/100 km, oben einstellbar) plus Ladeverluste,
-    aufgeteilt nach den Anteilen unten. Gespeichert wird davon nichts – nach dem Kauf bleibt die Simulation
-    als <b>Prognose</b> in der Statistik neben den echten Werten stehen.
+    {{ _("Für alle, die noch einen {0} fahren und wissen wollen, was ein E-Auto sparen würde. Die <b>km</b> und der <b>{1}preis</b> kommen wie gewohnt aus Home Assistant – vom jetzigen Auto. Die Ladungen rechnet die App daraus: km ÷ 100 × <b>EV Referenz</b> ({2} kWh/100 km, oben einstellbar) plus Ladeverluste, aufgeteilt nach den Anteilen unten. Gespeichert wird davon nichts – nach dem Kauf bleibt die Simulation als <b>Prognose</b> in der Statistik neben den echten Werten stehen.", kf.fahrzeug, kf.name, '%.1f'|format(cfg.ev_verbrauch)|replace('.', ',')) }}
   </p>
   <form class="inline" method="post" action="einstellungen/simulation">
     <label class="feld" style="flex-direction:row; align-items:center; gap:6px">
-      <input type="checkbox" name="simulation" value="1" {% if cfg.simulation %}checked{% endif %}> Simulation aktiv
+      <input type="checkbox" name="simulation" value="1" {% if cfg.simulation %}checked{% endif %}> {{ _("Simulation aktiv") }}
     </label>
-    <label class="feld">Anteil PV %
+    <label class="feld">{{ _("Anteil PV %") }}
       <input name="sim_anteil_pv" value="{{ '%.0f'|format(cfg.sim_anteil_pv) }}" style="width:60px">
     </label>
-    <label class="feld">Anteil Netz %
+    <label class="feld">{{ _("Anteil Netz %") }}
       <input name="sim_anteil_netz" value="{{ '%.0f'|format(cfg.sim_anteil_netz) }}" style="width:60px">
     </label>
-    <label class="feld">Anteil öffentlich %
+    <label class="feld">{{ _("Anteil öffentlich %") }}
       <input name="sim_anteil_oeffentlich" value="{{ '%.0f'|format(cfg.sim_anteil_oeffentlich) }}" style="width:60px">
     </label>
-    <label class="feld">Öffentlich ct/kWh
+    <label class="feld">{{ _("Öffentlich ct/kWh") }}
       <input name="sim_preis_oeffentlich" value="{{ '%.1f'|format(cfg.sim_preis_oeffentlich)|replace('.', ',') }}" style="width:70px">
     </label>
-    <label class="feld">Ladeverluste %
+    <label class="feld">{{ _("Ladeverluste %") }}
       <input name="sim_ladeverlust" value="{{ '%.0f'|format(cfg.sim_ladeverlust) }}" style="width:60px">
     </label>
-    <button type="submit">💾 Speichern</button>
+    <button type="submit">{{ _("💾 Speichern") }}</button>
   </form>
-  <p class="hint">PV zum PV-Preis ({{ '%.1f'|format(cfg.pv_preis_ct)|replace('.', ',') }} ct/kWh), Netz zum
-    <a href="stromtarif">Stromtarif</a> des Monats. Die Anteile müssen nicht 100 ergeben – sie werden
-    im Verhältnis aufgeteilt. KFZ-Steuer und THG-Prämie wie gewohnt eintragen.</p>
+  <p class="hint">{{ _("PV zum PV-Preis ({0} ct/kWh), Netz zum <a href=\"stromtarif\">Stromtarif</a> des Monats. Die Anteile müssen nicht 100 ergeben – sie werden im Verhältnis aufgeteilt. KFZ-Steuer und THG-Prämie wie gewohnt eintragen.", '%.1f'|format(cfg.pv_preis_ct)|replace('.', ',')) }}</p>
 </div>
 
 {% macro nachweis(n) -%}
-  Vorlage: <a href="{{ n.url }}" target="_blank" rel="noopener">{{ n.titel }}</a> von {{ n.autor }},
-  <a href="{{ n.lizenz_url }}" target="_blank" rel="noopener">{{ n.lizenz }}</a>, bearbeitet
+  {{ _("Vorlage:") }} <a href="{{ n.url }}" target="_blank" rel="noopener">{{ _("{0}</a> von {1},", n.titel, n.autor) }}
+  <a href="{{ n.lizenz_url }}" target="_blank" rel="noopener">{{ _("{0}</a>, bearbeitet", n.lizenz) }}
 {%- endmacro %}
-<h2 id="fahrzeugbild">Fahrzeugbild</h2>
+<h2 id="fahrzeugbild">{{ _("Fahrzeugbild") }}{% if mehrere and fahrzeuge | length > 1 %} · {{ fahrzeug_name or _("Fahrzeug") }}{% endif %}</h2>
 <div class="card">
   <p class="hint" style="margin-top:0">
-    Bild im Kopf des Dashboards, neben dem Fahrzeugnamen von oben. JPG, PNG oder WebP, max. 8 MB.
-    Am besten 16:9 mit transparentem oder einfarbigem Hintergrund <code>#14171E</code>.
-    Fertige Bilder und einen Prompt, mit dem eine Bild-KI eins aus deinem Foto macht:
-    <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/fahrzeugbilder" target="_blank" rel="noopener">Fahrzeugbilder</a>.
+    {{ _("Bild im Kopf des Dashboards, neben dem Fahrzeugnamen von oben. JPG, PNG oder WebP, max. 8 MB. Am besten 16:9 mit transparentem oder einfarbigem Hintergrund <code>#14171E</code>. Fertige Bilder und einen Prompt, mit dem eine Bild-KI eins aus deinem Foto macht: <a href=\"https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/fahrzeugbilder\" target=\"_blank\" rel=\"noopener\">Fahrzeugbilder</a>.") }}
   </p>
   <div class="inline">
-    <img id="auto-vorschau" src="api/auto-bild?v={{ bild_v }}" alt="Aktuelles Fahrzeugbild"
+    <img id="auto-vorschau" src="api/auto-bild?v={{ bild_v }}&fz={{ einstellungs_fahrzeug }}" alt="{{ _t("Aktuelles Fahrzeugbild") }}"
          style="height:60px; border-radius:8px; object-fit:cover">
-    <label class="feld">Neues Bild
+    <label class="feld">{{ _("Neues Bild") }}
       <input type="file" id="auto-bild-datei" accept=".jpg,.jpeg,.png,.webp">
     </label>
-    <button type="button" class="secondary" onclick="autoBildHochladen()">⬆ Hochladen</button>
-    <button type="button" class="secondary" onclick="autoBildZuruecksetzen()">↺ Standardbild</button>
+    <button type="button" class="secondary" onclick="autoBildHochladen()">{{ _("⬆ Hochladen") }}</button>
+    <button type="button" class="secondary" onclick="autoBildZuruecksetzen()">{{ _("↺ Standardbild") }}</button>
     <span id="auto-bild-meldung" style="align-self:center; font-size:12px"></span>
   </div>
   {% if galerie_aktiv %}
-  <p class="hint">Gewählt: <b>{{ galerie_aktiv.name }}</b>{% if galerie_aktiv.nachweis %} ·
+  <p class="hint">{{ _("Gewählt: <b>{0}</b>", galerie_aktiv.name) }}{% if galerie_aktiv.nachweis %} ·
     {{ nachweis(galerie_aktiv.nachweis) }}{% endif %}</p>
   {% endif %}
 
   {% if galerie %}
   {# Eingeklappt, damit die Einstellungen nicht von 30 Bildern verdeckt werden #}
   <details class="erweitert" id="galerie">
-  <summary>Aus der Galerie wählen ({{ galerie | length }} Bilder)</summary>
-  <p class="hint" style="margin-top:0">Ein Klick übernimmt das Bild.</p>
+  <summary>{{ _("Aus der Galerie wählen ({0} Bilder)", galerie | length) }}</summary>
+  <p class="hint" style="margin-top:0">{{ _("Ein Klick übernimmt das Bild.") }}</p>
   <div class="galerie">
     {% for b in galerie %}
     <button type="button" class="galerie-bild{% if galerie_aktiv and galerie_aktiv.datei == b.datei %} aktiv{% endif %}"
             onclick="galerieWaehlen('{{ b.datei }}', this)"
-            title="{{ b.name }}{% if b.nachweis %} – Vorlage von {{ b.nachweis.autor }}, {{ b.nachweis.lizenz }}{% endif %}">
+            title="{{ b.name }}{% if b.nachweis %} – {{ _t('Vorlage von {0}, {1}', b.nachweis.autor, b.nachweis.lizenz) }}{% endif %}">
       <img src="api/galerie/vorschau/{{ b.datei | urlencode }}" alt="{{ b.name }}" loading="lazy">
       <span>{{ b.name }}</span>
     </button>
     {% endfor %}
   </div>
-  <p class="hint">Die Bilder entstehen aus frei lizenzierten Fotos von Wikimedia Commons; Urheber und
-    Lizenz stehen beim Überfahren und nach der Auswahl oben.
-    Dein Auto fehlt? <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/fahrzeugbilder"
-    target="_blank" rel="noopener">Anleitung und Prompt für ein eigenes Bild</a>.</p>
+  <p class="hint">{{ _("Die Bilder entstehen aus frei lizenzierten Fotos von Wikimedia Commons; Urheber und Lizenz stehen beim Überfahren und nach der Auswahl oben. Dein Auto fehlt? <a href=\"https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/fahrzeugbilder\" target=\"_blank\" rel=\"noopener\">Anleitung und Prompt für ein eigenes Bild</a>.") }}</p>
   </details>
   {% endif %}
 </div>
 
 {% if not add_on_modus %}
-<h2>Einstellungen sichern / laden</h2>
+<h2>{{ _("Einstellungen sichern / laden") }}</h2>
 <div class="card">
   <p class="hint" style="margin-top:0">
-    Sichert alle Parameter, Sensor-Zuordnungen und Anbieter als JSON-Datei.
+    {{ _("Sichert alle Parameter, Sensor-Zuordnungen und Anbieter als JSON-Datei.") }}
   </p>
   <div class="inline">
-    <a class="btn" href="api/settings/export?secrets=1">⬇ Exportieren (mit Zugangsdaten)</a>
-    <a class="btn secondary" href="api/settings/export?secrets=0"
-       style="text-decoration:none; display:inline-block">⬇ Ohne Token/Passwort</a>
-    <label class="feld">Datei laden
+    {{ _("<a class=\"btn\" href=\"api/settings/export?secrets=1\">⬇ Exportieren (mit Zugangsdaten)</a> <a class=\"btn secondary\" href=\"api/settings/export?secrets=0\" style=\"text-decoration:none; display:inline-block\">⬇ Ohne Token/Passwort</a>") }}
+    <label class="feld">{{ _("Datei laden") }}
       <input type="file" id="settings-datei" accept=".json">
     </label>
-    <button type="button" class="secondary" onclick="importiereSettings()">⬆ Importieren</button>
+    <button type="button" class="secondary" onclick="importiereSettings()">{{ _("⬆ Importieren") }}</button>
     <span id="import-status" style="align-self:center; font-size:12px"></span>
   </div>
   <p class="hint" style="margin-bottom:0">
-    ⚠️ Die Datei „mit Zugangsdaten" enthält HA-Token und Datenbank-Passwörter im Klartext –
-    sicher aufbewahren, nicht weitergeben.
+    {{ _("⚠️ Die Datei „mit Zugangsdaten\" enthält HA-Token und Datenbank-Passwörter im Klartext – sicher aufbewahren, nicht weitergeben.") }}
   </p>
 </div>
 {% endif %}
 
-<h2>Lade-Anbieter</h2>
+<h2>{{ _("Lade-Anbieter") }}</h2>
 <div class="card">
   <form class="inline" method="post" action="einstellungen/anbieter">
-    <label class="feld">Neuer Anbieter
-      <input name="name" placeholder="z.B. Tesla Supercharger">
+    <label class="feld">{{ _("Neuer Anbieter") }}
+      <input name="name" placeholder="{{ _t("z.B. Tesla Supercharger") }}">
     </label>
     <label class="feld">&nbsp;
       <label style="flex-direction:row; align-items:center; gap:6px; color:var(--text); font-size:13px">
-        <input type="checkbox" name="gruenstrom" value="1"> Grünstrom
+        <input type="checkbox" name="gruenstrom" value="1"> {{ _("Grünstrom") }}
       </label>
     </label>
-    <button type="submit">➕ Hinzufügen</button>
+    <button type="submit">{{ _("➕ Hinzufügen") }}</button>
   </form>
   <table style="margin-top:12px">
-    <tr><th>Anbieter</th><th>Grünstrom</th><th>Typ</th><th></th></tr>
+    <tr><th>{{ _("Anbieter") }}</th><th>{{ _("Grünstrom") }}</th><th>{{ _("Typ") }}</th><th></th></tr>
     {% for a in anbieter %}
     <tr>
       <td>{{ a.name }}</td>
       <td>{{ "🌿 Ja" if a.gruenstrom else "—" }}</td>
-      <td class="muted">{{ "System" if a.ist_system else "Eigener" }}</td>
+      <td class="muted">{{ _("System") if a.ist_system else _("Eigener") }}</td>
       <td>
         {% if not a.ist_system %}
         <form method="post" action="einstellungen/anbieter/delete"
-              onsubmit="return confirm('Anbieter {{ a.name }} löschen?')">
+              onsubmit="return confirm({{ _t("Anbieter {0} löschen?", a.name) | tojson | forceescape }})">
           <input type="hidden" name="id" value="{{ a.id }}">
           <button class="danger">🗑</button>
         </form>
@@ -178,75 +279,66 @@
   </table>
 </div>
 
-<h2>Home Assistant & Datenbank</h2>
+<h2>{{ _("Home Assistant & Datenbank") }}</h2>
 <form method="post" action="einstellungen/ha">
+  {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ einstellungs_fahrzeug }}">{% endif %}
 <div class="card">
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
-    <label class="feld">Datenquelle
+    <label class="feld">{{ _("Datenquelle") }}
       <select name="datasource" id="datasource" onchange="zeigeQuelle()">
-        <option value="ha" {{ "selected" if ha.datasource not in quellen }}>Home Assistant API</option>
+        <option value="ha" {{ "selected" if ha.datasource not in quellen }}>{{ _("Home Assistant API") }}</option>
         {% for typ, name in quellen.items() %}
         <option value="{{ typ }}" {{ "selected" if ha.datasource == typ }}>{{ name }}</option>
         {% endfor %}
       </select>
     </label>
     {% if not supervisor_aktiv %}
-    <label class="feld">HA URL
-      <input name="ha_url" value="{{ ha.ha_url }}" placeholder="http://192.168.0.59:8123" style="width:260px">
+    <label class="feld">{{ _("HA URL") }}
+      <input name="ha_url" value="{{ ha.ha_url }}" placeholder="{{ _t("http://192.168.0.59:8123") }}" style="width:260px">
     </label>
-    <label class="feld">HA Token {{ "(gesetzt – leer lassen zum Behalten)" if ha.ha_token }}
-      <input type="password" name="ha_token" placeholder="{{ '••••••••' if ha.ha_token else 'Long-Lived Access Token' }}" style="width:260px">
+    <label class="feld">{{ _("HA Token {0}", "(gesetzt – leer lassen zum Behalten)" if ha.ha_token) }}
+      <input type="password" name="ha_token" placeholder="{{ '••••••••' if ha.ha_token else _t('Long-Lived Access Token') }}" style="width:260px">
     </label>
-    <button type="button" class="secondary" onclick="testeVerbindung('ha', this)">HA testen</button>
+    <button type="button" class="secondary" onclick="testeVerbindung('ha', this)">{{ _("HA testen") }}</button>
     {% endif %}
   </div>
 
   <p class="hint" style="margin-top:8px">
-    Mit einer Datenbank werden die Werte zuerst dort gesucht; was fehlt, kommt weiter aus der
-    HA-API. Nützlich, wenn die Datenbank weiter zurückreicht als die Langzeitstatistik von HA.
-    <span data-quelle="influxdb2 influxdb3 postgres prometheus"><br>🧪 Diese Anbindung ist neu und noch nicht mit
-    vielen echten Installationen erprobt – Rückmeldungen (auch „läuft“) bitte als Issue auf GitHub.</span>
+    {{ _("Mit einer Datenbank werden die Werte zuerst dort gesucht; was fehlt, kommt weiter aus der HA-API. Nützlich, wenn die Datenbank weiter zurückreicht als die Langzeitstatistik von HA.") }}
+    <span data-quelle="influxdb2 influxdb3 postgres prometheus">{{ _("<br>🧪 Diese Anbindung ist neu und noch nicht mit vielen echten Installationen erprobt – Rückmeldungen (auch „läuft“) bitte als Issue auf GitHub.") }}</span>
   </p>
 
-  <h2>Sensoren</h2>
+  <h2>{{ _("Sensoren") }}{% if mehrere and fahrzeuge | length > 1 %} · {{ fahrzeug_name or _("Fahrzeug") }}{% endif %}</h2>
+  {% if mehrere and fahrzeuge | length > 1 %}
+  <div class="sim-banner" style="margin-top:0">{{ _("🚗 <b>Mehrere Fahrzeuge:</b> Kilometerstand und Batteriestand gehören zu <b>{0}</b>.", fahrzeug_name or "diesem Fahrzeug") }}
+    {% if heimladung == "eigen" %}{{ _("PV/Netz ins Auto und Kosten sind die <b>eigenen Zähler</b> dieses Fahrzeugs.") }}
+    {% else %}{{ _("PV/Netz ins Auto und Kosten sind die Zähler der <b>gemeinsamen Wallbox</b> – gleich für alle Fahrzeuge mit gemeinsamer Wallbox.") }}{% endif %}
+    {{ _("Die Kraftstoffpreise gelten für alle. Für ein anderes Fahrzeug oben rechts umschalten.") }}</div>
+  {% endif %}
   <p class="hint">
-    Wichtig: Bei den kWh-Feldern die Sensoren eintragen, die <strong>ins Auto geladene</strong>
-    Energie zählen – nicht die gesamte PV-Erzeugung oder den Hausnetzbezug.
-    Die Entity-ID gilt für alle Datenquellen (auch PostgreSQL und Prometheus speichern sie so);
-    bei InfluxDB kommt der Name dazu, unter dem der Sensor dort steht.
-    <strong>Keine eigenen Zähler für PV/Netz ins Auto?</strong> Die
-    <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen" target="_blank" rel="noopener">Vorlagen</a> (<a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen/node-red" target="_blank" rel="noopener">Node-RED</a> oder HA-Paket)
-    berechnen sie aus Netz- und Wallbox-Leistung – dann <code>sensor.ev_ladung_pv</code> und
-    <code>sensor.ev_ladung_netz</code> eintragen.
-    <strong>Dynamischer Stromtarif?</strong> Optional „Kosten Netz ins Auto (€)“ eintragen – einen
-    fortlaufenden Kostenzähler, z.B. <code>sensor.ev_ladung_netz_kosten</code> aus der Vorlage
-    <code>ev_netzkosten.yaml</code>. Dann zählen die tatsächlichen Kosten statt des Stromtarifs.
-    <strong>Einheit:</strong> kWh-Zähler in <b>kWh</b> anlegen, nicht in Wh – die App rechnet
-    nicht um, Wh-Werte wären 1000-fach zu hoch.
-    <strong>Umbenannter Sensor?</strong> Mehrere Namen mit <code>|</code> trennen, alten zuerst –
-    z.B. <code>Ceed Kilometerstand | Neuer Name</code>. Die Werte beider Namen werden zusammengeführt.
+    {{ _("Wichtig: Bei den kWh-Feldern die Sensoren eintragen, die <strong>ins Auto geladene</strong> Energie zählen – nicht die gesamte PV-Erzeugung oder den Hausnetzbezug. Die Entity-ID gilt für alle Datenquellen (auch PostgreSQL und Prometheus speichern sie so); bei InfluxDB kommt der Name dazu, unter dem der Sensor dort steht. <strong>Keine eigenen Zähler für PV/Netz ins Auto?</strong> Die <a href=\"https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen\" target=\"_blank\" rel=\"noopener\">Vorlagen</a> (<a href=\"https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen/node-red\" target=\"_blank\" rel=\"noopener\">Node-RED</a>, HA-Paket, configuration.yaml oder <a href=\"https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen/oberflaeche\" target=\"_blank\" rel=\"noopener\">über Helfer, ganz ohne YAML</a>) berechnen sie aus Netz- und Wallbox-Leistung – dann <code>sensor.ev_ladung_pv</code> und <code>sensor.ev_ladung_netz</code> eintragen. <strong>Dynamischer Stromtarif?</strong> Optional „Kosten Netz ins Auto (€)“ eintragen – einen fortlaufenden Kostenzähler, z.B. <code>sensor.ev_ladung_netz_kosten</code> aus der Vorlage <code>ev_netzkosten.yaml</code>. Dann zählen die tatsächlichen Kosten statt des Stromtarifs. <strong>Einheit:</strong> kWh-Zähler in <b>kWh</b> anlegen, nicht in Wh – die App rechnet nicht um, Wh-Werte wären 1000-fach zu hoch. <strong>Umbenannter Sensor?</strong> Mehrere Namen mit <code>|</code> trennen, alten zuerst – z.B. <code>Ceed Kilometerstand | Neuer Name</code>. Die Werte beider Namen werden zusammengeführt.") }}
   </p>
 
   <div class="card" style="background:#171a21">
     <div class="inline">
-      <label class="feld">Sensor suchen
-        <input id="sensor-suche" placeholder="z.B. laden oder odometer" style="width:230px">
+      <label class="feld">{{ _("Sensor suchen") }}
+        <input id="sensor-suche" placeholder="{{ _t("z.B. laden oder odometer") }}" style="width:230px">
       </label>
-      <button type="button" class="secondary" onclick="sucheSensoren()">🔍 In HA suchen</button>
+      <button type="button" class="secondary" onclick="sucheSensoren()">{{ _("🔍 In HA suchen") }}</button>
       <button type="button" class="secondary" data-quelle="influxdb influxdb2 influxdb3 postgres prometheus"
-              onclick="sucheDatenbank()" title="Sucht mit der gespeicherten Verbindung">🗄️ In Datenbank suchen</button>
-      <label class="feld">Sensor prüfen (Monatswerte)
-        <input id="sensor-pruef" placeholder="sensor.xyz" style="width:230px">
+              onclick="sucheDatenbank()" title="{{ _t("Sucht mit der gespeicherten Verbindung") }}">{{ _("🗄️ In Datenbank suchen") }}</button>
+      <label class="feld">{{ _("Sensor prüfen (Monatswerte)") }}
+        <input id="sensor-pruef" placeholder="{{ _t("sensor.xyz") }}" style="width:230px">
       </label>
-      <button type="button" class="secondary" onclick="pruefeSensor()">🔬 Prüfen</button>
+      <button type="button" class="secondary" onclick="pruefeSensor()">{{ _("🔬 Prüfen") }}</button>
     </div>
     <div id="sensor-ergebnis" style="margin-top:10px; font-size:12px"></div>
   </div>
 
   <table>
     {# Friendly-Name-Spalte nur bei InfluxDB – die Werte bleiben beim Ausblenden erhalten #}
-    <tr><th>Sensor</th><th>Entity-ID (Home Assistant)</th>
-        <th data-quelle="influxdb influxdb2 influxdb3">Name in der InfluxDB (Friendly Name)</th></tr>
+    <tr><th>{{ _("Sensor") }}</th><th>{{ _("Entity-ID (Home Assistant)") }}</th>
+        <th data-quelle="influxdb influxdb2 influxdb3">{{ _("Name in der InfluxDB (Friendly Name)") }}</th></tr>
     {% for ha_key, fn_key, label in sensor_felder %}
     <tr>
       <td style="white-space:nowrap">{{ label }}</td>
@@ -258,29 +350,25 @@
 
   <div data-quelle="influxdb influxdb2 influxdb3">
   <details class="erweitert">
-  <summary>Erweitert: InfluxDB-Measurements</summary>
-  <p class="hint">Füllt die <b>Sensorsuche</b> beim „Übernehmen“ automatisch aus – nur ändern, wenn du
-    weißt warum. HA schreibt je Einheit ein Measurement (km, kWh, EUR/L, EUR, %) mit dem Feld „value“;
-    alle Sensoren einer Einheit liegen darin und werden über den Tag unterschieden:
-    <code>friendly_name</code> (Standard) oder <code>entity_id</code> – dann in der Spalte
-    Friendly Name die Entity-ID <em>ohne</em> „sensor.“ eintragen.</p>
+  <summary>{{ _("Erweitert: InfluxDB-Measurements") }}</summary>
+  <p class="hint">{{ _("Füllt die <b>Sensorsuche</b> beim „Übernehmen“ automatisch aus – nur ändern, wenn du weißt warum. HA schreibt je Einheit ein Measurement (km, kWh, EUR/L, EUR, %) mit dem Feld „value“; alle Sensoren einer Einheit liegen darin und werden über den Tag unterschieden: <code>friendly_name</code> (Standard) oder <code>entity_id</code> – dann in der Spalte Friendly Name die Entity-ID <em>ohne</em> „sensor.“ eintragen.") }}</p>
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
-    <label class="feld">Tag
+    <label class="feld">{{ _("Tag") }}
       <input name="influx_tag" value="{{ ha.influx_tag }}" style="width:120px">
     </label>
-    <label class="feld">Meas. km
+    <label class="feld">{{ _("Meas. km") }}
       <input name="influx_measurement_km" value="{{ ha.influx_measurement_km }}" style="width:70px">
     </label>
-    <label class="feld">Meas. kWh
+    <label class="feld">{{ _("Meas. kWh") }}
       <input name="influx_measurement_kwh" value="{{ ha.influx_measurement_kwh }}" style="width:70px">
     </label>
-    <label class="feld">Meas. EUR/L
+    <label class="feld">{{ _("Meas. EUR/L") }}
       <input name="influx_measurement_eur_l" value="{{ ha.influx_measurement_eur_l }}" style="width:70px">
     </label>
-    <label class="feld">Meas. EUR
+    <label class="feld">{{ _("Meas. EUR") }}
       <input name="influx_measurement_eur" value="{{ ha.influx_measurement_eur }}" style="width:70px">
     </label>
-    <label class="feld">Meas. %
+    <label class="feld">{{ _("Meas. %") }}
       <input name="influx_measurement_prozent" value="{{ ha.influx_measurement_prozent }}" style="width:70px">
     </label>
   </div>
@@ -288,162 +376,146 @@
   </div>
 
   <div data-quelle="influxdb">
-  <h2>InfluxDB 1.x Verbindung</h2>
+  <h2>{{ _("InfluxDB 1.x Verbindung") }}</h2>
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
-    <label class="feld">URL
-      <input name="influx_url" value="{{ ha.influx_url }}" placeholder="http://192.168.0.59" style="width:200px">
+    <label class="feld">{{ _("URL") }}
+      <input name="influx_url" value="{{ ha.influx_url }}" placeholder="{{ _t("http://192.168.0.59") }}" style="width:200px">
     </label>
-    <label class="feld">Port
+    <label class="feld">{{ _("Port") }}
       <input name="influx_port" value="{{ ha.influx_port }}" style="width:70px">
     </label>
-    <label class="feld">Datenbank
+    <label class="feld">{{ _("Datenbank") }}
       <input name="influx_database" value="{{ ha.influx_database }}" style="width:140px">
     </label>
-    <label class="feld">Benutzer
+    <label class="feld">{{ _("Benutzer") }}
       <input name="influx_user" value="{{ ha.influx_user }}" style="width:120px">
     </label>
-    <label class="feld">Passwort {{ "(gesetzt)" if ha.influx_password }}
+    <label class="feld">{{ _("Passwort {0}", "(gesetzt)" if ha.influx_password) }}
       <input type="password" name="influx_password" placeholder="{{ '••••••••' if ha.influx_password else 'optional' }}" style="width:120px">
     </label>
-    <button type="button" class="secondary" onclick="testeVerbindung('influxdb', this)">InfluxDB 1.x testen</button>
+    <button type="button" class="secondary" onclick="testeVerbindung('influxdb', this)">{{ _("InfluxDB 1.x testen") }}</button>
   </div>
   </div>
 
   <div data-quelle="influxdb2">
-  <h2>InfluxDB 2.x Verbindung</h2>
+  <h2>{{ _("InfluxDB 2.x Verbindung") }}</h2>
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
-    <label class="feld">URL mit Port
-      <input name="influx2_url" value="{{ ha.influx2_url }}" placeholder="http://192.168.0.59:8086" style="width:220px">
+    <label class="feld">{{ _("URL mit Port") }}
+      <input name="influx2_url" value="{{ ha.influx2_url }}" placeholder="{{ _t("http://192.168.0.59:8086") }}" style="width:220px">
     </label>
-    <label class="feld">Organisation
+    <label class="feld">{{ _("Organisation") }}
       <input name="influx2_org" value="{{ ha.influx2_org }}" style="width:140px">
     </label>
-    <label class="feld">Bucket
+    <label class="feld">{{ _("Bucket") }}
       <input name="influx2_bucket" value="{{ ha.influx2_bucket }}" style="width:140px">
     </label>
-    <label class="feld">API-Token {{ "(gesetzt – leer lassen zum Behalten)" if ha.influx2_token }}
-      <input type="password" name="influx2_token" placeholder="{{ '••••••••' if ha.influx2_token else 'Lese-Token für den Bucket' }}" style="width:220px">
+    <label class="feld">{{ _("API-Token {0}", "(gesetzt – leer lassen zum Behalten)" if ha.influx2_token) }}
+      <input type="password" name="influx2_token" placeholder="{{ '••••••••' if ha.influx2_token else _t('Lese-Token für den Bucket') }}" style="width:220px">
     </label>
-    <button type="button" class="secondary" onclick="testeVerbindung('influxdb2', this)">InfluxDB 2.x testen</button>
+    <button type="button" class="secondary" onclick="testeVerbindung('influxdb2', this)">{{ _("InfluxDB 2.x testen") }}</button>
   </div>
   </div>
 
   <div data-quelle="influxdb3">
-  <h2>InfluxDB 3.x Verbindung</h2>
-  <p class="hint">InfluxDB 3 Core bzw. Enterprise, abgefragt per SQL. Die Datenbank ist der Name, den
-    Home Assistant in seiner InfluxDB-Konfiguration als <code>bucket</code> einträgt.
-    Ein Token entsteht mit <code>influxdb3 create token --admin</code> oder in InfluxDB 3 Explorer.
-    InfluxDB 3 Core liest je Abfrage nur begrenzt viele Dateien (etwa 72 Stunden) – die App fragt deshalb
-    in Fenstern von höchstens 48 Stunden ab, und die Sensorsuche findet Sensoren mit Werten aus den
-    letzten zwei Tagen.</p>
+  <h2>{{ _("InfluxDB 3.x Verbindung") }}</h2>
+  <p class="hint">{{ _("InfluxDB 3 Core bzw. Enterprise, abgefragt per SQL. Die Datenbank ist der Name, den Home Assistant in seiner InfluxDB-Konfiguration als <code>bucket</code> einträgt. Ein Token entsteht mit <code>influxdb3 create token --admin</code> oder in InfluxDB 3 Explorer. InfluxDB 3 Core liest je Abfrage nur begrenzt viele Dateien (etwa 72 Stunden) – die App fragt deshalb in Fenstern von höchstens 48 Stunden ab, und die Sensorsuche findet Sensoren mit Werten aus den letzten zwei Tagen.") }}</p>
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
-    <label class="feld">URL mit Port
-      <input name="influx3_url" value="{{ ha.influx3_url }}" placeholder="http://192.168.0.59:8181" style="width:220px">
+    <label class="feld">{{ _("URL mit Port") }}
+      <input name="influx3_url" value="{{ ha.influx3_url }}" placeholder="{{ _t("http://192.168.0.59:8181") }}" style="width:220px">
     </label>
-    <label class="feld">Datenbank
+    <label class="feld">{{ _("Datenbank") }}
       <input name="influx3_database" value="{{ ha.influx3_database }}" style="width:160px">
     </label>
-    <label class="feld">Token {{ "(gesetzt – leer lassen zum Behalten)" if ha.influx3_token }}
-      <input type="password" name="influx3_token" placeholder="{{ '••••••••' if ha.influx3_token else 'Token mit Lesezugriff' }}" style="width:220px">
+    <label class="feld">{{ _("Token {0}", "(gesetzt – leer lassen zum Behalten)" if ha.influx3_token) }}
+      <input type="password" name="influx3_token" placeholder="{{ '••••••••' if ha.influx3_token else _t('Token mit Lesezugriff') }}" style="width:220px">
     </label>
-    <button type="button" class="secondary" onclick="testeVerbindung('influxdb3', this)">InfluxDB 3.x testen</button>
+    <button type="button" class="secondary" onclick="testeVerbindung('influxdb3', this)">{{ _("InfluxDB 3.x testen") }}</button>
   </div>
   </div>
 
   <div data-quelle="postgres">
-  <h2>PostgreSQL / TimescaleDB (LTSS)</h2>
-  <p class="hint">Liest die Tabelle der HA-Integration „Long Time State Storage“ (LTSS). Sensoren
-    über die Entity-ID wie bei HA. Ein Benutzer mit Leserecht auf die Tabelle genügt.</p>
+  <h2>{{ _("PostgreSQL / TimescaleDB (LTSS)") }}</h2>
+  <p class="hint">{{ _("Liest die Tabelle der HA-Integration „Long Time State Storage“ (LTSS). Sensoren über die Entity-ID wie bei HA. Ein Benutzer mit Leserecht auf die Tabelle genügt.") }}</p>
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
-    <label class="feld">Host
+    <label class="feld">{{ _("Host") }}
       <input name="pg_host" value="{{ ha.pg_host }}" placeholder="192.168.0.59" style="width:180px">
     </label>
-    <label class="feld">Port
+    <label class="feld">{{ _("Port") }}
       <input name="pg_port" value="{{ ha.pg_port }}" style="width:70px">
     </label>
-    <label class="feld">Datenbank
+    <label class="feld">{{ _("Datenbank") }}
       <input name="pg_database" value="{{ ha.pg_database }}" style="width:140px">
     </label>
-    <label class="feld">Tabelle
+    <label class="feld">{{ _("Tabelle") }}
       <input name="pg_tabelle" value="{{ ha.pg_tabelle }}" style="width:100px">
     </label>
-    <label class="feld">Benutzer
+    <label class="feld">{{ _("Benutzer") }}
       <input name="pg_user" value="{{ ha.pg_user }}" style="width:120px">
     </label>
-    <label class="feld">Passwort {{ "(gesetzt)" if ha.pg_password }}
+    <label class="feld">{{ _("Passwort {0}", "(gesetzt)" if ha.pg_password) }}
       <input type="password" name="pg_password" placeholder="{{ '••••••••' if ha.pg_password else '' }}" style="width:120px">
     </label>
-    <button type="button" class="secondary" onclick="testeVerbindung('postgres', this)">PostgreSQL testen</button>
+    <button type="button" class="secondary" onclick="testeVerbindung('postgres', this)">{{ _("PostgreSQL testen") }}</button>
   </div>
   </div>
 
   <div data-quelle="prometheus">
-  <h2>Prometheus / VictoriaMetrics</h2>
-  <p class="hint">Liest die Metriken der HA-Integration „Prometheus“. Sensoren über die Entity-ID
-    wie bei HA. Achtung: Prometheus speichert standardmäßig nur 15 Tage – für Monatswerte muss die
-    Aufbewahrung länger sein (VictoriaMetrics: Standard 1 Monat).
-    Selektor leer lassen für den Standard; <code>{entity}</code> wird durch die Entity-ID ersetzt.</p>
+  <h2>{{ _("Prometheus / VictoriaMetrics") }}</h2>
+  <p class="hint">{{ _("Liest die Metriken der HA-Integration „Prometheus“. Sensoren über die Entity-ID wie bei HA. Achtung: Prometheus speichert standardmäßig nur 15 Tage – für Monatswerte muss die Aufbewahrung länger sein (VictoriaMetrics: Standard 1 Monat). Selektor leer lassen für den Standard; <code>{entity}</code> wird durch die Entity-ID ersetzt.") }}</p>
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
-    <label class="feld">URL mit Port
-      <input name="prom_url" value="{{ ha.prom_url }}" placeholder="http://192.168.0.59:9090" style="width:220px">
+    <label class="feld">{{ _("URL mit Port") }}
+      <input name="prom_url" value="{{ ha.prom_url }}" placeholder="{{ _t("http://192.168.0.59:9090") }}" style="width:220px">
     </label>
-    <label class="feld">Benutzer
-      <input name="prom_user" value="{{ ha.prom_user }}" placeholder="optional" style="width:120px">
+    <label class="feld">{{ _("Benutzer") }}
+      <input name="prom_user" value="{{ ha.prom_user }}" placeholder="{{ _t("optional") }}" style="width:120px">
     </label>
-    <label class="feld">Passwort {{ "(gesetzt)" if ha.prom_password }}
+    <label class="feld">{{ _("Passwort {0}", "(gesetzt)" if ha.prom_password) }}
       <input type="password" name="prom_password" placeholder="{{ '••••••••' if ha.prom_password else 'optional' }}" style="width:120px">
     </label>
-    <label class="feld" style="flex-basis:100%">Selektor
+    <label class="feld" style="flex-basis:100%">{{ _("Selektor") }}
       <input name="prom_selektor" value="{{ ha.prom_selektor }}" placeholder="{{ prom_standard }}" style="width:100%">
     </label>
-    <button type="button" class="secondary" onclick="testeVerbindung('prometheus', this)">Prometheus testen</button>
+    <button type="button" class="secondary" onclick="testeVerbindung('prometheus', this)">{{ _("Prometheus testen") }}</button>
   </div>
   </div>
 
   <div style="margin-top:14px">
-    <button type="submit">💾 Alle Einstellungen speichern</button>
+    <button type="submit">{{ _("💾 Alle Einstellungen speichern") }}</button>
     <span id="test-ergebnis" style="margin-left:12px; font-size:12px"></span>
   </div>
 </div>
 </form>
 
-<h2 id="ladung-senden">Ladungen aus Home Assistant empfangen</h2>
+<h2 id="ladung-senden">{{ _("Ladungen aus Home Assistant empfangen") }}</h2>
 <div class="card">
   <p class="hint" style="margin-top:0">
-    Optional: Home Assistant schickt am Ende jeder Ladung zuhause kWh aus Netz und PV (und mit
-    dynamischem Tarif die Kosten). Dann stehen Heimladungen <b>einzeln mit Datum</b> in der Liste
-    statt nur als Monatssumme. Der nächtliche Abruf legt nur noch den Rest an, der nicht als
-    Einzelladung ankam – nichts wird doppelt gezählt, und eine verlorene Ladung steckt im Rest.
-    Vorlage für HA:
-    <a href="https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/homeassistant/ev_ladung_senden.yaml"
-       target="_blank" rel="noopener">ev_ladung_senden.yaml</a>.
+    {{ _("Optional: Home Assistant schickt am Ende jeder Ladung zuhause kWh aus Netz und PV (und mit dynamischem Tarif die Kosten). Dann stehen Heimladungen <b>einzeln mit Datum</b> in der Liste statt nur als Monatssumme. Der nächtliche Abruf legt nur noch den Rest an, der nicht als Einzelladung ankam – nichts wird doppelt gezählt, und eine verlorene Ladung steckt im Rest. Vorlage für HA: <a href=\"https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/homeassistant/ev_ladung_senden.yaml\" target=\"_blank\" rel=\"noopener\">ev_ladung_senden.yaml</a> oder als <a href=\"https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/blueprints/README.md\" target=\"_blank\" rel=\"noopener\">Blueprint</a> (Sensoren, Adresse und Token per Auswahlfeld).") }}
   </p>
   {% if push_token %}
-  <p class="gruen" style="font-size:13px">✓ Empfang eingeschaltet. In der Vorlage diese beiden Werte eintragen:</p>
+  <p class="gruen" style="font-size:13px">{{ _("✓ Empfang eingeschaltet. In der Vorlage bzw. im Blueprint diese beiden Werte eintragen:") }}</p>
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end">
-    <label class="feld">Adresse (ersetzt <code>ADRESSE_EV_TRACKER</code>)
+    <label class="feld">{{ _("Adresse (ersetzt <code>ADRESSE_EV_TRACKER</code>)") }}
       <input id="push-url" readonly value="{{ push_url }}" style="width:340px">
     </label>
-    <button type="button" class="secondary" onclick="kopieren('push-url', this)">📋 Kopieren</button>
-    <label class="feld">Token (ersetzt <code>DEIN_TOKEN</code>)
+    <button type="button" class="secondary" onclick="kopieren('push-url', this)">{{ _("📋 Kopieren") }}</button>
+    <label class="feld">{{ _("Token (ersetzt <code>DEIN_TOKEN</code>)") }}
       <input id="push-token" readonly value="{{ push_token }}" style="width:300px">
     </label>
-    <button type="button" class="secondary" onclick="kopieren('push-token', this)">📋 Kopieren</button>
+    <button type="button" class="secondary" onclick="kopieren('push-token', this)">{{ _("📋 Kopieren") }}</button>
   </div>
   {% if add_on_modus %}
-  <p class="hint">Die Adresse gilt im internen Netz von Home Assistant (Hostname des Add-ons) –
-    von außen ist sie nicht erreichbar, und das muss sie auch nicht.</p>
+  <p class="hint">{{ _("Die Adresse gilt im internen Netz von Home Assistant (Hostname des Add-ons) – von außen ist sie nicht erreichbar, und das muss sie auch nicht.") }}</p>
   {% endif %}
   <form method="post" action="einstellungen/push-token" style="display:flex; gap:8px; margin-top:8px">
     <button type="submit" name="aktion" value="neu" class="secondary"
-            onclick="return confirm('Neuen Token erzeugen? Der alte gilt dann nicht mehr – in HA ersetzen.')">↻ Neuer Token</button>
+            onclick="return confirm({{ _t("Neuen Token erzeugen? Der alte gilt dann nicht mehr – in HA ersetzen.") | tojson | forceescape }})">{{ _("↻ Neuer Token") }}</button>
     <button type="submit" name="aktion" value="aus" class="secondary"
-            onclick="return confirm('Empfang ausschalten? HA kann dann keine Ladungen mehr schicken.')">Empfang ausschalten</button>
+            onclick="return confirm({{ _t("Empfang ausschalten? HA kann dann keine Ladungen mehr schicken.") | tojson | forceescape }})">{{ _("Empfang ausschalten") }}</button>
   </form>
   {% else %}
-  <p class="hint">Ausgeschaltet. Mit dem Token kann Home Assistant Ladungen schicken – sonst niemand.</p>
+  <p class="hint">{{ _("Ausgeschaltet. Mit dem Token kann Home Assistant Ladungen schicken – sonst niemand.") }}</p>
   <form method="post" action="einstellungen/push-token">
-    <button type="submit" name="aktion" value="neu">🔑 Token erzeugen und Empfang einschalten</button>
+    <button type="submit" name="aktion" value="neu">{{ _("🔑 Token erzeugen und Empfang einschalten") }}</button>
   </form>
   {% endif %}
 </div>
@@ -454,21 +526,21 @@ async function kopieren(id, knopf) {
   try { await navigator.clipboard.writeText(feld.value); }
   catch (e) { feld.select(); document.execCommand("copy"); }
   const alt = knopf.textContent;
-  knopf.textContent = "✓ Kopiert";
+  knopf.textContent = {{ _t("✓ Kopiert") | tojson }};
   setTimeout(() => { knopf.textContent = alt; }, 1500);
 }
 
 async function sucheSensoren() {
   const q = document.getElementById("sensor-suche").value.trim();
   const box = document.getElementById("sensor-ergebnis");
-  box.innerHTML = "<span class='muted'>Suche …</span>";
+  box.innerHTML = "<span class='muted'>" + {{ _t("Suche …") | tojson }} + "</span>";
   const resp = await fetch("api/entities?q=" + encodeURIComponent(q));
   const d = await resp.json();
   if (d.error) { box.innerHTML = "<span class='rot'>✗ " + d.error + "</span>"; return; }
-  if (!d.treffer.length) { box.innerHTML = "<span class='gelb'>Keine Treffer</span>"; return; }
-  let html = `<div class="muted">${d.anzahl} Treffer${d.anzahl > 60 ? " (zeige 60)" : ""} – auf eine Zeile klicken, um sie zu prüfen:</div>`;
+  if (!d.treffer.length) { box.innerHTML = "<span class='gelb'>" + {{ _t("Keine Treffer") | tojson }} + "</span>"; return; }
+  let html = `<div class="muted">${T({{ _t("{0} Treffer") | tojson }}, d.anzahl)}${d.anzahl > 60 ? " " + {{ _t("(zeige 60)") | tojson }} : ""} – ${ {{ _t("auf eine Zeile klicken, um sie zu prüfen:") | tojson }} }</div>`;
   html += "<div class='tabelle-scroll' style='max-height:260px; overflow-y:auto'><table>";
-  html += "<tr><th>Entity-ID</th><th>Name</th><th>Wert</th><th>Typ</th></tr>";
+  html += "<tr><th>Entity-ID</th><th>" + {{ _t("Name") | tojson }} + "</th><th>" + {{ _t("Wert") | tojson }} + "</th><th>" + {{ _t("Typ") | tojson }} + "</th></tr>";
   for (const t of d.treffer) {
     html += `<tr style="cursor:pointer" onclick="document.getElementById('sensor-pruef').value='${t.entity_id}'; pruefeSensor()">` +
             `<td>${t.entity_id}</td><td>${t.name}</td>` +
@@ -515,14 +587,13 @@ let verbindungGeaendert = false;
 document.querySelector('form[action="einstellungen/ha"]').addEventListener("input", e => {
   if (/^(datasource|ha_url|ha_token|influx|pg_|prom_)/.test(e.target.name || "")) verbindungGeaendert = true;
 });
-const ERST_SPEICHERN = "Verbindungsdaten geändert, aber noch nicht gespeichert – bitte zuerst " +
-                       "„Alle Einstellungen speichern“, dann testen bzw. suchen.";
+const ERST_SPEICHERN = {{ _t("Verbindungsdaten geändert, aber noch nicht gespeichert – bitte zuerst „Alle Einstellungen speichern“, dann testen bzw. suchen.") | tojson }};
 
 async function sucheDatenbank() {
   const q = document.getElementById("sensor-suche").value.trim();
   const box = document.getElementById("sensor-ergebnis");
   if (verbindungGeaendert) { box.innerHTML = `<span class="gelb">${ERST_SPEICHERN}</span>`; return; }
-  box.innerHTML = "<span class='muted'>Suche in der Datenbank …</span>";
+  box.innerHTML = "<span class='muted'>" + {{ _t("Suche in der Datenbank …") | tojson }} + "</span>";
   let d;
   try {
     const resp = await fetch("api/datenbank/suche?q=" + encodeURIComponent(q));
@@ -530,22 +601,22 @@ async function sucheDatenbank() {
   } catch (e) { box.innerHTML = "<span class='rot'>✗ " + esc(e) + "</span>"; return; }
   if (d.error) { box.innerHTML = "<span class='rot'>✗ " + esc(d.error) + "</span>"; return; }
   dbTreffer = d.treffer; dbSpalte = d.spalte;
-  if (!dbTreffer.length) { box.innerHTML = `<span class='gelb'>Keine Treffer in ${esc(d.quelle)}</span>`; return; }
-  const optionen = (wahl) => `<option value="">– eintragen als –</option>` + SENSOR_ZEILEN.map(z =>
+  if (!dbTreffer.length) { box.innerHTML = `<span class='gelb'>${T({{ _t("Keine Treffer in {0}") | tojson }}, esc(d.quelle))}</span>`; return; }
+  const optionen = (wahl) => `<option value="">${ {{ _t("– eintragen als –") | tojson }} }</option>` + SENSOR_ZEILEN.map(z =>
     `<option value="${z[0]}" ${z[0] === wahl ? "selected" : ""}>${esc(z[2])}</option>`).join("");
-  let html = `<div class="muted">${dbTreffer.length} Treffer in ${esc(d.quelle)}` +
-             `${dbTreffer.length >= 40 ? " (die ersten 40 – Suchbegriff genauer fassen)" : ""}:</div>`;
+  let html = `<div class="muted">${T({{ _t("{0} Treffer in {1}") | tojson }}, dbTreffer.length, esc(d.quelle))}` +
+             `${dbTreffer.length >= 40 ? " " + {{ _t("(die ersten 40 – Suchbegriff genauer fassen)") | tojson }} : ""}:</div>`;
   html += "<div class='tabelle-scroll' style='max-height:300px; overflow-y:auto'><table>";
-  html += "<tr><th>" + (dbSpalte === "name" ? "Name in der InfluxDB" : "Entity-ID") +
-          "</th><th>Name</th><th>Einheit</th><th>Daten</th><th></th></tr>";
+  html += "<tr><th>" + (dbSpalte === "name" ? {{ _t("Name in der InfluxDB") | tojson }} : "Entity-ID") +
+          "</th><th>" + {{ _t("Name") | tojson }} + "</th><th>" + {{ _t("Einheit") | tojson }} + "</th><th>" + {{ _t("Daten") | tojson }} + "</th><th></th></tr>";
   const vergeben = new Set();
   dbTreffer.forEach((t, i) => {
     const zeitraum = t.von ? `${esc(t.von)} – ${esc(t.bis)}`
-                   : t.bis ? `<span class='muted'>zuletzt</span> ${esc(t.bis)}` : "<span class='muted'>–</span>";
+                   : t.bis ? `<span class='muted'>${ {{ _t("zuletzt") | tojson }} }</span> ${esc(t.bis)}` : "<span class='muted'>–</span>";
     html += `<tr><td>${esc(t.kennung)}</td><td>${t.name !== t.kennung ? esc(t.name) : ""}</td>` +
             `<td>${esc(t.einheit)}</td><td style="white-space:nowrap">${zeitraum}</td>` +
             `<td style="white-space:nowrap"><select id="db-ziel-${i}">${optionen(vorschlagZeile(t, vergeben))}</select> ` +
-            `<button type="button" class="secondary" onclick="dbEintragen(${i})">Übernehmen</button></td></tr>`;
+            `<button type="button" class="secondary" onclick="dbEintragen(${i})">${ {{ _t("Übernehmen") | tojson }} }</button></td></tr>`;
   });
   box.innerHTML = html + "</table></div>";
 }
@@ -553,14 +624,12 @@ async function sucheDatenbank() {
 function dbEintragen(i) {
   const haKey = document.getElementById("db-ziel-" + i).value;
   const box = document.getElementById("sensor-ergebnis");
-  if (!haKey) { alert("Bitte zuerst wählen, in welche Zeile der Treffer gehört."); return; }
+  if (!haKey) { alert({{ _t("Bitte zuerst wählen, in welche Zeile der Treffer gehört.") | tojson }}); return; }
   const eingabe = document.querySelector(`[name="${feld(haKey)}"]`);
   const neu = dbTreffer[i].kennung;
   const vorhanden = eingabe.value.split("|").map(s => s.trim()).filter(Boolean);
   if (vorhanden.length && !vorhanden.includes(neu) &&
-      confirm(`In dieser Zeile steht schon „${vorhanden.join(" | ")}“.\n\n` +
-              `OK = als weiteren Namen ergänzen (z.B. nach einer Umbenennung)\n` +
-              `Abbrechen = ersetzen`)) {
+      confirm(T({{ _t("In dieser Zeile steht schon „{0}“.\n\nOK = als weiteren Namen ergänzen (z.B. nach einer Umbenennung)\nAbbrechen = ersetzen") | tojson }}, vorhanden.join(" | ")))) {
     eingabe.value = [...vorhanden, neu].join(" | ");
   } else if (!vorhanden.includes(neu)) {
     eingabe.value = neu;          // leer oder "ersetzen" gewaehlt
@@ -581,43 +650,42 @@ function dbEintragen(i) {
   eingabe.scrollIntoView({block: "center", behavior: "smooth"});
   const hinweis = document.getElementById("test-ergebnis");
   hinweis.textContent = warnWh
-      ? "Achtung: dieser Sensor zählt in Wh – die App erwartet kWh (Werte wären 1000-fach zu hoch). " +
-        "Besser in HA einen kWh-Sensor anlegen, z.B. mit den Vorlagen."
-      : "Eingetragen – zum Übernehmen „Alle Einstellungen speichern“ klicken.";
+      ? {{ _t("Achtung: dieser Sensor zählt in Wh – die App erwartet kWh (Werte wären 1000-fach zu hoch). Besser in HA einen kWh-Sensor anlegen, z.B. mit den Vorlagen.") | tojson }}
+      : {{ _t("Eingetragen – zum Übernehmen „Alle Einstellungen speichern“ klicken.") | tojson }};
   hinweis.className = warnWh ? "rot" : "gelb";
 }
 
 async function pruefeSensor() {
   const eid = document.getElementById("sensor-pruef").value.trim();
   const box = document.getElementById("sensor-ergebnis");
-  if (!eid) { box.innerHTML = "<span class='gelb'>Bitte Entity-ID eingeben</span>"; return; }
-  box.innerHTML = "<span class='muted'>Prüfe " + eid + " – das dauert einen Moment …</span>";
+  if (!eid) { box.innerHTML = "<span class='gelb'>" + {{ _t("Bitte Entity-ID eingeben") | tojson }} + "</span>"; return; }
+  box.innerHTML = "<span class='muted'>" + T({{ _t("Prüfe {0} – das dauert einen Moment …") | tojson }}, eid) + "</span>";
   const resp = await fetch("api/diagnose?entity=" + encodeURIComponent(eid));
   const d = await resp.json();
   if (d.error) { box.innerHTML = "<span class='rot'>✗ " + d.error + "</span>"; return; }
-  let html = `<div><strong>${d.entity}</strong> ${d.name ? "(" + d.name + ")" : ""} · aktuell: ${d.state} ${d.einheit}</div>`;
-  html += "<table style='margin-top:6px'><tr><th>Monat</th><th>Delta (Zähler)</th><th>Summe (Tageswerte)</th><th>Mittelwert</th></tr>";
+  let html = `<div><strong>${d.entity}</strong> ${d.name ? "(" + d.name + ")" : ""} · ${ {{ _t("aktuell:") | tojson }} } ${d.state} ${d.einheit}</div>`;
+  html += "<table style='margin-top:6px'><tr><th>" + {{ _t("Monat") | tojson }} + "</th><th>" + {{ _t("Delta (Zähler)") | tojson }} + "</th><th>" + {{ _t("Summe (Tageswerte)") | tojson }} + "</th><th>" + {{ _t("Mittelwert") | tojson }} + "</th></tr>";
   for (const m of d.monate) {
     const f = v => v === null ? "<span class='muted'>–</span>" : v;
     html += `<tr><td>${m.monat}</td><td>${f(m.delta)}</td><td>${f(m.summe)}</td><td>${f(m.mittel)}</td></tr>`;
   }
-  html += "</table><div class='hint'>km und Netz/PV-Laden nutzen <em>Delta</em>, {{ kf.name }}preis den <em>Mittelwert</em>. Überall „–“ = keine Daten für diesen Zeitraum.</div>";
+  html += "</table><div class='hint'>" + {{ _t("km und Netz/PV-Laden nutzen <em>Delta</em>, {0}preis den <em>Mittelwert</em>. Überall „–“ = keine Daten für diesen Zeitraum.", kf.name) | tojson }} + "</div>";
   box.innerHTML = html;
 }
 
 async function importiereSettings() {
   const datei = document.getElementById("settings-datei").files[0];
   const status = document.getElementById("import-status");
-  if (!datei) { status.textContent = "Bitte zuerst eine Datei wählen."; status.className = "gelb"; return; }
-  if (!confirm("Einstellungen aus '" + datei.name + "' uebernehmen? Bestehende Werte werden ueberschrieben.")) return;
+  if (!datei) { status.textContent = {{ _t("Bitte zuerst eine Datei wählen.") | tojson }}; status.className = "gelb"; return; }
+  if (!confirm(T({{ _t("Einstellungen aus '{0}' uebernehmen? Bestehende Werte werden ueberschrieben.") | tojson }}, datei.name))) return;
   const fd = new FormData();
   fd.append("datei", datei);
-  status.textContent = "Lade …"; status.className = "muted";
+  status.textContent = {{ _t("Lade …") | tojson }}; status.className = "muted";
   const resp = await fetch("api/settings/import", { method: "POST", body: fd });
   const data = await resp.json();
   if (data.error) { status.textContent = "✗ " + data.error; status.className = "rot"; return; }
-  status.textContent = `✓ ${data.anzahl} Einstellungen übernommen` +
-      (data.anbieter ? `, ${data.anbieter} neue Anbieter` : "");
+  status.textContent = T({{ _t("✓ {0} Einstellungen übernommen") | tojson }}, data.anzahl) +
+      (data.anbieter ? T({{ _t(", {0} neue Anbieter") | tojson }}, data.anbieter) : "");
   status.className = "gruen";
   setTimeout(() => location.reload(), 1200);
 }
@@ -636,7 +704,7 @@ async function testeVerbindung(art, btn) {
   const span = document.getElementById("test-ergebnis");
   if (verbindungGeaendert) { span.textContent = ERST_SPEICHERN; span.className = "gelb"; return; }
   btn.disabled = true;
-  span.textContent = "Teste …";
+  span.textContent = {{ _t("Teste …") | tojson }};
   span.className = "muted";
   try {
     const resp = await fetch("api/test/" + art, { method: "POST" });
@@ -653,14 +721,14 @@ async function testeVerbindung(art, btn) {
 async function autoBildHochladen() {
   const datei = document.getElementById("auto-bild-datei").files[0];
   const m = document.getElementById("auto-bild-meldung");
-  if (!datei) { m.textContent = "Bitte zuerst eine Datei wählen."; m.className = "gelb"; return; }
+  if (!datei) { m.textContent = {{ _t("Bitte zuerst eine Datei wählen.") | tojson }}; m.className = "gelb"; return; }
   const fd = new FormData();
   fd.append("bild", datei);
-  m.textContent = "Lade hoch …"; m.className = "muted";
+  m.textContent = {{ _t("Lade hoch …") | tojson }}; m.className = "muted";
   const resp = await fetch("api/auto-bild", { method: "POST", body: fd });
   const data = await resp.json();
   if (data.error) { m.textContent = "✗ " + data.error; m.className = "rot"; return; }
-  m.textContent = "✓ Gespeichert"; m.className = "gruen";
+  m.textContent = {{ _t("✓ Gespeichert") | tojson }}; m.className = "gruen";
   setTimeout(() => { location.hash = "fahrzeugbild"; location.reload(); }, 600);
 }
 
@@ -678,7 +746,7 @@ async function galerieWaehlen(datei, knopf) {
 async function autoBildZuruecksetzen() {
   const m = document.getElementById("auto-bild-meldung");
   await fetch("api/auto-bild/reset", { method: "POST" });
-  m.textContent = "✓ Standardbild wiederhergestellt"; m.className = "gruen";
+  m.textContent = {{ _t("✓ Standardbild wiederhergestellt") | tojson }}; m.className = "gruen";
   setTimeout(() => { location.hash = "fahrzeugbild"; location.reload(); }, 600);
 }
 </script>

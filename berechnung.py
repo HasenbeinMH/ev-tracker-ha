@@ -6,6 +6,7 @@ import calendar
 
 import database as db
 import ladetarife
+from i18n import _, _k, N_
 
 BENZINPREIS_FALLBACK = 1.80  # €/L wenn keine Monatspreise erfasst sind
 NETZPREIS_FALLBACK = 30.0    # ct/kWh wenn noch kein Stromtarif erfasst ist
@@ -15,21 +16,32 @@ NETZBEZUG = "Privat – Netzbezug"
 # es unterscheiden sich nur die Beschriftung und der Standard-CO2-Faktor.
 # Intern heissen Tabellen und Schluessel weiter "benzin" – sie meinen den Kraftstoff.
 KRAFTSTOFFE = {
-    "benzin": {"art": "benzin", "name": "Benzin", "fahrzeug": "Benziner",
+    "benzin": {"art": "benzin", "name": N_("Benzin"), "fahrzeug": "Benziner",
                "fahrzeug_gen": "Benziners", "co2_standard": 2.37},
-    "diesel": {"art": "diesel", "name": "Diesel", "fahrzeug": "Diesel",
+    "diesel": {"art": "diesel", "name": N_("Diesel"), "fahrzeug": "Diesel",
                "fahrzeug_gen": "Diesels", "co2_standard": 2.65},
     # LPG wird wie Benzin und Diesel in Litern getankt und bezahlt
-    "autogas": {"art": "autogas", "name": "Autogas", "fahrzeug": "Autogas-Auto",
+    "autogas": {"art": "autogas", "name": N_("Autogas"), "fahrzeug": "Autogas-Auto",
                 "fahrzeug_gen": "Autogas-Autos", "co2_standard": 1.64},
 }
+# Fahrzeug-Bezeichnungen mit Kontext (englisch "petrol car" statt "petrol"), fuer i18n/pruefen.py:
+# _k("Fahrzeug", "Benziner") _k("Fahrzeug", "Benziners") _k("Fahrzeug", "Diesel")
+# _k("Fahrzeug", "Diesels") _k("Fahrzeug", "Autogas-Auto") _k("Fahrzeug", "Autogas-Autos")
 
 
 def kraftstoff(art: str | None = None) -> dict:
-    """Beschriftungen des Vergleichsfahrzeugs; ohne `art` aus den Einstellungen."""
+    """Beschriftungen des Vergleichsfahrzeugs in der eingestellten Sprache; ohne `art`
+    aus den Einstellungen."""
     if art is None:
         art = db.get_config()["kraftstoff"]
-    return KRAFTSTOFFE.get(art, KRAFTSTOFFE["benzin"])
+    k = KRAFTSTOFFE.get(art, KRAFTSTOFFE["benzin"])
+    return {**k, "name": _(k["name"]), "fahrzeug": _k("Fahrzeug", k["fahrzeug"]),
+            "fahrzeug_gen": _k("Fahrzeug", k["fahrzeug_gen"])}
+
+
+def kraftstoffe() -> dict:
+    """Alle Vergleichsfahrzeuge mit Beschriftung in der eingestellten Sprache (Auswahl)."""
+    return {art: kraftstoff(art) for art in KRAFTSTOFFE}
 
 # Stromquelle je Ladevorgang, abgeleitet aus dem Anbieter (Namen aus database.py).
 # Alle uebrigen Anbieter gelten als oeffentliches Laden.
@@ -151,7 +163,7 @@ def simulierte_ladungen(cfg: dict | None = None, fahrten: list | None = None,
                (NETZBEZUG, cfg["sim_anteil_netz"], lambda m: netzpreis_monat(m, tarife), "AC"),
                (SIM_OEFFENTLICH, cfg["sim_anteil_oeffentlich"],
                 lambda m: cfg["sim_preis_oeffentlich"], "DC")]
-    summe = sum(max(a, 0) for _, a, _, _ in anteile)
+    summe = sum(max(a, 0) for _f, a, _g, _h in anteile)
     if summe <= 0:                      # nichts eingestellt: alles zuhause aus dem Netz
         anteile, summe = [(NETZBEZUG, 100.0, anteile[1][2], "AC")], 100.0
     ladungen = []
@@ -177,6 +189,13 @@ def ladevorgaenge(von: str | None = None, bis: str | None = None) -> list:
     """Ladevorgaenge fuer die Auswertungen: im Simulationsmodus die aus den km
     gerechneten, sonst die gespeicherten plus die Grundgebuehren der Ladetarife
     (Eintraege ohne kWh, markiert mit "grundgebuehr"). von/bis 'YYYY-MM-DD' (inklusive)."""
+    if db.aktuelles_fahrzeug() is None:
+        # Gesamtsicht: je Fahrzeug (eigene Simulation, eigener Anteil an Grundgebuehren)
+        liste = []
+        for fz in db.fahrzeuge():
+            with db.fahrzeug_kontext(fz["id"]):
+                liste += ladevorgaenge(von, bis)
+        return liste
     cfg = db.get_config()
     if cfg["simulation"]:
         liste = simulierte_ladungen(cfg)

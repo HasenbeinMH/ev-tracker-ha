@@ -1,117 +1,115 @@
 {% extends "base.html" %}
-{% block titel %}Ladetarife{% endblock %}
+{% block titel %}{{ _("Ladetarife") }}{% endblock %}
 {% block inhalt %}
-<h1>🏷️ Ladetarife</h1>
-<p class="hint">Deine Abos für öffentliches Laden. Bei einer Preisänderung einen neuen Eintrag mit
-  neuem „gültig ab“ anlegen – der alte bleibt als Verlauf stehen. Auf der Seite Laden wird
-  ct/kWh aus dem aktuellen Tarif des Anbieters vorbelegt.</p>
+{% from "_fahrzeug.html" import fahrzeug_feld, fahrzeug_name_von with context %}
+<h1>{{ _("🏷️ Ladetarife") }}</h1>
+<p class="hint">{{ _("Deine Abos für öffentliches Laden. Bei einer Preisänderung einen neuen Eintrag mit neuem „gültig ab“ anlegen – der alte bleibt als Verlauf stehen. Auf der Seite Laden wird ct/kWh aus dem aktuellen Tarif des Anbieters vorbelegt.") }}</p>
 
 <div class="card">
   <form class="inline" method="post" action="ladetarife" id="tarif-form">
     <input type="hidden" name="id" id="t-id">
-    <label class="feld">Anbieter
+    <label class="feld">{{ _("Anbieter") }}
       <select name="anbieter" id="t-anbieter">
         {% for a in anbieter %}<option>{{ a.name }}</option>{% endfor %}
       </select>
     </label>
-    <label class="feld">Tarif
-      <input name="tarif_name" id="t-tarif_name" placeholder="z.B. M" style="width:90px">
+    <label class="feld">{{ _("Tarif") }}
+      <input name="tarif_name" id="t-tarif_name" placeholder="{{ _t("z.B. M") }}" style="width:90px">
     </label>
-    <label class="feld">Gültig ab
+    <label class="feld">{{ _("Gültig ab") }}
       <input type="date" name="gueltig_ab" id="t-gueltig_ab" value="{{ heute }}" required>
     </label>
-    <label class="feld" title="Leer lassen, solange das Abo läuft">Gültig bis
+    <label class="feld" title="{{ _t("Leer lassen, solange das Abo läuft") }}">{{ _("Gültig bis") }}
       <input type="date" name="gueltig_bis" id="t-gueltig_bis">
     </label>
-    <label class="feld">ct/kWh AC
+    <label class="feld">{{ _("ct/kWh AC") }}
       <input name="preis_ac" id="t-preis_ac" placeholder="46" required style="width:70px">
     </label>
-    <label class="feld" title="Leer = wie AC">ct/kWh DC
-      <input name="preis_dc" id="t-preis_dc" placeholder="wie AC" style="width:70px">
+    <label class="feld" title="{{ _t("Leer = wie AC") }}">{{ _("ct/kWh DC") }}
+      <input name="preis_dc" id="t-preis_dc" placeholder="{{ _t("wie AC") }}" style="width:70px">
     </label>
-    <label class="feld">Grundgebühr €/Monat
+    <label class="feld">{{ _("Grundgebühr €/Monat") }}
       <input name="grundgebuehr" id="t-grundgebuehr" placeholder="5,99" style="width:80px">
     </label>
-    <label class="feld">Blockier ct/min
+    <label class="feld">{{ _("Blockier ct/min") }}
       <input name="blockier_ct_min" id="t-blockier_ct_min" placeholder="10" style="width:60px">
     </label>
-    <label class="feld">ab Minuten
+    <label class="feld">{{ _("ab Minuten") }}
       <input name="blockier_ab_min" id="t-blockier_ab_min" placeholder="240" style="width:60px">
     </label>
-    <label class="feld">max €
+    <label class="feld">{{ _("max €") }}
       <input name="blockier_max_eur" id="t-blockier_max_eur" placeholder="12" style="width:60px">
     </label>
-    <label class="feld">Fremdnetz ab ct
+    <label class="feld">{{ _("Fremdnetz ab ct") }}
       <input name="fremd_ab_ct" id="t-fremd_ab_ct" placeholder="56" style="width:60px">
     </label>
-    <label class="feld">bis ct
+    <label class="feld">{{ _("bis ct") }}
       <input name="fremd_max_ct" id="t-fremd_max_ct" placeholder="89" style="width:60px">
     </label>
-    <label class="feld">Ladekarte €
+    <label class="feld">{{ _("Ladekarte €") }}
       <input name="ladekarte_eur" id="t-ladekarte_eur" placeholder="0" style="width:60px">
     </label>
-    <label class="feld">Notiz
-      <input name="notiz" id="t-notiz" placeholder="optional">
+    <label class="feld">{{ _("Notiz") }}
+      <input name="notiz" id="t-notiz" placeholder="{{ _t("optional") }}">
     </label>
-    <button type="submit" id="t-senden">➕ Hinzufügen</button>
+    {{ fahrzeug_feld(name="tarif_fahrzeug", gemeinsam=_t("Gemeinsam (alle Fahrzeuge)"), wert=0, id="t-fahrzeug_id") }}
+    <button type="submit" id="t-senden">{{ _("➕ Hinzufügen") }}</button>
     <button type="button" class="secondary" id="t-abbrechen" style="display:none"
-            onclick="location.reload()">✕ Abbrechen</button>
+            onclick="location.reload()">{{ _("✕ Abbrechen") }}</button>
   </form>
 </div>
 
-<h2>Preisverlauf</h2>
+<h2>{{ _("Preisverlauf") }}</h2>
 <div class="chart">
   <div class="echart" data-echart="opt-ladetarife"></div>
   <script type="application/json" id="opt-ladetarife">{{ chart | tojson }}</script>
 </div>
-<p class="hint">ct/kWh (AC) je Tarif, gestrichelt dein Heimstrompreis zum Vergleich.</p>
+<p class="hint">{{ _("ct/kWh (AC) je Tarif, gestrichelt dein Heimstrompreis zum Vergleich.") }}</p>
 
-<h2>Einträge</h2>
+<h2>{{ _("Einträge") }}</h2>
 <div class="tabelle-scroll"><table>
-  <tr><th>Anbieter</th><th>Tarif</th><th>Gültig</th><th>AC ct</th><th>DC ct</th><th>Änderung</th>
-      <th>Grundgebühr</th><th>Blockiergebühr</th><th>Fremdnetz</th><th>Ladekarte</th><th>Notiz</th><th></th></tr>
+  <tr><th>{{ _("Anbieter") }}</th><th>{{ _("Tarif") }}</th>{% if mehrere and fahrzeuge | length > 1 %}<th>{{ _("Fahrzeug") }}</th>{% endif %}<th>{{ _("Gültig") }}</th><th>{{ _("AC ct") }}</th><th>{{ _("DC ct") }}</th><th>{{ _("Änderung") }}</th>
+      <th>{{ _("Grundgebühr") }}</th><th>{{ _("Blockiergebühr") }}</th><th>{{ _("Fremdnetz") }}</th><th>{{ _("Ladekarte") }}</th><th>{{ _("Notiz") }}</th><th></th></tr>
   {% for t in tarife %}
   <tr>
     <td>{{ t.anbieter }}</td>
     <td>{{ t.tarif_name or "—" }}</td>
+    {% if mehrere and fahrzeuge | length > 1 %}<td>{{ fahrzeug_name_von(t.fahrzeug_id) if t.fahrzeug_id else _("gemeinsam") }}</td>{% endif %}
     <td style="white-space:nowrap">{{ t.gueltig_ab }}{{ " – " ~ t.gueltig_bis if t.gueltig_bis }}</td>
     <td>{{ t.preis_ac | de(2) }}</td>
-    <td>{{ (t.preis_dc | de(2)) if t.preis_dc else "wie AC" }}</td>
+    <td>{{ (t.preis_dc | de(2)) if t.preis_dc else _("wie AC") }}</td>
     <td>{% if t.diff_ac is none %}<span class="muted">—</span>
-        {% elif t.diff_ac > 0 %}<span class="rot">+{{ t.diff_ac | de(2) }} ct ▲</span>
-        {% elif t.diff_ac < 0 %}<span class="gruen">{{ t.diff_ac | de(2) }} ct ▼</span>
+        {% elif t.diff_ac > 0 %}<span class="rot">{{ _("+{0} ct ▲", t.diff_ac | de(2)) }}</span>
+        {% elif t.diff_ac < 0 %}<span class="gruen">{{ _("{0} ct ▼", t.diff_ac | de(2)) }}</span>
         {% else %}<span class="muted">±0</span>{% endif %}</td>
     <td>{{ t.grundgebuehr | de(2) }} €</td>
-    <td>{% if t.blockier_ct_min %}{{ t.blockier_ct_min | de(0) }} ct/min
-        {%- if t.blockier_ab_min %} ab {{ t.blockier_ab_min | de(0) }} min{% endif %}
-        {%- if t.blockier_max_eur %}, max. {{ t.blockier_max_eur | de(2) }} €{% endif %}
+    <td>{% if t.blockier_ct_min %}{{ _("{0} ct/min", t.blockier_ct_min | de(0)) }}
+        {%- if t.blockier_ab_min %} {{ _("ab {0} min", t.blockier_ab_min | de(0)) }}{% endif %}
+        {%- if t.blockier_max_eur %}{{ _(", max. {0} €", t.blockier_max_eur | de(2)) }}{% endif %}
         {% else %}—{% endif %}</td>
-    <td>{% if t.fremd_ab_ct %}{{ t.fremd_ab_ct | de(0) }}{{ "–" ~ (t.fremd_max_ct | de(0)) if t.fremd_max_ct }} ct{% else %}—{% endif %}</td>
+    <td>{% if t.fremd_ab_ct %}{{ _("{0}{1} ct", t.fremd_ab_ct | de(0), "–" ~ (t.fremd_max_ct | de(0)) if t.fremd_max_ct) }}{% else %}—{% endif %}</td>
     <td>{{ (t.ladekarte_eur | de(2) ~ " €") if t.ladekarte_eur is not none else "—" }}</td>
     <td class="muted">{{ t.notiz or "" }}</td>
     <td style="white-space:nowrap">
       <button class="secondary" style="padding:4px 9px; font-size:12px"
-              data-tarif='{{ t | tojson }}' onclick="bearbeiten(this)" title="Bearbeiten">✏</button>
+              data-tarif='{{ t | tojson }}' onclick="bearbeiten(this)" title="{{ _t("Bearbeiten") }}">✏</button>
       <form method="post" action="ladetarife/delete" style="display:inline"
-            onsubmit="return confirm('Tarif {{ t.anbieter }} ab {{ t.gueltig_ab }} löschen?')">
+            onsubmit="return confirm({{ _t("Tarif {0} ab {1} löschen?", t.anbieter, t.gueltig_ab) | tojson | forceescape }})">
         <input type="hidden" name="id" value="{{ t.id }}">
         <button class="danger">🗑</button>
       </form>
     </td>
   </tr>
   {% else %}
-  <tr><td colspan="12" class="muted">Noch kein Ladetarif erfasst.</td></tr>
+  <tr><td colspan="12" class="muted">{{ _("Noch kein Ladetarif erfasst.") }}</td></tr>
   {% endfor %}
 </table></div>
 
-<h2>Was der Tarif wirklich kostet</h2>
-<p class="hint">Je Monat, in dem der Tarif galt: Ladekosten bei diesem Anbieter plus Grundgebühr,
-  geteilt durch die geladenen kWh. Die Grundgebühr zählt auch in Monaten ohne Ladung – in einem
-  angefangenen oder beendeten Monat anteilig nach Tagen. Sie fließt in alle Kosten und die Ersparnis ein
-  (Dashboard, Statistik, Berichte).</p>
+<h2>{{ _("Was der Tarif wirklich kostet") }}</h2>
+<p class="hint">{{ _("Je Monat, in dem der Tarif galt: Ladekosten bei diesem Anbieter plus Grundgebühr, geteilt durch die geladenen kWh. Die Grundgebühr zählt auch in Monaten ohne Ladung – in einem angefangenen oder beendeten Monat anteilig nach Tagen. Sie fließt in alle Kosten und die Ersparnis ein (Dashboard, Statistik, Berichte).") }}</p>
 <div class="tabelle-scroll"><table>
-  <tr><th>Monat</th><th>Anbieter</th><th>Tarif</th><th>Ladungen</th><th>kWh</th><th>Ladekosten €</th>
-      <th>davon Blockier €</th><th>Grundgebühr €</th><th>Gesamt €</th><th>Tarif ct/kWh</th><th>effektiv ct/kWh</th></tr>
+  <tr><th>{{ _("Monat") }}</th><th>{{ _("Anbieter") }}</th><th>{{ _("Tarif") }}</th><th>{{ _("Ladungen") }}</th><th>{{ _("kWh") }}</th><th>{{ _("Ladekosten €") }}</th>
+      <th>{{ _("davon Blockier €") }}</th><th>{{ _("Grundgebühr €") }}</th><th>{{ _("Gesamt €") }}</th><th>{{ _("Tarif ct/kWh") }}</th><th>{{ _("effektiv ct/kWh") }}</th></tr>
   {% for m in monate %}
   <tr>
     <td>{{ m.monat }}</td>
@@ -121,14 +119,14 @@
     <td>{{ m.kwh | de(1) }}</td>
     <td>{{ m.kosten | de(2) }}</td>
     <td>{{ (m.blockier | de(2)) if m.blockier else "—" }}</td>
-    <td>{{ m.grundgebuehr | de(2) }}{% if m.grund_anteilig %} <span class="muted" title="Tarif galt nur einen Teil des Monats">anteilig</span>{% endif %}</td>
+    <td>{{ m.grundgebuehr | de(2) }}{% if m.grund_anteilig %} <span class="muted" title="{{ _t("Tarif galt nur einen Teil des Monats") }}">{{ _("anteilig") }}</span>{% endif %}</td>
     <td>{{ m.gesamt | de(2) }}</td>
     <td>{{ m.tarif_ct | de(2) }}</td>
     <td>{% if m.effektiv_ct is not none %}<b class="{{ 'rot' if m.effektiv_ct > m.tarif_ct * 1.2 }}">{{ m.effektiv_ct | de(1) }}</b>
-        {% else %}<span class="muted">keine Ladung</span>{% endif %}</td>
+        {% else %}<span class="muted">{{ _("keine Ladung") }}</span>{% endif %}</td>
   </tr>
   {% else %}
-  <tr><td colspan="11" class="muted">Noch keine Monate mit Ladetarif.</td></tr>
+  <tr><td colspan="11" class="muted">{{ _("Noch keine Monate mit Ladetarif.") }}</td></tr>
   {% endfor %}
 </table></div>
 
@@ -142,7 +140,7 @@ function bearbeiten(btn) {
     const el = document.getElementById("t-" + k);
     if (el) el.value = v === null ? "" : String(v).replace(".", k.startsWith("gueltig") ? "." : ",");
   }
-  document.getElementById("t-senden").textContent = "💾 Speichern";
+  document.getElementById("t-senden").textContent = {{ _t("💾 Speichern") | tojson }};
   document.getElementById("t-abbrechen").style.display = "";
   document.getElementById("tarif-form").scrollIntoView({ behavior: "smooth" });
 }

@@ -1,23 +1,22 @@
 {% extends "base.html" %}
-{% block titel %}Versicherung{% endblock %}
+{% block titel %}{{ _("Versicherung") }}{% endblock %}
 {% block inhalt %}
-<h1>🛡️ KFZ-Versicherung</h1>
-<p class="hint">Je Versicherungsjahr ein Eintrag. Bei neuem Beitrag, neuer SF-Klasse oder Wechsel
-  der Gesellschaft einen neuen Eintrag mit neuem „gültig ab“ anlegen – der alte bleibt als Verlauf
-  stehen. Die Versicherung ist ein eigener Wert und fließt nicht in die Ersparnis auf dem Dashboard ein.</p>
+{% from "_fahrzeug.html" import fahrzeug_feld, fahrzeug_name_von with context %}
+<h1>{{ _("🛡️ KFZ-Versicherung") }}</h1>
+<p class="hint">{{ _("Je Versicherungsjahr ein Eintrag. Bei neuem Beitrag, neuer SF-Klasse oder Wechsel der Gesellschaft einen neuen Eintrag mit neuem „gültig ab“ anlegen – der alte bleibt als Verlauf stehen. Die Versicherung ist ein eigener Wert und fließt nicht in die Ersparnis auf dem Dashboard ein.") }}</p>
 
 {% if d.aktuell %}
 <div class="statgrid">
   {% for v in d.aktuell %}
   <div class="stat">
-    <span class="wert">{{ v.gesamt | de(2) }}</span><span class="einheit">€/Jahr</span>
-    <span class="einheit">· {{ (v.gesamt / 12) | de(2) }} €/Monat</span>
-    <div class="label">{{ v.fahrzeug }} · {{ v.gesellschaft }} · {{ v.deckung }}
-      {%- if v.sf_haftpflicht %} · SF {{ v.sf_haftpflicht }}{% endif %}</div>
+    <span class="wert">{{ v.gesamt | de(2) }}</span><span class="einheit">{{ _("€/Jahr") }}</span>
+    <span class="einheit">{{ _("· {0} €/Monat", (v.gesamt / 12) | de(2)) }}</span>
+    <div class="label">{{ v.fahrzeug }} · {{ v.gesellschaft }} · {{ _(v.deckung) }}
+      {%- if v.sf_haftpflicht %} {{ _("· SF {0}", v.sf_haftpflicht) }}{% endif %}</div>
     {% if v.jahreslaufleistung and d.km_jahr is not none %}
     <div class="{{ 'rot' if d.km_jahr > v.jahreslaufleistung else 'gruen' }}" style="font-size:11px; margin-top:5px">
-      {{ d.km_jahr | de(0) }} km/Jahr gefahren von {{ v.jahreslaufleistung | de(0) }} vereinbart
-      {%- if d.km_jahr > v.jahreslaufleistung %} – über der Laufleistung, Versicherung melden{% endif %}
+      {{ _("{0} km/Jahr gefahren von {1} vereinbart", d.km_jahr | de(0), v.jahreslaufleistung | de(0)) }}
+      {%- if d.km_jahr > v.jahreslaufleistung %} {{ _("– über der Laufleistung, Versicherung melden") }}{% endif %}
     </div>
     {% endif %}
   </div>
@@ -28,85 +27,84 @@
 <div class="card">
   <form class="inline" method="post" action="versicherung" id="vs-form">
     <input type="hidden" name="id" id="v-id">
-    <label class="feld">Fahrzeug
-      <input name="fahrzeug" id="v-fahrzeug" list="v-fahrzeuge" placeholder="Fahrzeugname" required style="width:120px">
+    <label class="feld">{{ _("Fahrzeug") }}
+      <input name="fahrzeug" id="v-fahrzeug" list="v-fahrzeuge" placeholder="{{ _t("Fahrzeugname") }}" required style="width:120px">
       <datalist id="v-fahrzeuge">
         {% for f in d.fahrzeuge or ([fahrzeug_name] if fahrzeug_name else []) %}<option>{{ f }}</option>{% endfor %}
       </datalist>
     </label>
-    <label class="feld">Gesellschaft
-      <input name="gesellschaft" id="v-gesellschaft" list="v-gesellschaften" placeholder="z.B. HUK-COBURG" required>
+    <label class="feld">{{ _("Gesellschaft") }}
+      <input name="gesellschaft" id="v-gesellschaft" list="v-gesellschaften" placeholder="{{ _t("z.B. HUK-COBURG") }}" required>
       <datalist id="v-gesellschaften">
         {% for g in d.gesellschaften %}<option>{{ g }}</option>{% endfor %}
       </datalist>
     </label>
-    <label class="feld">Tarif
-      <input name="tarif_name" id="v-tarif_name" placeholder="optional" style="width:100px">
+    <label class="feld">{{ _("Tarif") }}
+      <input name="tarif_name" id="v-tarif_name" placeholder="{{ _t("optional") }}" style="width:100px">
     </label>
-    <label class="feld">Gültig ab
+    <label class="feld">{{ _("Gültig ab") }}
       <input type="date" name="gueltig_ab" id="v-gueltig_ab" value="{{ heute }}" required>
     </label>
-    <label class="feld" title="Leer lassen, solange der Vertrag läuft">Gültig bis
+    <label class="feld" title="{{ _t("Leer lassen, solange der Vertrag läuft") }}">{{ _("Gültig bis") }}
       <input type="date" name="gueltig_bis" id="v-gueltig_bis">
     </label>
-    <label class="feld">Deckung
+    <label class="feld">{{ _("Deckung") }}
       <select name="deckung" id="v-deckung">
-        {% for x in deckungen %}<option>{{ x }}</option>{% endfor %}
+        {% for x in deckungen %}<option value="{{ x }}">{{ _(x) }}</option>{% endfor %}
       </select>
     </label>
-    <label class="feld">SF Haftpflicht
-      <input name="sf_haftpflicht" id="v-sf_haftpflicht" placeholder="z.B. 12" style="width:70px">
+    <label class="feld">{{ _("SF Haftpflicht") }}
+      <input name="sf_haftpflicht" id="v-sf_haftpflicht" placeholder="{{ _t("z.B. 12") }}" style="width:70px">
     </label>
-    <label class="feld" title="Nur bei Vollkasko">SF Vollkasko
-      <input name="sf_kasko" id="v-sf_kasko" placeholder="z.B. 10" style="width:70px">
+    <label class="feld" title="{{ _t("Nur bei Vollkasko") }}">{{ _("SF Vollkasko") }}
+      <input name="sf_kasko" id="v-sf_kasko" placeholder="{{ _t("z.B. 10") }}" style="width:70px">
     </label>
-    <label class="feld" title="Vereinbarte Kilometer pro Jahr">Laufleistung km/Jahr
-      <input name="jahreslaufleistung" id="v-jahreslaufleistung" placeholder="z.B. 15000" style="width:100px">
+    <label class="feld" title="{{ _t("Vereinbarte Kilometer pro Jahr") }}">{{ _("Laufleistung km/Jahr") }}
+      <input name="jahreslaufleistung" id="v-jahreslaufleistung" placeholder="{{ _t("z.B. 15000") }}" style="width:100px">
     </label>
-    <label class="feld">SB Teilkasko €
-      <input name="sb_teilkasko" id="v-sb_teilkasko" placeholder="z.B. 150" style="width:70px">
+    <label class="feld">{{ _("SB Teilkasko €") }}
+      <input name="sb_teilkasko" id="v-sb_teilkasko" placeholder="{{ _t("z.B. 150") }}" style="width:70px">
     </label>
-    <label class="feld">SB Vollkasko €
-      <input name="sb_vollkasko" id="v-sb_vollkasko" placeholder="z.B. 300" style="width:70px">
+    <label class="feld">{{ _("SB Vollkasko €") }}
+      <input name="sb_vollkasko" id="v-sb_vollkasko" placeholder="{{ _t("z.B. 300") }}" style="width:70px">
     </label>
-    <label class="feld" title="Beitrag ohne Zusatzbausteine">Grundbeitrag €/Jahr
-      <input name="grundbeitrag" id="v-grundbeitrag" placeholder="z.B. 540" required style="width:90px">
+    <label class="feld" title="{{ _t("Beitrag ohne Zusatzbausteine") }}">{{ _("Grundbeitrag €/Jahr") }}
+      <input name="grundbeitrag" id="v-grundbeitrag" placeholder="{{ _t("z.B. 540") }}" required style="width:90px">
     </label>
     {% for k, name in zusatz %}
-    <label class="feld" title="€/Jahr. Leer = nicht gebucht, 0 = inklusive{{ ', Rabatt als negativer Betrag' if k == 'werkstattbindung' }}">{{ name }} €/Jahr
+    <label class="feld" title="{{ _t('€/Jahr. Leer = nicht gebucht, 0 = inklusive') }}{{ _t(', Rabatt als negativer Betrag') if k == 'werkstattbindung' }}">{{ _("{0} €/Jahr", _(name)) }}
       <input name="{{ k }}" id="v-{{ k }}" placeholder="{{ '-60' if k == 'werkstattbindung' else '—' }}" style="width:80px">
     </label>
     {% endfor %}
-    <label class="feld">Notiz
-      <input name="notiz" id="v-notiz" placeholder="optional">
+    <label class="feld">{{ _("Notiz") }}
+      <input name="notiz" id="v-notiz" placeholder="{{ _t("optional") }}">
     </label>
-    <button type="submit" id="v-senden">➕ Hinzufügen</button>
+    {{ fahrzeug_feld(id="v-fahrzeug_id") }}
+    <button type="submit" id="v-senden">{{ _("➕ Hinzufügen") }}</button>
     <button type="button" class="secondary" id="v-abbrechen" style="display:none"
-            onclick="location.reload()">✕ Abbrechen</button>
+            onclick="location.reload()">{{ _("✕ Abbrechen") }}</button>
   </form>
-  <p class="hint" style="margin-bottom:0">Zusatzbausteine in €/Jahr: leer = nicht gebucht,
-    0 = im Tarif enthalten. Die Werkstattbindung ist meist ein Rabatt – dann als negativen
-    Betrag eintragen, z. B. -60.</p>
+  <p class="hint" style="margin-bottom:0">{{ _("Zusatzbausteine in €/Jahr: leer = nicht gebucht, 0 = im Tarif enthalten. Die Werkstattbindung ist meist ein Rabatt – dann als negativen Betrag eintragen, z. B. -60.") }}</p>
 </div>
 
-<h2>Verlauf</h2>
+<h2>{{ _("Verlauf") }}</h2>
 <div class="tabelle-scroll"><table>
-  <tr><th>Fahrzeug</th><th>Gesellschaft</th><th>Gültig</th><th>Deckung</th><th>SF HP / VK</th>
-      <th>Laufleistung</th><th>SB TK / VK</th><th>Grundbeitrag</th><th>Zusatzbausteine</th>
-      <th>Gesamt €/Jahr</th><th>Änderung</th><th>Notiz</th><th></th></tr>
+  <tr><th>{{ _("Fahrzeug") }}</th><th>{{ _("Gesellschaft") }}</th><th>{{ _("Gültig") }}</th><th>{{ _("Deckung") }}</th><th>{{ _("SF HP / VK") }}</th>
+      <th>{{ _("Laufleistung") }}</th><th>{{ _("SB TK / VK") }}</th><th>{{ _("Grundbeitrag") }}</th><th>{{ _("Zusatzbausteine") }}</th>
+      <th>{{ _("Gesamt €/Jahr") }}</th><th>{{ _("Änderung") }}</th><th>{{ _("Notiz") }}</th><th></th></tr>
   {% for v in d.eintraege %}
   <tr>
-    <td>{{ v.fahrzeug }}{% if v.aktiv %} <span class="gruen" title="Aktueller Vertrag">●</span>{% endif %}</td>
+    <td>{{ v.fahrzeug }}{% if v.aktiv %} <span class="gruen" title="{{ _t("Aktueller Vertrag") }}">●</span>{% endif %}</td>
     <td>{{ v.gesellschaft }}{{ " · " ~ v.tarif_name if v.tarif_name }}</td>
     <td style="white-space:nowrap">{{ v.gueltig_ab }}{{ " – " ~ v.gueltig_bis if v.gueltig_bis }}</td>
-    <td>{{ v.deckung }}</td>
+    <td>{{ _(v.deckung) }}</td>
     <td>{{ v.sf_haftpflicht or "—" }} / {{ v.sf_kasko or "—" }}</td>
     <td>{{ (v.jahreslaufleistung | de(0) ~ " km") if v.jahreslaufleistung else "—" }}</td>
     <td>{{ (v.sb_teilkasko | de(0) ~ " €") if v.sb_teilkasko is not none else "—" }} /
         {{ (v.sb_vollkasko | de(0) ~ " €") if v.sb_vollkasko is not none else "—" }}</td>
     <td>{{ v.grundbeitrag | de(2) }} €</td>
     <td style="font-size:12px">{% for name, betrag in v.zusatz %}
-        {{ name }} {{ ("inkl." if betrag == 0 else (betrag | de(2)) ~ " €") }}{{ "," if not loop.last }}
+        {{ _(name) }} {{ (_("inkl.") if betrag == 0 else (betrag | de(2)) ~ " €") }}{{ "," if not loop.last }}
         {% else %}<span class="muted">—</span>{% endfor %}</td>
     <td><b>{{ v.gesamt | de(2) }} €</b></td>
     <td>{% if v.diff is none %}<span class="muted">—</span>
@@ -116,20 +114,20 @@
     <td class="muted">{{ v.notiz or "" }}</td>
     <td style="white-space:nowrap">
       <button class="secondary" style="padding:4px 9px; font-size:12px"
-              data-eintrag='{{ v | tojson }}' onclick="bearbeiten(this)" title="Bearbeiten">✏</button>
+              data-eintrag='{{ v | tojson }}' onclick="bearbeiten(this)" title="{{ _t("Bearbeiten") }}">✏</button>
       <form method="post" action="versicherung/delete" style="display:inline"
-            onsubmit="return confirm('Versicherung {{ v.gesellschaft }} ab {{ v.gueltig_ab }} löschen?')">
+            onsubmit="return confirm({{ _t("Versicherung {0} ab {1} löschen?", v.gesellschaft, v.gueltig_ab) | tojson | forceescape }})">
         <input type="hidden" name="id" value="{{ v.id }}">
         <button class="danger">🗑</button>
       </form>
     </td>
   </tr>
   {% else %}
-  <tr><td colspan="13" class="muted">Noch keine Versicherung erfasst.</td></tr>
+  <tr><td colspan="13" class="muted">{{ _("Noch keine Versicherung erfasst.") }}</td></tr>
   {% endfor %}
 </table></div>
 {% if d.km_monate and d.km_monate < 12 %}
-<p class="hint">Gefahrene km/Jahr hochgerechnet aus {{ d.km_monate }} Monat{{ "en" if d.km_monate != 1 }} der letzten zwölf.</p>
+<p class="hint">{{ _("Gefahrene km/Jahr hochgerechnet aus {0} Monat der letzten zwölf.", d.km_monate) if d.km_monate == 1 else _("Gefahrene km/Jahr hochgerechnet aus {0} Monaten der letzten zwölf.", d.km_monate) }}</p>
 {% endif %}
 
 <script>
@@ -140,7 +138,7 @@ function bearbeiten(btn) {
     const el = document.getElementById("v-" + k);
     if (el) el.value = v === null ? "" : (typeof v === "number" ? String(v).replace(".", ",") : v);
   }
-  document.getElementById("v-senden").textContent = "💾 Speichern";
+  document.getElementById("v-senden").textContent = {{ _t("💾 Speichern") | tojson }};
   document.getElementById("v-abbrechen").style.display = "";
   document.getElementById("vs-form").scrollIntoView({ behavior: "smooth" });
 }

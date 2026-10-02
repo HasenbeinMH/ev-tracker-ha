@@ -1,0 +1,20 @@
+{# Formularfeld "Fahrzeug" – nur bei mehreren Fahrzeugen. Vorbelegt mit dem gewaehlten;
+   in der Gesamtsicht (fahrzeug_aktuell = None) muss eins ausgewaehlt werden.
+   Einbinden: {% from "_fahrzeug.html" import fahrzeug_feld with context %} #}
+{% macro fahrzeug_feld(name="fahrzeug_id", gemeinsam=None, wert=None, id=None) %}
+{% if mehrere and fahrzeuge | length > 1 %}
+{% set gewaehlt = wert if wert is not none else fahrzeug_aktuell %}
+<label class="feld">{{ _("Fahrzeug") }}
+  <select name="{{ name }}" {% if id %}id="{{ id }}"{% endif %} {% if gemeinsam is none %}required{% endif %}>
+    {% if gemeinsam is not none %}<option value="" {% if not gewaehlt %}selected{% endif %}>{{ gemeinsam }}</option>
+    {% elif gewaehlt is none %}<option value="" selected disabled>{{ _("– wählen –") }}</option>{% endif %}
+    {% for f in fahrzeuge %}
+    <option value="{{ f.id }}" {% if f.id == gewaehlt %}selected{% endif %}>{{ f.name }}</option>
+    {% endfor %}
+  </select>
+</label>
+{% endif %}
+{% endmacro %}
+
+{# Name eines Fahrzeugs aus der id (Tabellenspalte bei mehreren Fahrzeugen) #}
+{% macro fahrzeug_name_von(fid) %}{% for f in fahrzeuge if f.id == fid %}{{ f.name }}{% endfor %}{% endmacro %}

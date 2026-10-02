@@ -99,16 +99,44 @@ def grundgebuehren(tarife: list, heute: date | None = None) -> dict:
     return ergebnis
 
 
+def km_anteil(fahrzeug_id: int, monat: str, km_je: dict | None = None) -> float:
+    """Anteil eines Fahrzeugs an den km aller sichtbaren Fahrzeuge im Monat (0…1).
+    Ohne km im Monat zu gleichen Teilen. Bei einem Fahrzeug immer 1."""
+    ids = db.sichtbare_ids()
+    if fahrzeug_id not in ids:
+        return 0.0
+    if len(ids) == 1:
+        return 1.0
+    km_je = db.get_fahrten_je_fahrzeug() if km_je is None else km_je
+    gesamt = sum(km_je.get(i, {}).get(monat, 0) or 0 for i in ids)
+    if gesamt <= 0:
+        return 1 / len(ids)
+    return (km_je.get(fahrzeug_id, {}).get(monat, 0) or 0) / gesamt
+
+
 def grundgebuehr_eintraege(tarife: list | None = None) -> list:
     """Die Grundgebuehren als Eintraege mit den Feldern eines Ladevorgangs (0 kWh,
-    Markierung "grundgebuehr") – so rechnen alle Auswertungen sie ohne Sonderfall mit."""
+    Markierung "grundgebuehr") – so rechnen alle Auswertungen sie ohne Sonderfall mit.
+
+    Je Fahrzeug: ein Tarif mit Fahrzeug zaehlt nur dort, ein gemeinsamer Tarif (ohne
+    Fahrzeug) nach dem km-Anteil des Monats. Bei einem Fahrzeug immer voll."""
     tarife = db.get_ladetarife() if tarife is None else tarife
+    fid = db.aktuelles_fahrzeug()
+    if fid is not None:
+        tarife = [t for t in tarife if not t.get("fahrzeug_id") or t["fahrzeug_id"] == fid]
+    km_je = db.get_fahrten_je_fahrzeug() if fid is not None and db.mehrere_fahrzeuge() else {}
+    eigene = {(t["anbieter"]) for t in tarife if t.get("fahrzeug_id")}
     eintraege = []
     for (anbieter, monat), g in sorted(grundgebuehren(tarife).items(), key=lambda x: x[1]["datum"]):
         anteil = "" if g["tage"] >= g["monatstage"] else f" (anteilig {g['tage']}/{g['monatstage']} Tage)"
+        betrag = g["betrag"]
+        if fid is not None and anbieter not in eigene and len(db.sichtbare_ids()) > 1:
+            faktor = km_anteil(fid, monat, km_je)
+            betrag = round(betrag * faktor, 2)
+            anteil += f" · {faktor * 100:.0f} % nach km"
         eintraege.append({
             "id": None, "datum": g["datum"], "menge_kwh": 0.0, "preis_kwh": 0.0,
-            "gesamtpreis": g["betrag"], "anbieter": anbieter, "ladeleistung_kw": None,
+            "gesamtpreis": betrag, "anbieter": anbieter, "ladeleistung_kw": None,
             "ladetyp": None, "notiz": f"Grundgebühr {g['tarif_name']}".strip() + anteil,
             "blockiergebuehr": None, "grundgebuehr": True})
     return eintraege

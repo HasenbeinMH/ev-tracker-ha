@@ -1,22 +1,22 @@
 {% extends "base.html" %}
-{% block titel %}{{ kf.name }}preise{% endblock %}
+{% block titel %}{{ _("{0}preise", kf.name) }}{% endblock %}
 {% block inhalt %}
-<h1>⛽ {{ kf.name }}preise (Monatsdurchschnitt)</h1>
+<h1>{{ _("⛽ {0}preise (Monatsdurchschnitt)", kf.name) }}</h1>
 
 <div class="card">
   <form class="inline" method="post" action="benzin">
-    <label class="feld">Monat
+    <label class="feld">{{ _("Monat") }}
       <input type="month" name="monat" value="{{ now.strftime('%Y-%m') }}" required>
     </label>
-    <label class="feld">Preis €/L
-      <input name="preis" placeholder="z.B. 1,849" required>
+    <label class="feld">{{ _("Preis €/L") }}
+      <input name="preis" placeholder="{{ _t("z.B. 1,849") }}" required>
     </label>
-    <button type="submit">💾 Speichern</button>
+    <button type="submit">{{ _("💾 Speichern") }}</button>
   </form>
 </div>
 
 <div class="tabelle-scroll"><table>
-  <tr><th>Monat</th><th>€/Liter</th><th>Tendenz</th><th></th></tr>
+  <tr><th>{{ _("Monat") }}</th><th>{{ _("€/Liter") }}</th><th>{{ _("Tendenz") }}</th><th></th></tr>
   {% for d in rows %}
   <tr>
     <td>{{ d.monat }}</td>
@@ -26,12 +26,12 @@
         {% set diff = d.preis_liter - rows[loop.index0 - 1].preis_liter %}
         {% if diff > 0.005 %}<span class="orange">▲ +{{ "%.3f"|format(diff)|replace(".", ",") }}</span>
         {% elif diff < -0.005 %}<span class="gruen">▼ {{ "%.3f"|format(diff)|replace(".", ",") }}</span>
-        {% else %}<span class="muted">→ stabil</span>{% endif %}
+        {% else %}<span class="muted">{{ _("→ stabil") }}</span>{% endif %}
       {% else %}—{% endif %}
     </td>
     <td>
       <form method="post" action="benzin/delete"
-            onsubmit="return confirm('{{ kf.name }}preis {{ d.monat }} löschen?')">
+            onsubmit="return confirm({{ _t("{0}preis {1} löschen?", kf.name, d.monat) | tojson | forceescape }})">
         <input type="hidden" name="monat" value="{{ d.monat }}">
         <button class="danger">🗑</button>
       </form>

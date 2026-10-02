@@ -87,7 +87,7 @@ rest_command:
     timeout: 20
     payload: >-
       {{ {"start": start, "ende": ende, "kwh_netz": kwh_netz, "kwh_pv": kwh_pv,
-          "kosten": kosten} | to_json }}
+          "kosten": kosten, "fahrzeug": fahrzeug | default("")} | to_json }}
 
 automation:
   - id: ev_tracker_ladung_senden
@@ -148,6 +148,9 @@ automation:
                   kwh_netz: "{{ kwh_netz }}"
                   kwh_pv: "{{ kwh_pv }}"
                   kosten: "{{ kosten }}"
+                  # Mehrere Fahrzeuge im EV Tracker: id oder Name des Fahrzeugs, z.B. "2"
+                  # (leer = Hauptfahrzeug). Je Fahrzeug eine eigene Kopie dieser Vorlage.
+                  fahrzeug: ""
               - if:
                   - condition: template
                     value_template: "{{ antwort is not defined or antwort.status != 200 }}"

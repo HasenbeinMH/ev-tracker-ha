@@ -1,141 +1,132 @@
 {% extends "base.html" %}
-{% block titel %}Berichte{% endblock %}
+{% block titel %}{{ _("Berichte") }}{% endblock %}
 {% block inhalt %}
-<h1>📊 Berichte per E-Mail</h1>
+<h1>{{ _("📊 Berichte per E-Mail") }}</h1>
 <p class="hint">
-  Monats- und Jahresbericht mit Kennzahlen, Vergleich zur Vorperiode,
-  Anbieter-Aufstellung und Monatsverlauf.
+  {{ _("Monats- und Jahresbericht mit Kennzahlen, Vergleich zur Vorperiode, Anbieter-Aufstellung und Monatsverlauf.") }}
 </p>
 
-<h2>Monatsabschluss</h2>
+<h2>{{ _("Monatsabschluss") }}</h2>
 <div class="card">
   <div class="inline">
-    <button type="button" class="secondary" onclick="pruefen(this)">🔍 Monat prüfen</button>
+    <button type="button" class="secondary" onclick="pruefen(this)">{{ _("🔍 Monat prüfen") }}</button>
     <span class="hint" style="align-self:center; margin:0">
-      Prüft, ob km, {{ kf.name }}preis und alle Ladevorgänge erfasst sind – erkannte
-      Ladungen werden dafür mit dem Batterieverlauf aus Home Assistant abgeglichen.
+      {{ _("Prüft, ob km, {0}preis und alle Ladevorgänge erfasst sind – erkannte Ladungen werden dafür mit dem Batterieverlauf aus Home Assistant abgeglichen.", kf.name) }}
     </span>
   </div>
   <div id="pruef-ergebnis" style="margin-top:10px; font-size:13px"></div>
 </div>
 
-<h2>Vorschau &amp; Einzelversand</h2>
+<h2>{{ _("Vorschau &amp; Einzelversand") }}</h2>
 <div class="card">
   <div class="inline">
-    <label class="feld">Bericht
+    <label class="feld">{{ _("Bericht") }}
       <select id="typ" onchange="typWechsel()">
-        <option value="monat">Monatsbericht</option>
-        <option value="jahr">Jahresbericht</option>
+        <option value="monat">{{ _("Monatsbericht") }}</option>
+        <option value="jahr">{{ _("Jahresbericht") }}</option>
       </select>
     </label>
-    <label class="feld" id="monat-feld">Monat
+    <label class="feld" id="monat-feld">{{ _("Monat") }}
       <select id="monat">
-        {% for m in MONATE %}<option value="{{ loop.index }}" {{ "selected" if loop.index == monat }}>{{ m }}</option>{% endfor %}
+        {% for m in MONATE %}<option value="{{ loop.index }}" {{ "selected" if loop.index == monat }}>{{ _(m) }}</option>{% endfor %}
       </select>
     </label>
-    <label class="feld">Jahr
+    <label class="feld">{{ _("Jahr") }}
       <select id="jahr">
         {% for j in jahre %}<option {{ "selected" if j == jahr }}>{{ j }}</option>{% endfor %}
       </select>
     </label>
-    <button type="button" onclick="vorschau()">👁 Vorschau</button>
-    <label class="feld">Empfänger (leer = Standard)
-      <input id="empfaenger" placeholder="{{ mail.mail_empfaenger or 'in Einstellungen hinterlegen' }}"
+    <button type="button" onclick="vorschau()">{{ _("👁 Vorschau") }}</button>
+    <label class="feld">{{ _("Empfänger (leer = Standard)") }}
+      <input id="empfaenger" placeholder="{{ mail.mail_empfaenger or _t('in Einstellungen hinterlegen') }}"
              style="width:220px">
     </label>
-    <button type="button" class="secondary" onclick="senden(this)">✉ Jetzt senden</button>
+    <button type="button" class="secondary" onclick="senden(this)">{{ _("✉ Jetzt senden") }}</button>
     <span id="send-meldung" style="align-self:center; font-size:12px"></span>
   </div>
 </div>
 
 <div id="vorschau-box" style="display:none">
-  <h2>Vorschau</h2>
+  <h2>{{ _("Vorschau") }}</h2>
   <div class="card" style="padding:0; overflow:hidden">
     <iframe id="vorschau-rahmen" style="width:100%; height:700px; border:none; background:#fff"></iframe>
   </div>
 </div>
 
-<h2>Automatischer Versand</h2>
+<h2>{{ _("Automatischer Versand") }}</h2>
 <form method="post" action="einstellungen/mail">
 <div class="card">
   <div class="inline">
     <label style="flex-direction:row; align-items:center; gap:6px; font-size:13px">
       <input type="checkbox" name="mail_aktiv" value="1" {{ "checked" if mail.mail_aktiv == "1" }}>
-      Automatischen Versand aktivieren
+      {{ _("Automatischen Versand aktivieren") }}
     </label>
     <label style="flex-direction:row; align-items:center; gap:6px; font-size:13px">
       <input type="checkbox" name="mail_monat_aktiv" value="1" {{ "checked" if mail.mail_monat_aktiv == "1" }}>
-      Monatsbericht
+      {{ _("Monatsbericht") }}
     </label>
     <label style="flex-direction:row; align-items:center; gap:6px; font-size:13px">
       <input type="checkbox" name="mail_jahr_aktiv" value="1" {{ "checked" if mail.mail_jahr_aktiv == "1" }}>
-      Jahresbericht
+      {{ _("Jahresbericht") }}
     </label>
-    <label class="feld">Prüfzeitpunkt (täglich)
+    <label class="feld">{{ _("Prüfzeitpunkt (täglich)") }}
       <input name="mail_uhrzeit" value="{{ mail.mail_uhrzeit }}" style="width:70px">
     </label>
   </div>
   <div class="inline" style="margin-top:10px">
     <label style="flex-direction:row; align-items:center; gap:6px; font-size:13px">
       <input type="checkbox" name="auto_import" value="1" {{ "checked" if mail.auto_import == "1" }}>
-      Nachts Daten aus Home Assistant holen
+      {{ _("Nachts Daten aus Home Assistant holen") }}
     </label>
     <label style="flex-direction:row; align-items:center; gap:6px; font-size:13px">
       <input type="checkbox" name="bericht_warten" value="1" {{ "checked" if mail.bericht_warten == "1" }}>
-      Erst senden, wenn der Monat vollständig ist
+      {{ _("Erst senden, wenn der Monat vollständig ist") }}
     </label>
-    <label class="feld">spätestens nach Tag
+    <label class="feld">{{ _("spätestens nach Tag") }}
       <input name="bericht_max_wartetage" value="{{ mail.bericht_max_wartetage }}" style="width:60px">
     </label>
-    <label class="feld">Akkukapazität kWh
+    <label class="feld">{{ _("Akkukapazität kWh") }}
       <input name="akku_kapazitaet_kwh" value="{{ mail.akku_kapazitaet_kwh }}" style="width:70px">
     </label>
-    <label class="feld">Ladung ab % Anstieg
+    <label class="feld">{{ _("Ladung ab % Anstieg") }}
       <input name="lade_min_anstieg" value="{{ mail.lade_min_anstieg }}" style="width:60px">
     </label>
   </div>
   <p class="hint">
-    „Ladung ab % Anstieg“ gilt für beides: die Prüfung auf fehlende Ladebelege <i>und</i> die
-    Fahrtabschnitte unter <a href="fahrten#akku">Verbrauch aus dem Akkustand</a>. Gemessen wird
-    der Anstieg ab dem Tiefststand, nicht je Stunde. Kleiner als 5 macht die Abschnitte anfällig
-    für das Rauschen des Stundenmittels; nach einer Änderung die Historie auf der Seite Fahrten
-    neu berechnen.
+    {{ _("„Ladung ab % Anstieg“ gilt für beides: die Prüfung auf fehlende Ladebelege <i>und</i> die Fahrtabschnitte unter <a href=\"fahrten#akku\">Verbrauch aus dem Akkustand</a>. Gemessen wird der Anstieg ab dem Tiefststand, nicht je Stunde. Kleiner als 5 macht die Abschnitte anfällig für das Rauschen des Stundenmittels; nach einer Änderung die Historie auf der Seite Fahrten neu berechnen.") }}
   </p>
   <p class="hint">
-    Einmal täglich zum eingestellten Zeitpunkt prüft die App, ob ein Bericht fällig ist:
-    der Monatsbericht ab dem 1. des Folgemonats, der Jahresbericht ab dem 1. Januar –
-    jeweils nur einmal pro Periode und erst, wenn die Daten vollständig sind.
-    {% if mail.mail_letzter_monat %}<br>Zuletzt versendet: Monat {{ mail.mail_letzter_monat }}{% endif %}
-    {% if mail.mail_letztes_jahr %} · Jahr {{ mail.mail_letztes_jahr }}{% endif %}
+    {{ _("Einmal täglich zum eingestellten Zeitpunkt prüft die App, ob ein Bericht fällig ist: der Monatsbericht ab dem 1. des Folgemonats, der Jahresbericht ab dem 1. Januar – jeweils nur einmal pro Periode und erst, wenn die Daten vollständig sind.") }}
+    {% if mail.mail_letzter_monat %}{{ _("<br>Zuletzt versendet: Monat {0}", mail.mail_letzter_monat) }}{% endif %}
+    {% if mail.mail_letztes_jahr %} {{ _("· Jahr {0}", mail.mail_letztes_jahr) }}{% endif %}
   </p>
 
-  <h2 style="margin-top:18px">Postausgang (SMTP)</h2>
+  <h2 style="margin-top:18px">{{ _("Postausgang (SMTP)") }}</h2>
   <div class="inline">
-    <label class="feld">Server
+    <label class="feld">{{ _("Server") }}
       <input name="mail_smtp_server" value="{{ mail.mail_smtp_server }}" style="width:180px">
     </label>
-    <label class="feld">Port
+    <label class="feld">{{ _("Port") }}
       <input name="mail_smtp_port" value="{{ mail.mail_smtp_port }}" style="width:70px">
     </label>
-    <label class="feld">Benutzer
+    <label class="feld">{{ _("Benutzer") }}
       <input name="mail_benutzer" value="{{ mail.mail_benutzer }}" style="width:200px">
     </label>
-    <label class="feld">Passwort {{ "(gesetzt)" if mail.mail_passwort }}
+    <label class="feld">{{ _("Passwort {0}", "(gesetzt)" if mail.mail_passwort) }}
       <input type="password" name="mail_passwort"
-             placeholder="{{ '••••••••' if mail.mail_passwort else 'SMTP-Passwort' }}" style="width:150px">
+             placeholder="{{ '••••••••' if mail.mail_passwort else _t('SMTP-Passwort') }}" style="width:150px">
     </label>
-    <label class="feld">Absender
+    <label class="feld">{{ _("Absender") }}
       <input name="mail_absender" value="{{ mail.mail_absender }}" style="width:200px">
     </label>
-    <label class="feld">Empfänger
+    <label class="feld">{{ _("Empfänger") }}
       <input name="mail_empfaenger" value="{{ mail.mail_empfaenger }}" style="width:200px">
     </label>
   </div>
   <p class="hint">
-    Port 587 = STARTTLS, Port 465 = SSL. Bei web.de/GMX muss der SMTP-Zugang im
-    Postfach freigeschaltet sein. Passwortfeld leer lassen = gespeichertes behalten.
+    {{ _("Port 587 = STARTTLS, Port 465 = SSL. Bei web.de/GMX muss der SMTP-Zugang im Postfach freigeschaltet sein. Passwortfeld leer lassen = gespeichertes behalten.") }}
   </p>
-  <button type="submit">💾 Speichern</button>
+  <button type="submit">{{ _("💾 Speichern") }}</button>
 </div>
 </form>
 
@@ -145,26 +136,25 @@ async function pruefen(btn) {
   const jahr = document.getElementById("jahr").value;
   const monat = document.getElementById("monat").value;
   btn.disabled = true;
-  box.innerHTML = "<span class='muted'>Prüfe – Batterieverlauf wird aus HA geholt …</span>";
+  box.innerHTML = "<span class='muted'>" + {{ _t("Prüfe – Batterieverlauf wird aus HA geholt …") | tojson }} + "</span>";
   try {
     const r = await fetch(`api/bericht/pruefung?jahr=${jahr}&monat=${monat}`);
     const d = await r.json();
     let html = d.bereit
-      ? `<span class="gruen"><strong>✓ ${d.monat} ist abschlussreif</strong></span>`
-      : `<span class="gelb"><strong>⚠ ${d.monat} ist noch nicht vollständig</strong></span>`;
+      ? `<span class="gruen"><strong>${T({{ _t("✓ {0} ist abschlussreif") | tojson }}, d.monat)}</strong></span>`
+      : `<span class="gelb"><strong>${T({{ _t("⚠ {0} ist noch nicht vollständig") | tojson }}, d.monat)}</strong></span>`;
     if (d.offen && d.offen.length) {
       html += "<ul style='margin:6px 0 0 18px; padding:0'>" +
               d.offen.map(o => `<li>${o}</li>`).join("") + "</ul>";
     }
     const le = d.ladeerkennung || {};
-    html += `<div class="hint" style="margin-top:8px">Ladeerkennung: ${le.meldung || "–"}`;
+    html += `<div class="hint" style="margin-top:8px">${ {{ _t("Ladeerkennung:") | tojson }} } ${le.meldung || "–"}`;
     if (le.fehlend && le.fehlend.length) {
-      html += "<table style='margin-top:6px'><tr><th>Datum</th><th>Batterie</th><th>geschätzt</th></tr>" +
+      html += "<table style='margin-top:6px'><tr><th>" + {{ _t("Datum") | tojson }} + "</th><th>" + {{ _t("Batterie") | tojson }} + "</th><th>" + {{ _t("geschätzt") | tojson }} + "</th></tr>" +
         le.fehlend.map(f =>
           `<tr><td>${f.datum}</td><td>${f.von_prozent} % → ${f.bis_prozent} %</td>` +
           `<td>~${f.kwh} kWh</td></tr>`).join("") + "</table>" +
-        "<div style='margin-top:6px'>Diese Ladevorgänge im Reiter " +
-        "<a href='laden' style='color:#7a9ec4'>Laden</a> nachtragen.</div>";
+        "<div style='margin-top:6px'>" + {{ _t("Diese Ladevorgänge im Reiter <a href='laden' style='color:#7a9ec4'>Laden</a> nachtragen.") | tojson }} + "</div>";
     }
     box.innerHTML = html + "</div>";
   } catch (e) {
@@ -193,9 +183,9 @@ function vorschau() {
 async function senden(btn) {
   const m = document.getElementById("send-meldung");
   const typ = document.getElementById("typ").value;
-  if (!confirm("Bericht jetzt per E-Mail verschicken?")) return;
+  if (!confirm({{ _t("Bericht jetzt per E-Mail verschicken?") | tojson }})) return;
   btn.disabled = true;
-  m.textContent = "Sende …"; m.className = "muted";
+  m.textContent = {{ _t("Sende …") | tojson }}; m.className = "muted";
   const fd = new FormData();
   fd.append("typ", typ);
   fd.append("jahr", document.getElementById("jahr").value);

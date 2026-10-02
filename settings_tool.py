@@ -38,6 +38,7 @@ def exportieren(pfad, mit_secrets=True):
              "ist_system": a["ist_system"]}
             for a in db.get_lade_anbieter()
         ],
+        "fahrzeuge": db.get_fahrzeug_liste_roh(),
     }
     with open(pfad, "w", encoding="utf-8") as f:
         json.dump(daten, f, indent=2, ensure_ascii=False)
@@ -58,8 +59,14 @@ def importieren(pfad):
     werte = daten.get("einstellungen") or {}
     vorhanden = db.get_alle_einstellungen()
     werte = {k: v for k, v in werte.items()
-             if not (k in GEHEIM_KEYS and not str(v).strip() and vorhanden.get(k))}
+             if not (k in GEHEIM_KEYS and not str(v).strip() and vorhanden.get(k))
+             and k not in db.NICHT_IMPORTIEREN}
+    if str(werte.get("mehrere_fahrzeuge")) == "1" and db.schema_stand() < 3:
+        # Umbau mit Sicherung nur ueber die Web-Oberflaeche (Einstellungen → Fahrzeuge)
+        werte["mehrere_fahrzeuge"] = "0"
+        print("Hinweis: \"Mehrere Fahrzeuge\" bitte in der Web-Oberflaeche einschalten.")
     db.set_einstellungen(werte)
+    db.set_fahrzeug_liste_roh(daten.get("fahrzeuge"))
 
     bekannt = {a["name"] for a in db.get_lade_anbieter()}
     neu = 0

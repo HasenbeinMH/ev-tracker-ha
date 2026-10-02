@@ -14,18 +14,20 @@ Referenzdaten. Es fliesst deshalb auch nicht in die Ersparnis auf dem Dashboard 
 from datetime import date
 
 import database as db
+from i18n import N_
 
-KATEGORIEN = ["Inspektion / Wartung", "Reifen", "Bremsen", "Verschleißteile", "Reparatur",
-              "HU / AU", "Pflege", "Sonstiges"]
+# Gespeichert wird der deutsche Name; die Anzeige uebersetzt ihn (Templates: _(k))
+KATEGORIEN = [N_("Inspektion / Wartung"), N_("Reifen"), N_("Bremsen"), N_("Verschleißteile"),
+              N_("Reparatur"), N_("HU / AU"), N_("Pflege"), N_("Sonstiges")]
 
-DECKUNGEN = ["Haftpflicht", "Teilkasko", "Vollkasko"]
+DECKUNGEN = [N_("Haftpflicht"), N_("Teilkasko"), N_("Vollkasko")]
 
 # Zusatzbausteine der Versicherung: (Spalte, Anzeigename)
-ZUSATZ = [("fahrerschutz", "Fahrerschutz"),
-          ("werkstattbindung", "Werkstattbindung"),
-          ("auslandsschutz", "Auslandsschutz"),
-          ("schutzbrief", "Schutzbrief"),
-          ("sonstige_zusatz", "Sonstiges")]
+ZUSATZ = [("fahrerschutz", N_("Fahrerschutz")),
+          ("werkstattbindung", N_("Werkstattbindung")),
+          ("auslandsschutz", N_("Auslandsschutz")),
+          ("schutzbrief", N_("Schutzbrief")),
+          ("sonstige_zusatz", N_("Sonstiges"))]
 
 
 def _je_100km(kosten, km):
@@ -85,7 +87,7 @@ def km_letzte_12_monate() -> tuple:
     heute = date.today()
     j, m = heute.year, heute.month
     monate = []
-    for _ in range(12):
+    for _i in range(12):
         j, m = (j, m - 1) if m > 1 else (j - 1, 12)
         monate.append(f"{j}-{m:02d}")
     km = {f["monat"]: f["km"] or 0 for f in db.get_fahrten_monate()}

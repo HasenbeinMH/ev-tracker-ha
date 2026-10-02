@@ -19,10 +19,77 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.13.0"
+VERSION = "3.1.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.1.0",
+        "datum": "2026-10-02",
+        "titel": "Sprachumschaltung Deutsch / Englisch",
+        "aenderungen": [
+            "Neue Einstellung \"Sprache / Language\" (Einstellungen → Berechnungsparameter) und Umschalter DE | EN oben rechts in der Navigationsleiste – eine Sprache fuer die ganze App, gilt fuer alle Fahrzeuge",
+            "Standard bleibt Deutsch: nach dem Update sieht niemand eine Aenderung",
+            "Englisch (britisch) fuer Oberflaeche, Menues, Meldungen, Diagramme, Monats- und Jahresbericht per Mail und die Hilfe (eigene englische Hilfeseite mit denselben Abschnitten)",
+            "Zahlen und Datum bleiben auch auf Englisch im deutschen Format (1.234,56 · 31.12.2026)",
+            "Nicht uebersetzt werden gespeicherte Texte (Anbieter, Notizen wie \"Privat – PV\"), das Importprotokoll und dieses Aenderungslog",
+            "Vorlagen: PV-Anteil jetzt auch ganz ohne YAML ueber Helfer in der Oberflaeche (vorlagen/oberflaeche/README.md: drei Template-Helfer, zwei Integral-Helfer) – gleiche Sensoren wie das Paket; fehlt der Netzwert, zaehlt die Ladung vorsichtig als Netz. Fuer die Sensoren gibt es bewusst keinen Blueprint (Template-Blueprints nur per YAML, Integral nicht moeglich)",
+            "Einrichtung und Hilfe nennen die Sprachwahl; Plural \"Monat/Monate\" und aehnliche Stellen sauber getrennt",
+            "Neuer Test i18n_test.py: jeder Text hat eine Uebersetzung, alle Seiten laden in beiden Sprachen, alle Skripte gueltig, Deutsch unveraendert gegenueber 3.0, keine deutschen Woerter in der englischen Oberflaeche, Bericht auf Englisch; Werkzeug i18n/pruefen.py",
+        ],
+    },
+    {
+        "version": "3.0.0",
+        "datum": "2026-10-02",
+        "titel": "Mehrere E-Autos",
+        "aenderungen": [
+            "Einstellungen → Fahrzeuge: Schalter \"Ein Fahrzeug / Mehrere Fahrzeuge\". Standard bleibt \"Ein Fahrzeug\" – dann sieht und rechnet alles genau wie bisher, an Daten und Einstellungen aendert sich nichts",
+            "Mehrere Fahrzeuge: je Auto eigene km, Ladungen, Akku-Verbrauch, THG, Instandhaltung, Versicherung, KFZ-Steuer, Vergleichs-Verbrenner, Bild und Kilometer-/Batteriesensor; Stromtarif, Kraftstoffpreise und PV-Preis gelten fuer alle",
+            "Umschalter oben rechts: einzelnes Fahrzeug oder \"Alle Fahrzeuge\" – die Gesamtsicht rechnet jedes Auto mit seinen eigenen Vergleichswerten und addiert, mit Tabelle je Fahrzeug; Verbrauch und Preise aus den Summen, nie gemittelt. Monats- und Jahresbericht mit Abschnitt je Fahrzeug",
+            "Heimladung je Fahrzeug waehlbar: gemeinsame Wallbox (Monatssumme nach km verteilt), gemeinsame Wallbox mit Einzelladungen per Push (Rest nach km), gemeinsame Wallbox mit Zuordnung ueber den Akkustand (jede Wallbox-Stunde dem Auto, dessen Akkustand gerade stieg; Rest nach km) oder eigene Zaehler. Gemeinsame Ladetarife: Grundgebuehr nach km verteilt",
+            "Push-Schnittstelle, Vorlage ev_ladung_senden.yaml und Blueprint: optionales Feld \"fahrzeug\" (id oder Name); Blueprint mit \"Laedt dieses Auto?\" fuer eine gemeinsame Wallbox",
+            "Umschalten auf \"Mehrere\" legt vorher eine Sicherung an (vor_mehrere_fahrzeuge_….db) und stellt zwei Tabellen in einer Transaktion um – mit Pruefsummen, bei Abweichung wird zurueckgerollt",
+            "Zurueck auf \"Ein Fahrzeug\" loescht nie Daten: die anderen Fahrzeuge werden nur ausgeblendet, nichts mehr importiert, Push-Ladungen fuer sie abgelehnt. Loeschen nur ausdruecklich mit Namenseingabe und Sicherung",
+            "Achtung: nach dem Umschalten auf \"Mehrere\" kann eine Version vor 3.0 die Datenbank nur noch lesen – zurueck ueber die Sicherung. Wer bei einem Fahrzeug bleibt, ist nicht betroffen",
+            "Einstellungs-Export/-Import mit Fahrzeugliste; ein Import mit \"Mehrere\" baut die Datenbank vorher um (mit Sicherung)",
+            "Hilfe: neuer Abschnitt \"Mehrere Fahrzeuge\", Einrichtung und FAQ ergaenzt; Kontaktadresse ev-tracker@email.de unter \"Unterstuetzen\"",
+            "Neue Tests: fahrzeuge_test.py (Umschalten, Gesamtsicht, Verteilung, Push, Ausblenden, Loeschen, Abbruch des Umbaus, sichtbarer Text wie 2.16), migrationstest.py und oberflaeche_test.py (Browser) erweitert",
+        ],
+    },
+    {
+        "version": "2.16.0",
+        "datum": "2026-10-02",
+        "titel": "Schutz vor Downgrade, Versicherungstest datumsunabhaengig",
+        "aenderungen": [
+            "Vorbereitung fuer mehrere Fahrzeuge: die Datenbank merkt sich ihren Struktur-Stand. Stammt sie aus einer neueren Version des EV Trackers, wird sie nur lesend geoeffnet – Seiten bleiben sichtbar, aber nichts wird gespeichert, importiert oder per Mail verschickt. Schuetzt vor still falschen Zahlen nach einem Downgrade",
+            "Orangefarbenes Banner \"Nur lesbar\" mit Hinweis: neue Version installieren oder unter Backup eine Sicherung wiederherstellen (das Wiederherstellen bleibt erlaubt)",
+            "Ladungen aus Home Assistant werden in diesem Zustand mit Fehlermeldung abgelehnt (HA zeigt eine Benachrichtigung) – sie fehlen nicht, der naechste Abruf in der neuen Version zaehlt sie mit",
+            "Hilfe → Backup: Abschnitt zum Zustand \"Nur lesbar\"",
+            "Funktionstest: Pruefung der hochgerechneten Jahres-km (Versicherung) haengt nicht mehr vom heutigen Datum ab",
+        ],
+    },
+    {
+        "version": "2.15.0",
+        "datum": "2026-10-02",
+        "titel": "Vorlagen fuer die configuration.yaml und als Blueprint",
+        "aenderungen": [
+            "Alle Home-Assistant-Vorlagen gibt es zusaetzlich zum Einfuegen in die configuration.yaml (vorlagen/configuration_yaml/) – ohne Pakete einzurichten",
+            "sensor und automation stehen dort unter eigenem Schluessel (\"sensor ev_tracker:\", \"automation ev_tracker:\") und vertragen sich mit vorhandenen Eintraegen; bei template, input_number usw. zeigt ein Kommentar, wie man an einen vorhandenen Schluessel anhaengt",
+            "Die Fassungen werden aus den Paketen erzeugt (configuration_yaml/quellen/bauen.py), der Vorlagentest prueft, dass sie aktuell und inhaltsgleich sind",
+            "Neu: Blueprint \"EV Tracker – Ladung senden\" mit Import-Button – Sensoren, Adresse und Token per Auswahlfeld, Ladeerkennung direkt an der Wallbox-Leistung, Zaehlerstaende in einem Text-Helfer statt vier Helfern; dazu ein rest_command ohne Platzhalter",
+        ],
+    },
+    {
+        "version": "2.14.0",
+        "datum": "2026-10-02",
+        "titel": "KFZ-Steuer fuer das E-Auto",
+        "aenderungen": [
+            "Steuer & THG: neue Eingabe \"KFZ-Steuer E-Auto\" – Jahresbetrag und erster steuerpflichtiger Monat, fuer die Zeit nach Ende der Steuerbefreiung",
+            "Die E-Auto-Steuer wird ab diesem Monat anteilig nach Monaten von der Steuer-Ersparnis abgezogen – auf Dashboard, Statistik und in der Gesamt-Ersparnis; fruehere Zeitraeume bleiben unveraendert",
+            "Statistik-Vergleich: Zeile \"davon KFZ-Steuer E-Auto\", sobald in einem der Zeitraeume Steuer anfaellt",
+            "Hilfe: Formeln zur Steuer-Ersparnis aktualisiert; veralteter Hinweis \"Jahreswert ohne Zeitanteilung\" entfernt",
+        ],
+    },
     {
         "version": "2.13.0",
         "datum": "2026-09-27",

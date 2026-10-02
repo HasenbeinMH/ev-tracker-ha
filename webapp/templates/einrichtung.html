@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block titel %}Einrichtung{% endblock %}
+{% block titel %}{{ _("Einrichtung") }}{% endblock %}
 {% block inhalt %}
 <style>
   .schritt{display:grid;grid-template-columns:34px 1fr;gap:4px 14px;background:var(--card);
@@ -26,60 +26,46 @@
   .sensoren td:last-child{word-break:break-all}
   @media (max-width:600px){.schritt{grid-template-columns:1fr}.schritt .nr{grid-row:auto}}
 </style>
-{% macro stand(art, text) %}<span class="stand {{ art }}">{{ text }}</span>{% endmacro %}
+{% macro stand(art, text) %}<span class="stand {{ art }}">{{ _t(text) }}</span>{% endmacro %}
 
-<h1>🚀 Einrichtung – Schnellstart</h1>
-<p class="hint">In dieser Reihenfolge einrichten, dann stimmen alle Auswertungen von Anfang an.
-  Der Stand neben jedem Schritt wird bei jedem Aufruf dieser Seite neu geprüft.
-  Alles Weitere steht in der <a href="hilfe">Hilfe</a>.</p>
+<h1>{{ _("🚀 Einrichtung – Schnellstart") }}</h1>
+<p class="hint">{{ _("In dieser Reihenfolge einrichten, dann stimmen alle Auswertungen von Anfang an. Der Stand neben jedem Schritt wird bei jedem Aufruf dieser Seite neu geprüft. Alles Weitere steht in der <a href=\"hilfe\">Hilfe</a>.") }}</p>
 
 {# 1 ─ Fahrzeug und Vergleich #}
 <div class="schritt{{ ' fertig' if fahrzeug_name }}">
   <div class="nr">1</div>
-  <h2>Fahrzeug und Vergleich festlegen
-    {{ stand("ok", "erledigt") if fahrzeug_name else stand("pruefen", "prüfen") }}</h2>
+  <h2>{{ _("Fahrzeug und Vergleich festlegen {0}", stand("ok", "erledigt") if fahrzeug_name else stand("pruefen", "prüfen")) }}</h2>
   <div>
-    <p>Unter <b>Einstellungen → Berechnungsparameter</b>:</p>
+    <p>{{ _("🌐 <b>Sprache / Language:</b> Deutsch oder Englisch – oben rechts <b>DE | EN</b> oder unter <b>Einstellungen → Berechnungsparameter</b>. Gilt für Oberfläche, Hilfe und Mail-Berichte.") }}</p>
+    <p>{{ _("<b>Ein oder mehrere E-Autos?</b> Unter <b>Einstellungen → Fahrzeuge</b>. Standard ist „Ein Fahrzeug“ – dann bleibt alles so einfach wie hier beschrieben. Mit „Mehrere Fahrzeuge“ bekommt jedes Auto eigene Kilometer, Ladungen, Steuer und Sensoren; oben rechts wählst du das Fahrzeug oder die Summe aller.") }}
+      {% if mehrere and fahrzeuge | length > 1 %}<br><span class="gruen">{{ _("Mehrere Fahrzeuge sind eingeschaltet – die Schritte unten gelten für das oben rechts gewählte.") }}</span>{% endif %}</p>
+    <p>{{ _("Unter <b>Einstellungen → Berechnungsparameter</b>:") }}</p>
     <ul>
-      <li><b>Fahrzeugname</b> – erscheint im Kopf des Dashboards.</li>
-      <li><b>Fahrzeugbild</b> – unter <b>Einstellungen → Fahrzeugbild</b> per Klick aus der <b>Galerie</b> wählen
-        oder ein eigenes hochladen. Einen Prompt, mit dem eine Bild-KI aus deinem Foto ein passendes Bild macht, gibt es unter
-        <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/fahrzeugbilder" target="_blank" rel="noopener">Fahrzeugbilder</a>. Aus der Lackfarbe entsteht die
-        Akzentfarbe des Dashboards.</li>
-      <li><b>Vergleich mit</b> – Benziner, Diesel oder Autogas-Auto. Dazu dessen <b>Verbrauch</b> in L/100 km
-        und die <b>KFZ-Steuer</b> pro Jahr, die du mit dem E-Auto sparst.</li>
-      <li><b>PV-Preis</b> – was dich eine kWh vom eigenen Dach kostet, meist die entgangene
-        Einspeisevergütung (z.B. 8 ct).</li>
-      <li><b>CO2-Faktor</b> – passt beim Wechsel des Kraftstoffs von selbst.</li>
+      <li>{{ _("<b>Fahrzeugname</b> – erscheint im Kopf des Dashboards.") }}</li>
+      <li>{{ _("<b>Fahrzeugbild</b> – unter <b>Einstellungen → Fahrzeugbild</b> per Klick aus der <b>Galerie</b> wählen oder ein eigenes hochladen. Einen Prompt, mit dem eine Bild-KI aus deinem Foto ein passendes Bild macht, gibt es unter <a href=\"https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/fahrzeugbilder\" target=\"_blank\" rel=\"noopener\">Fahrzeugbilder</a>. Aus der Lackfarbe entsteht die Akzentfarbe des Dashboards.") }}</li>
+      <li>{{ _("<b>Vergleich mit</b> – Benziner, Diesel oder Autogas-Auto. Dazu dessen <b>Verbrauch</b> in L/100 km und die <b>KFZ-Steuer</b> pro Jahr, die du mit dem E-Auto sparst.") }}</li>
+      <li>{{ _("<b>PV-Preis</b> – was dich eine kWh vom eigenen Dach kostet, meist die entgangene Einspeisevergütung (z.B. 8 ct).") }}</li>
+      <li>{{ _("<b>CO2-Faktor</b> – passt beim Wechsel des Kraftstoffs von selbst.") }}</li>
     </ul>
-    <div class="warn"><b>Noch kein E-Auto?</b> Mit dem
-      <a href="einstellungen#simulation">Simulationsmodus</a> rechnet die App aus den km deines jetzigen
-      Autos, was ein E-Auto sparen würde. Dann genügen Kilometerstand und {{ kf.name }}preis als Sensoren;
-      PV/Netz ins Auto und Ladungen unterwegs entfallen. Einen Stromtarif trotzdem anlegen – mit ihm wird
-      der Netz-Anteil bewertet.</div>
+    <div class="warn">{{ _("<b>Noch kein E-Auto?</b> Mit dem <a href=\"einstellungen#simulation\">Simulationsmodus</a> rechnet die App aus den km deines jetzigen Autos, was ein E-Auto sparen würde. Dann genügen Kilometerstand und {0}preis als Sensoren; PV/Netz ins Auto und Ladungen unterwegs entfallen. Einen Stromtarif trotzdem anlegen – mit ihm wird der Netz-Anteil bewertet.", kf.name) }}</div>
   </div>
-  <div class="aktion"><a class="knopf" href="einstellungen">Einstellungen öffnen</a></div>
+  <div class="aktion">{{ _("<a class=\"knopf\" href=\"einstellungen\">Einstellungen öffnen</a>") }}</div>
 </div>
 
 {# 2 ─ Verbindung #}
 <div class="schritt{{ ' fertig' if verbunden }}">
   <div class="nr">2</div>
-  <h2>Verbindung zu Home Assistant
-    {{ stand("ok", "eingerichtet") if verbunden else stand("fehlt", "fehlt") }}</h2>
+  <h2>{{ _("Verbindung zu Home Assistant {0}", stand("ok", "eingerichtet") if verbunden else stand("fehlt", "fehlt")) }}</h2>
   <div>
     {% if add_on_modus %}
-    <p>Als <b>Home-Assistant-Add-on</b> verbindet sich der EV Tracker <b>automatisch</b> –
-      URL und Token bleiben leer. Nur zur Kontrolle einmal testen.</p>
+    <p>{{ _("Als <b>Home-Assistant-Add-on</b> verbindet sich der EV Tracker <b>automatisch</b> – URL und Token bleiben leer. Nur zur Kontrolle einmal testen.") }}</p>
     {% else %}
-    <p>Unter <b>Einstellungen → Home Assistant &amp; Datenbank</b> die <b>HA-URL</b>
-      (z.B. <code>http://192.168.0.10:8123</code>) und ein <b>langlebiges Zugriffstoken</b> eintragen.
-      Das Token erstellst du in Home Assistant unter <i>Profil → Sicherheit → Langlebige Zugriffstoken</i>.</p>
-    <div class="warn"><b>Erst speichern, dann testen:</b> Der Test prüft die <b>gespeicherten</b>
-      Einstellungen. Nach dem Eintragen also zuerst „Alle Einstellungen speichern“.</div>
+    <p>{{ _("Unter <b>Einstellungen → Home Assistant &amp; Datenbank</b> die <b>HA-URL</b> (z.B. <code>http://192.168.0.10:8123</code>) und ein <b>langlebiges Zugriffstoken</b> eintragen. Das Token erstellst du in Home Assistant unter <i>Profil → Sicherheit → Langlebige Zugriffstoken</i>.") }}</p>
+    <div class="warn">{{ _("<b>Erst speichern, dann testen:</b> Der Test prüft die <b>gespeicherten</b> Einstellungen. Nach dem Eintragen also zuerst „Alle Einstellungen speichern“.") }}</div>
     {% endif %}
   </div>
   <div class="aktion">
-    <button type="button" class="secondary" onclick="testen(this)">Verbindung testen</button>
+    <button type="button" class="secondary" onclick="testen(this)">{{ _("Verbindung testen") }}</button>
     <span id="test-ha" class="muted"></span>
   </div>
 </div>
@@ -88,13 +74,10 @@
 {% set sensoren_ok = sensoren | selectattr(1, "in", ["ok", "optional"]) | list | length == sensoren | length %}
 <div class="schritt{{ ' fertig' if sensoren_ok }}">
   <div class="nr">3</div>
-  <h2>Sensoren zuordnen
-    {{ stand("ok", "vollständig") if sensoren_ok else stand("pruefen", "unvollständig") }}</h2>
+  <h2>{{ _("Sensoren zuordnen {0}", stand("ok", "vollständig") if sensoren_ok else stand("pruefen", "unvollständig")) }}</h2>
   <div>
-    <p>Unter <b>Einstellungen → Sensoren</b> je Zeile die Entity-ID aus Home Assistant eintragen
-      {%- if influx %} und daneben den Namen, unter dem der Sensor in der InfluxDB steht{% endif %}.
-      Am einfachsten mit <b>„In HA suchen“</b> bzw. <b>„In Datenbank suchen“</b> und „Übernehmen“,
-      danach speichern. <b>„Prüfen“</b> zeigt die Monatswerte eines Sensors.</p>
+    <p>{{ _("Unter <b>Einstellungen → Sensoren</b> je Zeile die Entity-ID aus Home Assistant eintragen") }}
+      {%- if influx %} {{ _("und daneben den Namen, unter dem der Sensor in der InfluxDB steht") }}{% endif %}{{ _(". Am einfachsten mit <b>„In HA suchen“</b> bzw. <b>„In Datenbank suchen“</b> und „Übernehmen“, danach speichern. <b>„Prüfen“</b> zeigt die Monatswerte eines Sensors.") }}</p>
     <table class="sensoren">
       {% for label, art, text in sensoren %}
       <tr><td>{{ label }}</td>
@@ -103,146 +86,109 @@
       {% endfor %}
     </table>
     <ul>
-      <li><b>Kilometerstand</b> – der fortlaufende km-Stand des Autos (Fahrzeug-Integration).</li>
-      <li><b>PV / Netz ins Auto</b> – Zähler in <b>kWh</b> für die Energie, die <b>ins Auto</b> geht,
-        nicht die ganze PV-Erzeugung. Fortlaufend oder täglich zurückgesetzt.
-        Liefert die Wallbox nur die Gesamtleistung, legen die
-        <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen" target="_blank" rel="noopener">Vorlagen</a>
-        (Node-RED oder HA-Paket) beide Zähler an.</li>
-      <li><b>Kosten Netz ins Auto</b> (optional) – nur bei einem <b>dynamischen Stromtarif</b>
-        (Tibber, aWATTar, Octopus …): ein fortlaufender €-Zähler, der zu jeder kWh aus dem Netz den Preis
-        in diesem Moment addiert. Die Vorlage
-        <a href="https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/homeassistant/ev_netzkosten.yaml" target="_blank" rel="noopener">ev_netzkosten.yaml</a>
-        legt ihn aus deinem Preissensor an (<code>sensor.ev_ladung_netz_kosten</code>). Mit festem Tarif leer lassen.</li>
-      <li><b>{{ kf.name }}preis</b> – €/L, z.B. aus der Tankerkönig-Integration;
-        ein zweiter Sensor wird mitgemittelt.{% if kf.art == "autogas" %} Tankerkönig kennt kein Autogas –
-        dann den Preis je Monat von Hand eintragen.{% endif %}</li>
-      <li><b>Batteriestand</b> (optional) – für den Verbrauch aus dem Akkustand und die Ladeerkennung.</li>
+      <li>{{ _("<b>Kilometerstand</b> – der fortlaufende km-Stand des Autos (Fahrzeug-Integration).") }}</li>
+      <li>{{ _("<b>PV / Netz ins Auto</b> – Zähler in <b>kWh</b> für die Energie, die <b>ins Auto</b> geht, nicht die ganze PV-Erzeugung. Fortlaufend oder täglich zurückgesetzt. Liefert die Wallbox nur die Gesamtleistung, legen die <a href=\"https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen\" target=\"_blank\" rel=\"noopener\">Vorlagen</a> (Node-RED, HA-Paket oder configuration.yaml) beide Zähler an – oder du legst sie <a href=\"https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen/oberflaeche\" target=\"_blank\" rel=\"noopener\">über Helfer, ganz ohne YAML</a> in der Oberfläche an.") }}</li>
+      <li>{{ _("<b>Kosten Netz ins Auto</b> (optional) – nur bei einem <b>dynamischen Stromtarif</b> (Tibber, aWATTar, Octopus …): ein fortlaufender €-Zähler, der zu jeder kWh aus dem Netz den Preis in diesem Moment addiert. Die Vorlage <a href=\"https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/homeassistant/ev_netzkosten.yaml\" target=\"_blank\" rel=\"noopener\">ev_netzkosten.yaml</a> legt ihn aus deinem Preissensor an (<code>sensor.ev_ladung_netz_kosten</code>). Mit festem Tarif leer lassen.") }}</li>
+      <li>{{ _("<b>{0}preis</b> – €/L, z.B. aus der Tankerkönig-Integration; ein zweiter Sensor wird mitgemittelt.", kf.name) }}{% if kf.art == "autogas" %} {{ _("Tankerkönig kennt kein Autogas – dann den Preis je Monat von Hand eintragen.") }}{% endif %}</li>
+      <li>{{ _("<b>Batteriestand</b> (optional) – für den Verbrauch aus dem Akkustand und die Ladeerkennung.") }}</li>
     </ul>
   </div>
-  <div class="aktion"><a class="knopf" href="einstellungen">Sensoren eintragen</a></div>
+  <div class="aktion">{{ _("<a class=\"knopf\" href=\"einstellungen\">Sensoren eintragen</a>") }}</div>
 </div>
 
 {# 4 ─ Datenbank #}
 <div class="schritt{{ ' fertig' if datenquelle }}">
   <div class="nr">4</div>
-  <h2>Datenbank anbinden
-    {{ stand("ok", datenquelle) if datenquelle else stand("optional", "optional") }}</h2>
+  <h2>{{ _("Datenbank anbinden {0}", stand("ok", datenquelle) if datenquelle else stand("optional", "optional")) }}</h2>
   <div>
-    <p>Meist <b>nicht nötig</b>: Standard ist die Langzeitstatistik von Home Assistant. Eine Datenbank
-      lohnt sich, wenn sie <b>weiter zurückreicht</b> als HA – etwa für die Monate vor der Installation.
-      Liefert sie für einen Wert nichts, springt automatisch Home Assistant ein.</p>
+    <p>{{ _("Meist <b>nicht nötig</b>: Standard ist die Langzeitstatistik von Home Assistant. Eine Datenbank lohnt sich, wenn sie <b>weiter zurückreicht</b> als HA – etwa für die Monate vor der Installation. Liefert sie für einen Wert nichts, springt automatisch Home Assistant ein.") }}</p>
     <ul>
-      <li>Unter <b>Einstellungen → Datenquelle</b> wählen: InfluxDB 1.x/2.x/3.x, PostgreSQL/TimescaleDB (LTSS)
-        oder Prometheus/VictoriaMetrics.</li>
-      <li>Zugangsdaten eintragen und <b>„Alle Einstellungen speichern“</b>.</li>
-      <li>Erst dann mit „… testen“ prüfen.</li>
-      <li>Bei den Sensoren <b>„In Datenbank suchen“</b> – die Treffer zeigen, von wann bis wann Daten da sind.
-        „Übernehmen“ trägt Name und (bei InfluxDB) Measurement ein; danach speichern.</li>
+      <li>{{ _("Unter <b>Einstellungen → Datenquelle</b> wählen: InfluxDB 1.x/2.x/3.x, PostgreSQL/TimescaleDB (LTSS) oder Prometheus/VictoriaMetrics.") }}</li>
+      <li>{{ _("Zugangsdaten eintragen und <b>„Alle Einstellungen speichern“</b>.") }}</li>
+      <li>{{ _("Erst dann mit „… testen“ prüfen.") }}</li>
+      <li>{{ _("Bei den Sensoren <b>„In Datenbank suchen“</b> – die Treffer zeigen, von wann bis wann Daten da sind. „Übernehmen“ trägt Name und (bei InfluxDB) Measurement ein; danach speichern.") }}</li>
     </ul>
-    <div class="warn"><b>Wichtig – erst speichern:</b> Verbindungstest und Datenbanksuche arbeiten mit den
-      <b>gespeicherten</b> Zugangsdaten. Wer nur einträgt und gleich testet, testet noch die alten Werte –
-      der Test schlägt dann fehl, obwohl die Eingaben stimmen.</div>
+    <div class="warn">{{ _("<b>Wichtig – erst speichern:</b> Verbindungstest und Datenbanksuche arbeiten mit den <b>gespeicherten</b> Zugangsdaten. Wer nur einträgt und gleich testet, testet noch die alten Werte – der Test schlägt dann fehl, obwohl die Eingaben stimmen.") }}</div>
   </div>
 </div>
 
 {# 5 ─ Stromtarif #}
 <div class="schritt{{ ' fertig' if tarife }}">
   <div class="nr">5</div>
-  <h2>Stromtarif anlegen
-    {{ stand("ok", tarife ~ " Tarif" ~ ("e" if tarife != 1 else "")) if tarife else stand("fehlt", "fehlt") }}</h2>
+  <h2>{{ _("Stromtarif anlegen {0}", stand("ok", _t("{0} Tarif", tarife) if tarife == 1 else _t("{0} Tarife", tarife)) if tarife else stand("fehlt", "fehlt")) }}</h2>
   <div>
-    <p>Dein Haushaltsstrompreis in ct/kWh mit dem Datum, ab dem er gilt. Mit ihm werden die Ladungen
-      aus dem Netz bewertet. Bei einem Tarifwechsel einen neuen Eintrag anlegen – importierte Monate
-      werden dann mit dem Tarif bewertet, der in ihrem Monat galt.</p>
-    <div class="warn"><b>Dynamischer Tarif?</b> Trotzdem einen Tarif mit deinem ungefähren Durchschnittspreis
-      anlegen. Mit dem Sensor „Kosten Netz ins Auto“ (Schritt 3) zählen je Monat die tatsächlichen Kosten;
-      der Tarif gilt nur für Monate ohne Kostenwert – etwa vor der Einrichtung des Zählers –, als
-      Preisvorschlag beim Erfassen von Hand und in der Simulation.</div>
+    <p>{{ _("Dein Haushaltsstrompreis in ct/kWh mit dem Datum, ab dem er gilt. Mit ihm werden die Ladungen aus dem Netz bewertet. Bei einem Tarifwechsel einen neuen Eintrag anlegen – importierte Monate werden dann mit dem Tarif bewertet, der in ihrem Monat galt.") }}</p>
+    <div class="warn">{{ _("<b>Dynamischer Tarif?</b> Trotzdem einen Tarif mit deinem ungefähren Durchschnittspreis anlegen. Mit dem Sensor „Kosten Netz ins Auto“ (Schritt 3) zählen je Monat die tatsächlichen Kosten; der Tarif gilt nur für Monate ohne Kostenwert – etwa vor der Einrichtung des Zählers –, als Preisvorschlag beim Erfassen von Hand und in der Simulation.") }}</div>
   </div>
-  <div class="aktion"><a class="knopf" href="stromtarif">Stromtarif öffnen</a></div>
+  <div class="aktion">{{ _("<a class=\"knopf\" href=\"stromtarif\">Stromtarif öffnen</a>") }}</div>
 </div>
 
 {# 6 ─ Import #}
 <div class="schritt{{ ' fertig' if monate_km }}">
   <div class="nr">6</div>
-  <h2>Vergangene Monate importieren
-    {{ stand("ok", monate_km ~ " Monat" ~ ("e" if monate_km != 1 else "") ~ " mit km") if monate_km else stand("fehlt", "noch keine Daten") }}</h2>
+  <h2>{{ _("Vergangene Monate importieren {0}", stand("ok", _t("{0} Monat mit km", monate_km) if monate_km == 1 else _t("{0} Monate mit km", monate_km)) if monate_km else stand("fehlt", "noch keine Daten")) }}</h2>
   <div>
-    <p>Unter <b>HA Import</b> einen Zeitraum wählen, zum Beispiel alle Monate seit der Anschaffung.
-      Die Werte erscheinen zuerst in einer <b>Vorschau</b> – mit Herkunft (DB oder HA) und editierbar.
-      Dann übernehmen. Fehlt ein Wert, nennt die Vorschau den Grund.</p>
+    <p>{{ _("Unter <b>HA Import</b> einen Zeitraum wählen, zum Beispiel alle Monate seit der Anschaffung. Die Werte erscheinen zuerst in einer <b>Vorschau</b> – mit Herkunft (DB oder HA) und editierbar. Dann übernehmen. Fehlt ein Wert, nennt die Vorschau den Grund.") }}</p>
   </div>
-  <p class="hint">Optional: Soll jede Ladung zuhause <b>einzeln</b> erscheinen statt als Monatssumme,
-    schickt Home Assistant sie am Ladeende – siehe
-    <a href="einstellungen#ladung-senden">Einstellungen → Ladungen aus Home Assistant empfangen</a>.</p>
-  <div class="aktion"><a class="knopf" href="import">HA Import öffnen</a></div>
+  <p class="hint">{{ _("Optional: Soll jede Ladung zuhause <b>einzeln</b> erscheinen statt als Monatssumme, schickt Home Assistant sie am Ladeende – siehe <a href=\"einstellungen#ladung-senden\">Einstellungen → Ladungen aus Home Assistant empfangen</a>.") }}</p>
+  <div class="aktion">{{ _("<a class=\"knopf\" href=\"import\">HA Import öffnen</a>") }}</div>
 </div>
 
 {# 7 ─ Auswaerts laden #}
 <div class="schritt{{ ' fertig' if ladungen }}">
   <div class="nr">7</div>
-  <h2>Ladungen unterwegs ergänzen
-    {{ stand("ok", ladungen ~ " Ladevorgänge") if ladungen else stand("optional", "noch keine") }}</h2>
+  <h2>{{ _("Ladungen unterwegs ergänzen {0}", stand("ok", _t("{0} Ladevorgänge", ladungen)) if ladungen else stand("optional", "noch keine")) }}</h2>
   <div>
-    <p>Ladungen an öffentlichen Säulen kommen nicht aus Home Assistant:</p>
+    <p>{{ _("Ladungen an öffentlichen Säulen kommen nicht aus Home Assistant:") }}</p>
     <ul>
-      <li><b>Laden</b> – einzeln erfassen, oder unter <b>Rechnungen</b> die PDF des Anbieters einlesen.</li>
-      <li><b>Ladetarife</b> – Abos mit Grundgebühr und Preisverlauf; <b>Einstellungen → Lade-Anbieter</b>
-        für eigene Anbieter.</li>
-      <li>Mit dem Batteriestand-Sensor meldet die <b>Ladeerkennung</b> Ladungen ohne Beleg.</li>
+      <li>{{ _("<b>Laden</b> – einzeln erfassen, oder unter <b>Rechnungen</b> die PDF des Anbieters einlesen.") }}</li>
+      <li>{{ _("<b>Ladetarife</b> – Abos mit Grundgebühr und Preisverlauf; <b>Einstellungen → Lade-Anbieter</b> für eigene Anbieter.") }}</li>
+      <li>{{ _("Mit dem Batteriestand-Sensor meldet die <b>Ladeerkennung</b> Ladungen ohne Beleg.") }}</li>
     </ul>
   </div>
-  <div class="aktion"><a class="knopf" href="laden">Laden öffnen</a></div>
+  <div class="aktion">{{ _("<a class=\"knopf\" href=\"laden\">Laden öffnen</a>") }}</div>
 </div>
 
 {# 8 ─ Weitere Kosten #}
 <div class="schritt{{ ' fertig' if kfz }}">
   <div class="nr">8</div>
-  <h2>Steuer, THG und weitere Kosten
-    {{ stand("ok", "KFZ-Steuer eingetragen") if kfz else stand("optional", "optional") }}</h2>
+  <h2>{{ _("Steuer, THG und weitere Kosten {0}", stand("ok", "KFZ-Steuer eingetragen") if kfz else stand("optional", "optional")) }}</h2>
   <div>
-    <p><b>Steuer &amp; THG</b>: THG-Prämien eintragen, sobald sie ausgezahlt werden – sie zählen zur Ersparnis.
-      <b>Instandhaltung</b> und <b>Versicherung</b> führen die übrigen Kosten des Autos.</p>
+    <p>{{ _("<b>Steuer &amp; THG</b>: THG-Prämien eintragen, sobald sie ausgezahlt werden – sie zählen zur Ersparnis. <b>Instandhaltung</b> und <b>Versicherung</b> führen die übrigen Kosten des Autos.") }}</p>
   </div>
-  <div class="aktion"><a class="knopf" href="steuer">Steuer &amp; THG öffnen</a></div>
+  <div class="aktion">{{ _("<a class=\"knopf\" href=\"steuer\">Steuer &amp; THG öffnen</a>") }}</div>
 </div>
 
 {# 9 ─ Bericht #}
 <div class="schritt{{ ' fertig' if mail_aktiv }}">
   <div class="nr">9</div>
-  <h2>Monatsbericht per Mail
-    {{ stand("ok", "aktiv") if mail_aktiv else stand("optional", "optional") }}</h2>
+  <h2>{{ _("Monatsbericht per Mail {0}", stand("ok", "aktiv") if mail_aktiv else stand("optional", "optional")) }}</h2>
   <div>
-    <p>Unter <b>Berichte</b> den Mailserver (SMTP) eintragen. Der Bericht kommt, sobald ein Monat
-      vollständig ist; dort stellst du auch die Uhrzeit des nächtlichen Abrufs ein.</p>
+    <p>{{ _("Unter <b>Berichte</b> den Mailserver (SMTP) eintragen. Der Bericht kommt, sobald ein Monat vollständig ist; dort stellst du auch die Uhrzeit des nächtlichen Abrufs ein.") }}</p>
   </div>
-  <div class="aktion"><a class="knopf" href="berichte">Berichte öffnen</a></div>
+  <div class="aktion">{{ _("<a class=\"knopf\" href=\"berichte\">Berichte öffnen</a>") }}</div>
 </div>
 
 {# 10 ─ Backup #}
 <div class="schritt">
   <div class="nr">10</div>
-  <h2>Sichern {{ stand("optional", "Tipp") }}</h2>
+  <h2>{{ _("Sichern {0}", stand("optional", "Tipp")) }}</h2>
   <div>
-    <p>{% if add_on_modus %}Die Daten liegen unter <code>/data</code> und sind in den Sicherungen von
-      Home Assistant enthalten.{% else %}Die Datenbank-Datei regelmäßig sichern.{% endif %}
-      Unter <b>Backup</b> lässt sich zusätzlich eine Sicherung herunterladen; unter
-      <b>Einstellungen → Einstellungen sichern</b> die Konfiguration allein.</p>
+    <p>{% if add_on_modus %}{{ _("Die Daten liegen unter <code>/data</code> und sind in den Sicherungen von Home Assistant enthalten.") }}{% else %}{{ _("Die Datenbank-Datei regelmäßig sichern.") }}{% endif %}
+      {{ _("Unter <b>Backup</b> lässt sich zusätzlich eine Sicherung herunterladen; unter <b>Einstellungen → Einstellungen sichern</b> die Konfiguration allein.") }}</p>
   </div>
-  <div class="aktion"><a class="knopf" href="backup">Backup öffnen</a></div>
+  <div class="aktion">{{ _("<a class=\"knopf\" href=\"backup\">Backup öffnen</a>") }}</div>
 </div>
 
 <div class="card">
-  {% if auto_import %}<span class="gruen">✓ Danach läuft es von selbst:</span>{% else %}<span class="gelb">Der nächtliche Abruf ist ausgeschaltet.</span>{% endif %}
-  Der nächtliche Abruf holt km, PV-/Netz-kWh (mit Kostenzähler auch die Kosten) und {{ kf.name }}preis für den laufenden Monat und
-  den Vormonat. Von Hand bleiben nur Ladungen unterwegs und THG-Prämien.
+  {% if auto_import %}<span class="gruen">{{ _("✓ Danach läuft es von selbst:") }}</span>{% else %}<span class="gelb">{{ _("Der nächtliche Abruf ist ausgeschaltet.") }}</span>{% endif %}
+  {{ _("Der nächtliche Abruf holt km, PV-/Netz-kWh (mit Kostenzähler auch die Kosten) und {0}preis für den laufenden Monat und den Vormonat. Von Hand bleiben nur Ladungen unterwegs und THG-Prämien.", kf.name) }}
 </div>
 
 <script>
 async function testen(btn) {
   const span = document.getElementById("test-ha");
-  btn.disabled = true; span.textContent = "Teste …"; span.className = "muted";
+  btn.disabled = true; span.textContent = {{ _t("Teste …") | tojson }}; span.className = "muted";
   try {
     const d = await (await fetch("api/test/ha", {method: "POST"})).json();
     span.textContent = (d.ok ? "✓ " : "✗ ") + d.text;

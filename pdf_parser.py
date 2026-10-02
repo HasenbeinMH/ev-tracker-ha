@@ -8,6 +8,14 @@ from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Optional
 
+from i18n import _
+
+
+def ohne_kwh_text() -> str:
+    """Warnung bei Rechnungen ohne kWh (Tesla nach Minuten) – app.py erkennt sie daran wieder."""
+    return _("Tesla rechnet hier nach Minuten ab und weist keine kWh aus – "
+             "bitte die geladene Menge eintragen (Fahrzeug-App oder Akkustand)")
+
 
 @dataclass
 class Ladevorgang:
@@ -214,9 +222,9 @@ def parse_tesla(text: str) -> list[Ladevorgang]:
 
     posten = re.findall(r"([\d.]+)\s*/\s*(min|kWh)\s+([\d.]+)\s*(min|kWh)", text)
     stufen = re.findall(r"Stufe\s*(\d)", text)
-    kwh = sum(_float_punkt(menge) or 0 for _, _, menge, einheit in posten if einheit == "kWh")
+    kwh = sum(_float_punkt(menge) or 0 for _a, _b, menge, einheit in posten if einheit == "kWh")
     teile = []
-    for i, (preis, einheit, menge, _) in enumerate(posten):
+    for i, (preis, einheit, menge, _e) in enumerate(posten):
         stufe = f"Stufe {stufen[i]} " if len(stufen) == len(posten) else ""
         teile.append(f"{stufe}{menge} {einheit} × {preis.replace('.', ',')} €/{einheit}")
 
@@ -232,8 +240,7 @@ def parse_tesla(text: str) -> list[Ladevorgang]:
                     ladeleistung_kw=float(kw_m.group(1)) if kw_m else None,
                     ladetyp="DC", quelle="Einzelvorgang", notiz=notiz)
     if not kwh:
-        v.warnungen.append("Tesla rechnet hier nach Minuten ab und weist keine kWh aus – "
-                           "bitte die geladene Menge eintragen (Fahrzeug-App oder Akkustand)")
+        v.warnungen.append(ohne_kwh_text())
     return [v]
 
 
@@ -271,13 +278,14 @@ def parse_dcs(text: str, anbieter: str, hinweise: Optional[list] = None) -> list
             r"([\d.,]+)\s*kWh\s+(AC|DC|HPC)\b[^\n]*?([\d.,]+)\s*EUR\s+([\d.,]+)\s*EUR\s+([\d.,]+)\s*EUR",
             abschnitt)
         land_m = re.search(r"Ihre Rechnung f.r (\S+)", rechnung)
-        land = f"Rechnung {land_m.group(1)}" if land_m else "Eine Teilrechnung"
+        land = _("Rechnung {0}", land_m.group(1)) if land_m else _("Eine Teilrechnung")
         if len(daten) != len(mengen):
-            hinweise.append(f"{land}: {len(daten)} Datumsangaben, aber {len(mengen)} Ladevorgänge gefunden – "
-                            f"diese Rechnung wurde übersprungen, bitte die Vorgänge von Hand eintragen.")
+            hinweise.append(_("{0}: {1} Datumsangaben, aber {2} Ladevorgänge gefunden – "
+                              "diese Rechnung wurde übersprungen, bitte die Vorgänge von Hand eintragen.",
+                              land, len(daten), len(mengen)))
             continue
         neue = []
-        for datum_txt, (kwh_txt, produkt, _, _, netto_txt) in zip(daten, mengen):
+        for datum_txt, (kwh_txt, produkt, _x, _y, netto_txt) in zip(daten, mengen):
             kwh = _parse_float_de(kwh_txt)
             netto = _parse_float_de(netto_txt)
             if not kwh or kwh < 0.5 or netto is None:
@@ -314,12 +322,12 @@ def parse_dcs(text: str, anbieter: str, hinweise: Optional[list] = None) -> list
             if diff > 0.05:
                 posten = [p for p in re.findall(r"^(.+?) vom \d{2}\.\d{2}\.\d{4} - ", rechnung, re.M)
                           if not p.startswith("Summe") and "Zeitraum" not in p]
-                was = f"„{posten[0].strip()}“" if posten else "z. B. eine Grundgebühr"
-                hinweise.append(f"{land}: {_eur(diff)} gehören zu keinem Ladevorgang ({was}) "
-                                f"und werden nicht importiert.")
+                was = f"„{posten[0].strip()}“" if posten else _("z. B. eine Grundgebühr")
+                hinweise.append(_("{0}: {1} gehören zu keinem Ladevorgang ({2}) und werden nicht importiert.",
+                                  land, _eur(diff), was))
             elif diff < -0.05:
-                hinweise.append(f"{land}: Die erkannten Vorgänge ergeben {_eur(-diff)} mehr als der "
-                                f"Rechnungsbetrag {_eur(endbetrag)} – bitte prüfen.")
+                hinweise.append(_("{0}: Die erkannten Vorgänge ergeben {1} mehr als der "
+                                  "Rechnungsbetrag {2} – bitte prüfen.", land, _eur(-diff), _eur(endbetrag)))
     return vorgaenge
 
 
@@ -752,36 +760,37 @@ def pruefe(anbieter: str, vorgaenge: list[Ladevorgang], text: str) -> list[str]:
     """
     hinweise = []
     if not vorgaenge:
-        hinweise.append("In dieser Rechnung wurde kein Ladevorgang erkannt. Das Layout ist vermutlich "
-                        "unbekannt – bitte die Werte unten von Hand eintragen.")
+        hinweise.append(_("In dieser Rechnung wurde kein Ladevorgang erkannt. Das Layout ist vermutlich "
+                          "unbekannt – bitte die Werte unten von Hand eintragen."))
         return hinweise
     if anbieter == "Unbekannt":
-        hinweise.append("Anbieter nicht erkannt. Die Werte wurden mit einem allgemeinen Muster gelesen "
-                        "und sind unsicher – bitte jede Zeile prüfen und den Anbieter eintragen.")
+        hinweise.append(_("Anbieter nicht erkannt. Die Werte wurden mit einem allgemeinen Muster gelesen "
+                          "und sind unsicher – bitte jede Zeile prüfen und den Anbieter eintragen."))
     if any(v.quelle == "Monatsübersicht" for v in vorgaenge):
-        hinweise.append("Nur eine Monatssumme erkannt, keine einzelnen Ladevorgänge. "
-                        "Datum und Betrag bitte prüfen.")
+        hinweise.append(_("Nur eine Monatssumme erkannt, keine einzelnen Ladevorgänge. "
+                          "Datum und Betrag bitte prüfen."))
 
     heute = datetime.now().strftime("%Y-%m-%d")
     for v in vorgaenge:
         if not v.datum:
-            v.warnungen.append("Datum nicht erkannt")
+            v.warnungen.append(_("Datum nicht erkannt"))
         elif v.datum > heute:
-            v.warnungen.append("Datum liegt in der Zukunft")
+            v.warnungen.append(_("Datum liegt in der Zukunft"))
         if v.menge_kwh > KWH_MAX:
-            v.warnungen.append(f"Ungewöhnlich große Lademenge ({v.menge_kwh:g} kWh)".replace(".", ","))
+            v.warnungen.append(_("Ungewöhnlich große Lademenge ({0} kWh)", f"{v.menge_kwh:g}".replace(".", ",")))
         if v.gesamtpreis <= 0:
-            v.warnungen.append("Betrag ist 0 €")
+            v.warnungen.append(_("Betrag ist 0 €"))
         elif v.menge_kwh and not PREIS_MIN_CT <= v.preis_kwh <= PREIS_MAX_CT:
-            v.warnungen.append(f"Ungewöhnlicher Preis ({v.preis_kwh:.2f} ct/kWh)".replace(".", ","))
+            v.warnungen.append(_("Ungewöhnlicher Preis ({0} ct/kWh)", f"{v.preis_kwh:.2f}".replace(".", ",")))
 
     # Summe der Vorgaenge gegen den Endbetrag – DCS prueft je Laenderrechnung selbst
     if not (anbieter.startswith("Charge my") or anbieter == "DCS"):
         endbetrag = _endbetrag(text)
         summe = round(sum(v.gesamtpreis for v in vorgaenge), 2)
         if endbetrag is not None and abs(endbetrag - summe) > 0.05:
-            hinweise.append(f"Die erkannten Vorgänge ergeben {_eur(summe)}, die Rechnung aber {_eur(endbetrag)} "
-                            f"– vermutlich fehlt ein Vorgang oder es gibt Gebühren. Bitte prüfen.")
+            hinweise.append(_("Die erkannten Vorgänge ergeben {0}, die Rechnung aber {1} "
+                              "– vermutlich fehlt ein Vorgang oder es gibt Gebühren. Bitte prüfen.",
+                              _eur(summe), _eur(endbetrag)))
     return hinweise
 
 

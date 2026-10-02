@@ -258,6 +258,28 @@ for key, (mon, kfz_mon) in FAELLE.items():
     check(b, "Ø Strompreis plausibel (10–60 ct)", kz["strompreis_ct"] and 10 <= kz["strompreis_ct"] <= 60,
           f'{kz["strompreis_ct"]:.1f} ct/kWh')
 
+
+# KFZ-Steuer E-Auto: ab 2026-03 steuerpflichtig, mindert die Ersparnis nur ab dann
+c.post("/steuer/eauto", data={"betrag": "120", "ab": "2026-03"}, follow_redirects=False)
+d_st = zeitraum.laden()
+k25 = zeitraum.kennzahlen(zeitraum.aufloesen("2025"), d_st)
+kq1 = zeitraum.kennzahlen(zeitraum.aufloesen("2026-Q1"), d_st)
+check("Steuer E-Auto", "Vor Ende der Befreiung unveraendert",
+      nah(k25["kfz_steuer"], KFZ) and nah(k25["kfz_steuer_eauto"], 0), f'{k25["kfz_steuer"]:.2f}')
+check("Steuer E-Auto", "Q1 2026: nur Maerz steuerpflichtig",
+      nah(kq1["kfz_steuer_eauto"], 10.0) and nah(kq1["kfz_steuer"], KFZ * 3 / 12 - 10.0),
+      f'E-Auto {kq1["kfz_steuer_eauto"]:.2f} / Ersparnis {kq1["kfz_steuer"]:.2f}')
+check("Steuer E-Auto", "Gesamt-Ersparnis enthaelt Netto-Steuer",
+      nah(kq1["ersparnis_gesamt"], kq1["ersparnis_kraft"] + kq1["kfz_steuer"] + kq1["thg_gesamt"]))
+r = c.get("/steuer")
+check("Steuer E-Auto", "Seite zeigt Betrag und Monat", "120,00" in r.text and "2026-03" in r.text)
+r = c.get("/statistik?a=2025&b=2026-Q1")
+check("Steuer E-Auto", "Statistik zeigt Zeile E-Auto-Steuer",
+      r.status_code == 200 and "davon KFZ-Steuer E-Auto" in r.text)
+c.post("/steuer/eauto", data={"betrag": "0", "ab": ""}, follow_redirects=False)
+check("Steuer E-Auto", "0 € = wieder steuerfrei",
+      nah(zeitraum.kennzahlen(zeitraum.aufloesen("2026-Q1"), zeitraum.laden())["kfz_steuer"], KFZ * 3 / 12))
+
 kz_all = zeitraum.kennzahlen(zeitraum.aufloesen("alles"), daten)
 
 # Monatschart-Summe vs. Kennzahl Kraftstoff-Ersparnis
@@ -408,9 +430,16 @@ check("Versicherung", "Jahresbeitrag inkl. Bausteine (589,10+18-40)",
       akt and nah(akt["gesamt"], 567.10), f'{akt and akt["gesamt"]}')
 check("Versicherung", "Aenderung zum Vorjahr -23,30 €", akt and nah(akt["diff"], -23.30),
       f'{akt and akt["diff"]}')
-km12_soll = sum(KM[m] for m in MONATE if m >= "2025-09")  # letzte 12 abgeschl. Monate (Sep25–Aug26)
+# Letzte 12 abgeschlossene Monate ab heute; liegen nicht alle in den Testdaten, wird
+# wie in der App aus den vorhandenen Monaten auf 12 hochgerechnet
+_fenster = zeitraum._monatsfolge(
+    f"{heute.year - 1}-{heute.month:02d}",
+    f"{heute.year}-{heute.month - 1:02d}" if heute.month > 1 else f"{heute.year - 1}-12")
+_vorh = [KM[m] for m in _fenster if m in KM]
+km12_soll = sum(_vorh) / len(_vorh) * 12 if _vorh else None
 check("Versicherung", "Hochgerechnete Jahres-km (letzte 12 Monate)",
-      vd["km_jahr"] and nah(vd["km_jahr"], km12_soll, 1), f'{vd["km_jahr"]} / soll {km12_soll}')
+      (vd["km_jahr"] is None and km12_soll is None) or nah(vd["km_jahr"], km12_soll, 1),
+      f'{vd["km_jahr"]} / soll {km12_soll}')
 
 # ── 9. Berichte ─────────────────────────────────────────────────────────────
 mb = berichte.monatsbericht(2026, 8)
@@ -850,6 +879,81 @@ check("Push", "Export ohne Zugangsdaten enthaelt keinen Token", TOKEN not in r.t
 c.post("/einstellungen/push-token", data={"aktion": "aus"}, follow_redirects=False)
 r = c.post("/api/ladung", json=LADUNG, headers=KOPF)
 check("Push", "Empfang ausgeschaltet -> 403", r.status_code == 403)
+
+# ── Schema-Waechter: Datenbank aus einer neueren Version ──────────────────────
+def _zeilen():
+    with sqlite3.connect(db.DB_PATH) as k:
+        return {t: k.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+                for t in ("fahrten_monat", "ladevorgang", "thg_quote", "einstellungen")}
+
+
+with sqlite3.connect(db.DB_PATH) as k:
+    stand = k.execute("SELECT value FROM einstellungen WHERE key='schema_version'").fetchone()
+check("Schema", "Struktur-Stand wird gespeichert", stand and stand[0] == str(db.BASIS_SCHEMA), str(stand))
+# Sicherung im heutigen Stand – fuer den Weg zurueck per Wiederherstellung
+_alt = os.path.join(TESTDIR, "stand_heute.db")
+with sqlite3.connect(db.DB_PATH) as q, sqlite3.connect(_alt) as z:
+    q.backup(z)
+# Niedrigerer Stand wird angehoben, nie herabgesetzt
+with sqlite3.connect(db.DB_PATH) as k:
+    k.execute("UPDATE einstellungen SET value='1' WHERE key='schema_version'")
+db.init_db()
+check("Schema", "Aelterer Stand wird angehoben",
+      db.get_einstellung_str("schema_version") == str(db.BASIS_SCHEMA))
+
+vorher_z = _zeilen()
+with sqlite3.connect(db.DB_PATH) as k:
+    k.execute("UPDATE einstellungen SET value='99' WHERE key='schema_version'")
+db.init_db()
+check("Schema", "Neuere Datenbank erkannt", db.SCHEMA_ZU_NEU == 99, str(db.SCHEMA_ZU_NEU))
+fehler = [s_ for s_ in SEITEN if c.get(s_).status_code != 200]
+check("Schema", "Alle Seiten laden weiter (nur lesend)", not fehler, str(fehler))
+r = c.get("/")
+check("Schema", "Warnbanner auf dem Dashboard", "Nur lesbar" in r.text and "Struktur-Stand 99" in r.text)
+r = c.post("/fahrten", data={"monat": "2026-08", "km": "99999"}, follow_redirects=False,
+           headers={"referer": "http://testserver/fahrten"})
+check("Schema", "Formular wird abgelehnt: zurueck zur Seite mit Hinweis",
+      r.status_code == 303 and r.headers["location"].endswith("/fahrten?nicht_gespeichert=1"),
+      f'HTTP {r.status_code} {r.headers.get("location")}')
+check("Schema", "Seite zeigt \"Nicht gespeichert\"",
+      "Nicht gespeichert" in c.get("/fahrten?nicht_gespeichert=1").text)
+r = c.post("/api/ladung", json={"start": "2026-08-01T10:00", "kwh_netz": 5})
+check("Schema", "Push-Ladung wird abgelehnt (503, JSON)",
+      r.status_code == 503 and "neueren Version" in r.json()["error"], f"HTTP {r.status_code}")
+try:
+    db.set_einstellung("test_schreiben", "1")
+    gesperrt = False
+except sqlite3.OperationalError:
+    gesperrt = True
+check("Schema", "Direktes Schreiben scheitert (Verbindung nur lesend)", gesperrt)
+check("Schema", "Naechtlicher Import wird uebersprungen",
+      "Übersprungen" in webapp._auto_import()[0])
+check("Schema", "Keine Zeile veraendert", _zeilen() == vorher_z, f"{_zeilen()} / {vorher_z}")
+check("Schema", "Stand bleibt 99 (wird nicht herabgesetzt)",
+      db.get_einstellung_str("schema_version") == "99")
+# Weg zurueck: Sicherung wiederherstellen ist trotz Sperre erlaubt
+r = c.post("/api/backup/restore", files={"datei": ("b.db", open(_alt, "rb").read())},
+           data={"bestaetigt": "ja"})
+check("Schema", "Wiederherstellen trotz Sperre moeglich, danach wieder beschreibbar",
+      r.status_code == 200 and db.SCHEMA_ZU_NEU is None
+      and c.post("/fahrten", data={"monat": "2026-08", "km": str(KM["2026-08"])},
+                 follow_redirects=False).status_code == 303, f"HTTP {r.status_code}")
+check("Schema", "Kein Banner nach der Wiederherstellung", "Nur lesbar" not in c.get("/").text)
+
+# ── Release-Konsistenz: Version, Changelog, Hilfe-Anker ───────────────────────
+import version as _ver
+_cfg = open(os.path.join(REPO, "config.yaml"), encoding="utf-8").read()
+_md = open(os.path.join(REPO, "CHANGELOG.md"), encoding="utf-8").read()
+_m_cfg = re.search(r'^version:\s*"([^"]+)"', _cfg, re.M)
+_m_md = re.search(r"^## \[([^\]]+)\]", _md, re.M)
+check("Release", "VERSION = config.yaml = oberster Changelog-Eintrag = CHANGELOG.md",
+      _m_cfg and _m_md and _ver.VERSION == _m_cfg.group(1) == _ver.CHANGELOG[0]["version"] == _m_md.group(1),
+      f'{_ver.VERSION} / {_m_cfg and _m_cfg.group(1)} / {_ver.CHANGELOG[0]["version"]} / {_m_md and _m_md.group(1)}')
+_hilfe = c.get("/hilfe").text
+_anker = set(re.findall(r'id="([^"]+)"', _hilfe))
+_links = set(re.findall(r'href="#([^"]+)"', _hilfe))
+check("Release", "Hilfe: jeder Inhaltsverzeichnis-Link hat einen Anker", _links <= _anker,
+      str(sorted(_links - _anker)))
 
 # ── Ausgabe ────────────────────────────────────────────────────────────────
 ok_n = sum(1 for e in ERG if e[2])

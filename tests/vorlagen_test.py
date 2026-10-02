@@ -253,6 +253,58 @@ check("HA-Paket", "Integral-Sensoren: PV/Netz, Methode links, kWh",
       and integ["EV Ladung Netz"]["source"] == "sensor.ev_ladeleistung_netz"
       and all(s["method"] == "left" and s["unit_prefix"] == "k" for s in integ.values()))
 
+# ═══ Helfer in der Oberflaeche (vorlagen/oberflaeche, aus dem Paket gebaut) ══════
+import importlib.util
+_spec = importlib.util.spec_from_file_location(
+    "helfer_bauen", os.path.join(REPO, "vorlagen", "oberflaeche", "quellen", "bauen.py"))
+helfer_bauen = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(helfer_bauen)
+check("Helfer", "Anleitung ist aktuell – sonst vorlagen/oberflaeche/quellen/bauen.py ausführen",
+      open(helfer_bauen.ZIEL, encoding="utf-8").read() == helfer_bauen.readme())
+
+
+def leistung_ui(netz, wb, einheit="W", ersetzen=None, akku=None):
+    """Wie leistung_ha, aber mit den Helfer-Vorlagen: ohne availability, Rueckfall im Zustand."""
+    t = helfer_bauen.helfer_templates()
+    zust = {"sensor.netz": Zustand(netz, {"unit_of_measurement": einheit}),
+            "sensor.wb": Zustand(wb, {"unit_of_measurement": einheit})}
+    if akku is not None:
+        zust["sensor.akku"] = Zustand(akku, {"unit_of_measurement": "W"})
+    env = renderer(zust)
+    for uid in helfer_bauen.SENSOREN:
+        text = t[uid]["state"]
+        for alt, neu in {**ERSETZEN, **(ersetzen or {})}.items():
+            text = text.replace(alt, neu)
+        entity = "sensor." + t[uid]["name"].lower().replace(" ", "_")     # Entity-ID aus dem Namen
+        zust[entity] = Zustand(env.from_string(text).render().strip())
+    return zust["sensor.ev_ladeleistung_pv"].state, zust["sensor.ev_ladeleistung_netz"].state
+
+
+for name, netz, wb, einheit, einst, extra, s_pv, s_netz in FAELLE:
+    ersetzen = {}
+    if einst and einst.get("netz_bezug_positiv") is False:
+        ersetzen["{% set netz_bezug_positiv = true %}"] = "{% set netz_bezug_positiv = false %}"
+    if einst and einst.get("akku_als") == "netz":
+        ersetzen["{% set akku_als_netz = false %}"] = "{% set akku_als_netz = true %}"
+    pv, nz = leistung_ui(netz, wb, einheit, ersetzen, akku=5000 if extra else None)
+    check("Helfer", name, nah(pv, s_pv, 1) and nah(nz, s_netz, 1), f"PV {pv} / Netz {nz}")
+pv, nz = leistung_ui("unavailable", 7000)
+check("Helfer", "Netzsensor nicht verfügbar → alles als Netz (PV 0), nie zu viel PV",
+      nah(pv, 0, 0.5) and nah(nz, 7000, 0.5), f"{pv} / {nz}")
+pv, nz = leistung_ui(3000, "unavailable")
+check("Helfer", "Wallbox nicht verfügbar → PV 0 und Netz 0", nah(pv, 0, 0.5) and nah(nz, 0, 0.5), f"{pv} / {nz}")
+_t = helfer_bauen.helfer_templates()
+check("Helfer", "Namen ergeben die Entity-IDs des Pakets (sensor.ev_ladeleistung_*)",
+      [_t[u]["name"].lower().replace(" ", "_") for u in helfer_bauen.SENSOREN]
+      == ["ev_ladeleistung_wallbox", "ev_ladeleistung_netz", "ev_ladeleistung_pv"])
+check("Helfer", "Integral-Helfer: Eingangssensoren wie im Paket",
+      helfer_bauen.integral() == {"EV Ladung PV": "sensor.ev_ladeleistung_pv",
+                                  "EV Ladung Netz": "sensor.ev_ladeleistung_netz"})
+_md = open(helfer_bauen.ZIEL, encoding="utf-8").read()
+check("Helfer", "Anleitung enthält Platzhalter, Linke Riemann-Summe, Präfix k, Stunden",
+      all(x in _md for x in ("sensor.DEIN_NETZ", "sensor.DEINE_WALLBOX", "Linke Riemann-Summe",
+                             "k (kilo)", "Stunden", "sensor.ev_ladung_pv", "sensor.ev_ladung_netz")))
+
 # Zaehler-Variante: eine Stunde, Zaehler steigt alle 10 s, Leistung 2 kW Netz / 5 kW PV
 for einheit, faktor in (("kWh", 1), ("Wh", 1000)):
     t = templates(PAKET_Z, ERSETZEN)
@@ -416,6 +468,156 @@ check("Senden-Paket", "Mitternacht mitten im Monat: nichts senden", not ok)
 ok, _ = senden({**START, **ENDE, "binary_sensor.ev_ladesitzung": Zustand("off")},
                "mitternacht", _dt(2026, 10, 1, 0, 0))
 check("Senden-Paket", "Monatswechsel ohne Ladung: nichts senden", not ok)
+
+
+# ═══ configuration.yaml-Fassungen (aus den Paketen gebaut) ═══════════════════
+sys.path.insert(0, os.path.join(REPO, "vorlagen", "configuration_yaml", "quellen"))
+import bauen as cfg_bauen
+CFG = os.path.join(REPO, "vorlagen", "configuration_yaml")
+for name, soll in cfg_bauen.bauen().items():
+    pfad = os.path.join(CFG, name)
+    ist = open(pfad, encoding="utf-8").read() if os.path.exists(pfad) else ""
+    check("configuration.yaml", f"{name} aktuell (bauen.py gelaufen)", ist == soll)
+    paket = yaml.safe_load(open(os.path.join(REPO, "vorlagen", "homeassistant", name), encoding="utf-8"))
+    cfg = yaml.safe_load(ist) if ist else {}
+    umbenannt = {k.split(" ")[0]: v for k, v in cfg.items()}
+    check("configuration.yaml", f"{name}: gleicher Inhalt wie das Paket", umbenannt == paket,
+          f"{sorted(cfg)} / {sorted(paket)}")
+    check("configuration.yaml", f"{name}: kein Kopierschritt nach packages/",
+          "/config/packages/" not in ist)
+    check("configuration.yaml", f"{name}: sensor/automation mit eigenem Schluessel",
+          not any(k in ("sensor", "automation") for k in cfg))
+
+# ═══ Blueprint „Ladung senden“ ════════════════════════════════════════════════
+class _Input(str):
+    pass
+
+
+class _BpLoader(yaml.SafeLoader):
+    pass
+
+
+_BpLoader.add_constructor("!input", lambda l, n: _Input(l.construct_scalar(n)))
+BP = os.path.join(REPO, "vorlagen", "blueprints", "ev_tracker_ladung_senden.yaml")
+bp = yaml.load(open(BP, encoding="utf-8"), Loader=_BpLoader)
+eingaben = {}
+for gruppe in bp["blueprint"]["input"].values():
+    eingaben.update(gruppe["input"])
+
+
+def _alle_inputs(o):
+    if isinstance(o, _Input):
+        yield str(o)
+    elif isinstance(o, dict):
+        for v_ in o.values():
+            yield from _alle_inputs(v_)
+    elif isinstance(o, list):
+        for v_ in o:
+            yield from _alle_inputs(v_)
+
+
+benutzt = set(_alle_inputs({k: v_ for k, v_ in bp.items() if k != "blueprint"}))
+check("Blueprint", "Jede !input-Stelle ist als Eingabe definiert", benutzt <= set(eingaben),
+      str(benutzt - set(eingaben)))
+check("Blueprint", "Jede Eingabe wird benutzt", set(eingaben) <= benutzt, str(set(eingaben) - benutzt))
+check("Blueprint", "source_url fuer den Import gesetzt",
+      bp["blueprint"]["source_url"].endswith("vorlagen/blueprints/ev_tracker_ladung_senden.yaml"))
+rc = yaml.safe_load(open(os.path.join(REPO, "vorlagen", "blueprints", "rest_command.yaml"),
+                         encoding="utf-8"))["rest_command"]["ev_tracker_ladung"]
+check("Blueprint", "rest_command ohne Platzhalter, gleiche Nutzdaten wie das Paket",
+      "{{ url }}" in rc["url"] and "{{ token }}" in rc["headers"]["Authorization"]
+      and rc["payload"] == ps["rest_command"]["ev_tracker_ladung"]["payload"])
+
+BP_EIN = {"adresse": "http://ev/api/ladung", "token": "geheim", "zaehler_netz": "sensor.n",
+          "zaehler_pv": "sensor.p", "zaehler_kosten": "sensor.k", "speicher": "input_text.ev"}
+
+
+def bp_lauf(zust, trigger_id, jetzt, eingabe=None):
+    """Spielt die Blueprint-Automation durch. Rueckgabe: (gesendet JSON | None, Speicher)"""
+    # Standardwerte aus dem Blueprint, darueber die Testeingaben
+    ein = {**{k: v.get("default", "") for k, v in eingaben.items()}, **BP_EIN, **(eingabe or {})}
+    env = renderer_s(zust, jetzt)
+    env.filters["from_json"] = json.loads
+    trig = {"id": trigger_id}
+    v = {}
+    for k, t in bp["variables"].items():
+        v[k] = str(ein[t]) if isinstance(t, _Input) else ha_wert_s(env.from_string(t).render(trigger=trig, **v))
+        if k == "gemerkt" and isinstance(v[k], str):
+            import ast
+            v[k] = ast.literal_eval(v[k])
+    v["monatswechsel"] = v["monatswechsel"] == "True"
+    speicher, gesendet = zust.get(ein["speicher"], Zustand("")).state, None
+    for schritt in bp["actions"]:
+        if env.from_string(schritt["if"][0]["value_template"]).render(trigger=trig, **v).strip() != "True":
+            continue
+        for a in schritt["then"]:
+            if "variables" in a:
+                for k, t in a["variables"].items():
+                    v[k] = ha_wert_s(env.from_string(t).render(trigger=trig, **v))
+            elif "if" in a:
+                if env.from_string(a["if"][0]["value_template"]).render(**v).strip() == "True":
+                    daten = {k: ha_wert_s(env.from_string(t).render(**v))
+                             for k, t in a["then"][0]["data"].items()}
+                    gesendet = {"url": daten["url"], "token": daten["token"],
+                                **json.loads(env.from_string(rc["payload"]).render(**daten))}
+            elif a["action"] == "input_text.set_value":
+                speicher = env.from_string(a["data"]["value"]).render(**v).strip()
+    return gesendet, speicher
+
+
+T_START = _dt(2026, 9, 24, 22, 10)
+STAENDE = {"sensor.n": Zustand("100.0"), "sensor.p": Zustand("25.0"), "sensor.k": Zustand("34.0")}
+_, sp = bp_lauf(STAENDE, "start", T_START)
+gem = json.loads(sp)
+check("Blueprint", "Ladebeginn: Staende im Text-Helfer (max. 255 Zeichen)",
+      gem == {"start": "2026-09-24 22:10:00", "netz": 100.0, "pv": 25.0, "kosten": 34.0}
+      and len(sp) <= 255, sp)
+ENDE_BP = {"sensor.n": Zustand("120.5"), "sensor.p": Zustand("30.2"), "sensor.k": Zustand("40.1"),
+           "input_text.ev": Zustand(sp)}
+j, sp2 = bp_lauf(ENDE_BP, "ende", _dt(2026, 9, 25, 5, 30))
+check("Blueprint", "Ladeende: 20,5 kWh Netz, 5,2 kWh PV, 6,10 €, Adresse und Token",
+      j and j["url"] == "http://ev/api/ladung" and j["token"] == "geheim"
+      and j["start"] == "2026-09-24 22:10:00" and j["ende"] == "2026-09-25 05:30:00"
+      and nah(j["kwh_netz"], 20.5) and nah(j["kwh_pv"], 5.2) and nah(j["kosten"], 6.1), str(j))
+check("Blueprint", "Nach dem Ladeende ist nichts mehr offen", sp2 == "{}", sp2)
+j, _ = bp_lauf({**ENDE_BP, "input_text.ev": Zustand("unknown")}, "ende", _dt(2026, 9, 25, 5, 30))
+check("Blueprint", "Ohne gemerkten Ladebeginn: nichts senden", j is None, str(j))
+j, _ = bp_lauf({**ENDE_BP, "sensor.n": Zustand("100.01"), "sensor.p": Zustand("25.0")},
+               "ende", _dt(2026, 9, 25, 5, 30))
+check("Blueprint", "Unter 0,05 kWh: nichts senden", j is None, str(j))
+j, _ = bp_lauf(ENDE_BP, "ende", _dt(2026, 9, 25, 5, 30), {"zaehler_kosten": ""})
+check("Blueprint", "Ohne Kostenzaehler: kosten = null", j and j["kosten"] is None, str(j))
+j, sp3 = bp_lauf(ENDE_BP, "mitternacht", _dt(2026, 10, 1, 0, 0))
+check("Blueprint", "Monatswechsel mit offener Ladung: Teil senden und neu merken",
+      j and nah(j["kwh_netz"], 20.5) and json.loads(sp3)["start"] == "2026-10-01 00:00:00"
+      and json.loads(sp3)["netz"] == 120.5, f"{j} / {sp3}")
+j, sp4 = bp_lauf(ENDE_BP, "mitternacht", _dt(2026, 9, 25, 0, 0))
+check("Blueprint", "Mitternacht mitten im Monat: nichts", j is None and sp4 == sp, str(j))
+j, sp5 = bp_lauf({**ENDE_BP, "input_text.ev": Zustand("{}")}, "mitternacht", _dt(2026, 10, 1, 0, 0))
+check("Blueprint", "Monatswechsel ohne Ladung: nichts", j is None and sp5 == "{}", str(j))
+# Mehrere Fahrzeuge: Kennung geht mit, ohne Angabe leer (= Hauptfahrzeug)
+j, _ = bp_lauf(ENDE_BP, "ende", _dt(2026, 9, 25, 5, 30))
+check("Blueprint", "Ohne Fahrzeug-Angabe: fahrzeug leer (Hauptfahrzeug)", j and j["fahrzeug"] == "", str(j))
+j, _ = bp_lauf(ENDE_BP, "ende", _dt(2026, 9, 25, 5, 30), {"fahrzeug": "2"})
+# HA wandelt "2" in eine Zahl – der EV Tracker nimmt "2", 2 und 2.0 (siehe Funktionstest)
+check("Blueprint", "Fahrzeug-Kennung wird mitgeschickt", j and j["fahrzeug"] in ("2", 2, 2.0), str(j))
+AUTO = {"zaehler_kosten": "", "auto_laedt": "sensor.auto_status", "auto_laedt_zustand": "on, Laden"}
+_, sp6 = bp_lauf({**STAENDE, "sensor.auto_status": Zustand("off")}, "start", T_START, AUTO)
+check("Blueprint", "Gemeinsame Wallbox: anderes Auto lädt -> Ladung nicht gemerkt", sp6 == "", sp6)
+_, sp7 = bp_lauf({**STAENDE, "sensor.auto_status": Zustand("Laden")}, "start", T_START, AUTO)
+check("Blueprint", "Gemeinsame Wallbox: dieses Auto lädt (Zustand aus Liste) -> gemerkt",
+      sp7.startswith("{") and json.loads(sp7)["start"] == "2026-09-24 22:10:00", sp7)
+_, sp8 = bp_lauf(STAENDE, "start", T_START, {"auto_laedt": ""})
+check("Blueprint", "Ohne Lade-Sensor gehört jede Ladung zu diesem Fahrzeug", sp8.startswith("{"), sp8)
+pkt = yaml.safe_load(open(PAKET_S, encoding="utf-8"))
+daten_pkt = pkt["automation"][0]["action"][0]["then"][1]["then"][0]["data"]
+check("Senden-Paket", "Paket schickt Feld fahrzeug (leer = Hauptfahrzeug)",
+      "fahrzeug" in daten_pkt and daten_pkt["fahrzeug"] == "", str(daten_pkt.keys()))
+env_ = renderer_s({}, _dt.now())
+vt = bp["triggers"][0]["value_template"]
+check("Blueprint", "Ladeleistung in kW wird in W umgerechnet",
+      env_.from_string(vt).render(state={"state": "7.2", "attributes": {"unit_of_measurement": "kW"}}).strip()
+      == "7200.0")
 
 # ── Ausgabe ──────────────────────────────────────────────────────────────────
 ok_n = sum(1 for e in ERG if e[2])

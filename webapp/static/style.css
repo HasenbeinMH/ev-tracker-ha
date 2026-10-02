@@ -323,6 +323,7 @@ main a:not([class]):hover { color: #a9c4e2; }
 .sim-banner { background: #c4963a14; border: 1px solid #c4963a66; border-radius: 8px;
   padding: 8px 14px; margin-bottom: 14px; font-size: 13px; }
 .sim-banner b { color: var(--gelb); }
+.warn-banner { background: #d0603a14; border-color: #d0603a88; }
 details.erweitert { margin: 18px 0 6px; }
 details.erweitert > summary { cursor: pointer; color: var(--muted); font-size: 13px; }
 details.erweitert > summary:hover { color: var(--text); }
@@ -357,3 +358,19 @@ progress { width: 100%; height: 6px; accent-color: var(--blau); }
 .tabelle-scroll { overflow-x: auto; }
 td input { width: 90px; padding: 4px 6px; font-size: 12px; }
 td input.breit { width: 100%; min-width: 130px; }
+
+/* Fahrzeug-Umschalter (mehrere Fahrzeuge) */
+.fz-wahl { margin-left: auto; display: flex; align-items: center; }
+.fz-wahl select { background: var(--card); color: var(--text); border: 1px solid var(--border2);
+  border-radius: 6px; padding: 4px 8px; font-size: 13px; max-width: 200px; }
+nav .fz-wahl + a.version { margin-left: 12px; }
+/* Sprachumschalter DE | EN – aendert die globale Einstellung "sprache" */
+.sprachwahl { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+nav .fz-wahl + .sprachwahl { margin-left: 12px; }
+nav .sprachwahl + a.version { margin-left: 6px; }
+.sprachwahl button { background: none; border: 1px solid transparent; color: var(--muted);
+  font-size: 11px; font-weight: 600; padding: 3px 6px; border-radius: 5px; cursor: pointer; margin: 0; }
+.sprachwahl button:hover { color: var(--text); }
+.sprachwahl button.aktiv { color: var(--text); border-color: var(--border2); cursor: default; }
+.unsichtbar { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.je-fahrzeug td.z, .je-fahrzeug th.z { text-align: right; white-space: nowrap; }
