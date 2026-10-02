@@ -47,7 +47,15 @@ def _delta_text(aktuell, vorher, nachkommastellen=0, einheit="", besser=None):
 # ── Datensammlung ────────────────────────────────────────────────────────────
 
 def _zeitraum_kennzahlen(von: str, bis: str, monate: list) -> dict:
-    """Kennzahlen für einen Zeitraum. `monate` sind die enthaltenen 'YYYY-MM'."""
+    """Kennzahlen für einen Zeitraum. `monate` sind die enthaltenen 'YYYY-MM'.
+    Mehrere Fahrzeuge in der Gesamtsicht: je Fahrzeug gerechnet und zusammengefasst,
+    die Einzelwerte stehen unter "je_fahrzeug"."""
+    if db.aktuelles_fahrzeug() is None:
+        je = []
+        for fz in db.fahrzeuge():
+            with db.fahrzeug_kontext(fz["id"]):
+                je.append((fz, _zeitraum_kennzahlen(von, bis, monate)))
+        return _summe([k for _, k in je], je)
     cfg = db.get_config()
     lade = berechnung.ladevorgaenge(von, bis)
     thg = db.get_thg_zeitraum(von, bis)
@@ -99,9 +107,38 @@ def _zeitraum_kennzahlen(von: str, bis: str, monate: list) -> dict:
     }
 
 
+def _summe(liste: list, je: list) -> dict:
+    """Berichtswerte mehrerer Fahrzeuge: Summen addiert, Verhaeltnisse neu gebildet."""
+    s = {k: sum(x[k] for x in liste) for k in
+         ("km", "kwh", "ladevorgaenge", "strom_kosten", "benzin_kosten", "ersparnis",
+          "thg", "liter", "co2")}
+    nach_anbieter = {}
+    for x in liste:
+        for name, a in x["nach_anbieter"].items():
+            z = nach_anbieter.setdefault(name, {"kwh": 0.0, "kosten": 0.0, "anzahl": 0})
+            for k in z:
+                z[k] += a[k]
+    preise = [x["avg_benzin"] for x in liste if x["avg_benzin"]]
+    return {
+        **s,
+        "avg_benzin": s["benzin_kosten"] / s["liter"] if s["liter"] else (preise[0] if preise else None),
+        "verbrauch": (s["kwh"] / s["km"] * 100) if s["km"] > 0 else None,
+        "kosten_pro_100km": (s["strom_kosten"] / s["km"] * 100) if s["km"] > 0 else None,
+        "nach_anbieter": nach_anbieter,
+        "je_fahrzeug": [{"name": fz["name"], **k} for fz, k in je],
+    }
+
+
 def _sim_zusatz() -> str:
-    """Im Simulationsmodus steht das im Titel – auch im Betreff der Mail."""
-    return " (Simulation)" if db.get_config()["simulation"] else ""
+    """Im Simulationsmodus steht das im Titel – auch im Betreff der Mail. Bei mehreren
+    Fahrzeugen der Name des gewaehlten bzw. "alle Fahrzeuge"."""
+    zusatz = " (Simulation)" if db.get_config()["simulation"] else ""
+    if db.mehrere_fahrzeuge() and len(db.sichtbare_ids()) > 1:
+        fid = db.aktuelles_fahrzeug()
+        name = ("alle Fahrzeuge" if fid is None
+                else next((f["name"] for f in db.fahrzeuge() if f["id"] == fid), ""))
+        zusatz += f" – {name}"
+    return zusatz
 
 
 def monatsbericht(jahr: int, monat: int) -> dict:
@@ -227,6 +264,21 @@ def als_html(bericht: dict) -> str:
                          '<th class="z">Energie</th><th class="z">Kosten</th></tr>'
                          + reihen + '</table>')
 
+    fahrzeug_html = ""
+    if len(d.get("je_fahrzeug") or []) > 1:
+        reihen = "".join(
+            f'<tr><td>{x["name"]}</td><td class="z">{fmt(x["km"], 0)}</td>'
+            f'<td class="z">{fmt(x["kwh"], 1)}</td>'
+            f'<td class="z">{fmt(x["strom_kosten"], 2)}</td>'
+            f'<td class="z {"gruen" if x["ersparnis"] >= 0 else "rot"}">'
+            f'{fmt(x["ersparnis"], 2)}</td></tr>'
+            for x in d["je_fahrzeug"])
+        fahrzeug_html = ('<h2>Je Fahrzeug</h2><table>'
+                         '<tr><th>Fahrzeug</th><th class="z">km</th><th class="z">kWh</th>'
+                         '<th class="z">Kosten &euro;</th>'
+                         '<th class="z">Ersparnis &euro;</th></tr>'
+                         + reihen + '</table>')
+
     monats_html = ""
     if bericht.get("monate"):
         reihen = "".join(
@@ -253,7 +305,7 @@ def als_html(bericht: dict) -> str:
            f'&#9888; {bericht["hinweis"]}</div>' if bericht.get("hinweis") else '')
         + f'<div style="margin:0 -1%">{kacheln}</div>'
         f'<h2>Kennzahlen</h2><table>{tabelle}</table>'
-        f'{anbieter_html}{monats_html}</div>'
+        f'{fahrzeug_html}{anbieter_html}{monats_html}</div>'
         f'<div class="fuss">Automatisch erstellt vom EV Tracker am '
         f'{date.today().strftime("%d.%m.%Y")}.</div>'
         '</div></body></html>')

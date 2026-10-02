@@ -3,6 +3,20 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [3.0.0] - 2026-10-02
+### Mehrere E-Autos
+- Einstellungen → Fahrzeuge: Schalter "Ein Fahrzeug / Mehrere Fahrzeuge". Standard bleibt "Ein Fahrzeug" – dann sieht und rechnet alles genau wie bisher, an Daten und Einstellungen aendert sich nichts
+- Mehrere Fahrzeuge: je Auto eigene km, Ladungen, Akku-Verbrauch, THG, Instandhaltung, Versicherung, KFZ-Steuer, Vergleichs-Verbrenner, Bild und Kilometer-/Batteriesensor; Stromtarif, Kraftstoffpreise und PV-Preis gelten fuer alle
+- Umschalter oben rechts: einzelnes Fahrzeug oder "Alle Fahrzeuge" – die Gesamtsicht rechnet jedes Auto mit seinen eigenen Vergleichswerten und addiert, mit Tabelle je Fahrzeug; Verbrauch und Preise aus den Summen, nie gemittelt. Monats- und Jahresbericht mit Abschnitt je Fahrzeug
+- Heimladung je Fahrzeug waehlbar: gemeinsame Wallbox (Monatssumme nach km verteilt), gemeinsame Wallbox mit Einzelladungen per Push (Rest nach km), gemeinsame Wallbox mit Zuordnung ueber den Akkustand (jede Wallbox-Stunde dem Auto, dessen Akkustand gerade stieg; Rest nach km) oder eigene Zaehler. Gemeinsame Ladetarife: Grundgebuehr nach km verteilt
+- Push-Schnittstelle, Vorlage ev_ladung_senden.yaml und Blueprint: optionales Feld "fahrzeug" (id oder Name); Blueprint mit "Laedt dieses Auto?" fuer eine gemeinsame Wallbox
+- Umschalten auf "Mehrere" legt vorher eine Sicherung an (vor_mehrere_fahrzeuge_….db) und stellt zwei Tabellen in einer Transaktion um – mit Pruefsummen, bei Abweichung wird zurueckgerollt
+- Zurueck auf "Ein Fahrzeug" loescht nie Daten: die anderen Fahrzeuge werden nur ausgeblendet, nichts mehr importiert, Push-Ladungen fuer sie abgelehnt. Loeschen nur ausdruecklich mit Namenseingabe und Sicherung
+- Achtung: nach dem Umschalten auf "Mehrere" kann eine Version vor 3.0 die Datenbank nur noch lesen – zurueck ueber die Sicherung. Wer bei einem Fahrzeug bleibt, ist nicht betroffen
+- Einstellungs-Export/-Import mit Fahrzeugliste; ein Import mit "Mehrere" baut die Datenbank vorher um (mit Sicherung)
+- Hilfe: neuer Abschnitt "Mehrere Fahrzeuge", Einrichtung und FAQ ergaenzt; Kontaktadresse ev-tracker@email.de unter "Unterstuetzen"
+- Neue Tests: fahrzeuge_test.py (Umschalten, Gesamtsicht, Verteilung, Push, Ausblenden, Loeschen, Abbruch des Umbaus, sichtbarer Text wie 2.16), migrationstest.py und oberflaeche_test.py (Browser) erweitert
+
 ## [2.16.0] - 2026-10-02
 ### Schutz vor Downgrade, Versicherungstest datumsunabhaengig
 - Vorbereitung fuer mehrere Fahrzeuge: die Datenbank merkt sich ihren Struktur-Stand. Stammt sie aus einer neueren Version des EV Trackers, wird sie nur lesend geoeffnet – Seiten bleiben sichtbar, aber nichts wird gespeichert, importiert oder per Mail verschickt. Schuetzt vor still falschen Zahlen nach einem Downgrade

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titel %}Versicherung{% endblock %}
 {% block inhalt %}
+{% from "_fahrzeug.html" import fahrzeug_feld, fahrzeug_name_von with context %}
 <h1>🛡️ KFZ-Versicherung</h1>
 <p class="hint">Je Versicherungsjahr ein Eintrag. Bei neuem Beitrag, neuer SF-Klasse oder Wechsel
   der Gesellschaft einen neuen Eintrag mit neuem „gültig ab“ anlegen – der alte bleibt als Verlauf
@@ -80,6 +81,7 @@
     <label class="feld">Notiz
       <input name="notiz" id="v-notiz" placeholder="optional">
     </label>
+    {{ fahrzeug_feld(id="v-fahrzeug_id") }}
     <button type="submit" id="v-senden">➕ Hinzufügen</button>
     <button type="button" class="secondary" id="v-abbrechen" style="display:none"
             onclick="location.reload()">✕ Abbrechen</button>

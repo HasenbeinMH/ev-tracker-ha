@@ -2,10 +2,132 @@
 {% block titel %}Einstellungen{% endblock %}
 {% block inhalt %}
 <h1>⚙️ Einstellungen</h1>
+{% if meldung %}<div class="sim-banner" role="status">{{ meldung }}</div>{% endif %}
 
-<h2>Berechnungsparameter</h2>
+<h2 id="fahrzeuge">🚗 Fahrzeuge</h2>
 <div class="card">
+  <form class="inline" method="post" action="einstellungen/fahrzeuge/modus" id="fz-modus-form">
+    <label class="feld">Wie viele E-Autos erfasst du?
+      <select name="modus" id="fz-modus">
+        <option value="ein" {% if not mehrere %}selected{% endif %}>Ein Fahrzeug</option>
+        <option value="mehrere" {% if mehrere %}selected{% endif %}>Mehrere Fahrzeuge</option>
+      </select>
+    </label>
+    {% if mehrere and fahrzeuge_alle | length > 1 %}
+    <label class="feld" id="fz-haupt-feld">Bei einem Fahrzeug weiter anzeigen
+      <select name="haupt">
+        {% for f in fahrzeuge_alle %}
+        <option value="{{ f.id }}" {% if f.id == hauptfahrzeug %}selected{% endif %}>{{ f.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endif %}
+    <button type="submit">💾 Übernehmen</button>
+  </form>
+  <p class="hint">
+    {% if not mehrere %}
+    <b>Ein Fahrzeug</b>: alles wie gewohnt.
+    {% if fahrzeuge_alle | length > 1 %}{{ fahrzeuge_alle | length - 1 }} weitere(s) Fahrzeug(e) ausgeblendet –
+    ihre Daten bleiben vollständig erhalten und sind nach dem Umschalten auf „Mehrere“ sofort wieder da.{% endif %}
+    „Mehrere Fahrzeuge“ legt vorher automatisch eine Sicherung der Datenbank an und stellt zwei Tabellen
+    um. Danach kann eine ältere Version des Add-ons die Datenbank nur noch lesen (zurück nur über
+    eine Sicherung). Zurückschalten auf „Ein Fahrzeug“ geht jederzeit und löscht nichts.
+    {% else %}
+    <b>Mehrere Fahrzeuge</b>: oben rechts wählst du das Fahrzeug oder „Alle Fahrzeuge“ (Summe).
+    Zurück auf „Ein Fahrzeug“ löscht nichts – die anderen werden nur ausgeblendet.
+    {% endif %}
+  </p>
+  <script>
+  document.getElementById("fz-modus-form").addEventListener("submit", function (e) {
+    const neu = document.getElementById("fz-modus").value;
+    {% if not mehrere %}
+    if (neu === "mehrere" && !confirm("Mehrere Fahrzeuge einschalten?\n\nVorher wird die Datenbank gesichert. " +
+        "Danach kann eine ältere Add-on-Version sie nur noch lesen (zurück nur über die Sicherung).")) e.preventDefault();
+    {% else %}
+    if (neu === "ein" && !confirm("Auf ein Fahrzeug umschalten?\n\nEs wird nichts gelöscht – " +
+        "die anderen Fahrzeuge werden nur ausgeblendet.")) e.preventDefault();
+    {% endif %}
+  });
+  </script>
+
+  {% if mehrere %}
+  <div class="tabelle-scroll"><table>
+    <tr><th>Fahrzeug</th><th>Heimladung</th><th>Eingeblendet</th><th>Haupt&shy;fahrzeug</th><th></th><th></th></tr>
+    {% for f in fahrzeuge_alle %}
+    {# Felder ueber form="…" mit dem Formular verbunden – ein <form> darf nicht direkt in <tr> stehen #}
+    {% set fid = "fz-" ~ f.id %}
+    <tr>
+      <td><input form="{{ fid }}" name="name" value="{{ f.name }}" required style="width:150px"
+                 aria-label="Name"></td>
+      <td><select form="{{ fid }}" name="heimladung" aria-label="Heimladung">
+        {% for k, text in heimladung_modi.items() %}
+        <option value="{{ k }}" {% if f.heimladung == k %}selected{% endif %}>{{ text }}</option>
+        {% endfor %}
+      </select>
+      {% if f.heimladung == "akku" and f.ohne_akku %}<div class="gelb" style="font-size:12px">⚠ Kein
+        Batteriesensor eingetragen – ohne Akkustand wird nach km aufgeteilt.</div>{% endif %}</td>
+      <td>{% if f.id == hauptfahrzeug %}<input type="checkbox" checked disabled title="Das Hauptfahrzeug ist immer eingeblendet">
+          <input form="{{ fid }}" type="hidden" name="aktiv" value="1">
+          {% else %}<input form="{{ fid }}" type="checkbox" name="aktiv" value="1" {% if f.aktiv %}checked{% endif %}
+                 aria-label="Eingeblendet">{% endif %}</td>
+      <td>{% if f.id == hauptfahrzeug %}<input type="checkbox" checked disabled title="Hauptfahrzeug">
+          {% else %}<input form="{{ fid }}" type="checkbox" name="haupt" value="1" aria-label="Hauptfahrzeug">{% endif %}</td>
+      <td><form method="post" action="einstellungen/fahrzeuge/aendern" id="{{ fid }}">
+            <input type="hidden" name="id" value="{{ f.id }}">
+            <button type="submit" class="secondary" title="Speichern">💾</button>
+          </form></td>
+      <td>
+        {% if f.id != hauptfahrzeug %}
+        <form method="post" action="einstellungen/fahrzeuge/loeschen" class="fz-loeschen"
+              data-name="{{ f.name }}">
+          <input type="hidden" name="id" value="{{ f.id }}">
+          <input type="hidden" name="bestaetigung" value="">
+          <button class="danger" title="Fahrzeug mit allen Daten löschen">🗑</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  <form class="inline" method="post" action="einstellungen/fahrzeuge/neu" style="margin-top:10px">
+    <label class="feld">Neues Fahrzeug
+      <input name="name" placeholder="z.B. Zweitwagen" required style="width:160px">
+    </label>
+    <button type="submit">➕ Anlegen</button>
+  </form>
+  <p class="hint">
+    <b>Heimladung</b>: <i>Gemeinsame Wallbox</i> – die Zähler unten unter „Sensoren“ gehören allen
+    Fahrzeugen damit; die Monatssumme wird nach den gefahrenen km aufgeteilt (eine Schätzung).
+    Mit <i>Einzelladungen per Push</i> schickt Home Assistant jede Ladung mit Fahrzeug-Kennung
+    (Blueprint/Vorlage), aufgeteilt wird nur der Rest. Mit <i>Zuordnung über den Akkustand</i> bekommt
+    jede Wallbox-Stunde das Auto, dessen Akkustand gerade stieg (Batteriesensor nötig); was nicht
+    eindeutig ist, wird nach km verteilt. <i>Eigene Zähler</i>: das Fahrzeug hat eigene
+    kWh-Zähler (eigene Wallbox) – sie stehen unter „Sensoren“, wenn dieses Fahrzeug gewählt ist.
+    <br><b>Ausblenden</b> statt löschen: Daten bleiben, es wird nichts mehr importiert. Löschen
+    entfernt das Fahrzeug mit allen Daten (vorher wird gesichert).
+  </p>
+  <script>
+  document.querySelectorAll(".fz-loeschen").forEach(function (form) {
+    form.addEventListener("submit", function (e) {
+      const name = form.dataset.name;
+      const eingabe = prompt("„" + name + "“ mit ALLEN Daten (Fahrten, Ladungen, THG, Instandhaltung, " +
+                             "Versicherung) löschen?\n\nZur Bestätigung den Namen eintippen:");
+      if (eingabe === null || eingabe.trim() !== name) { e.preventDefault(); return; }
+      form.querySelector("[name=bestaetigung]").value = eingabe.trim();
+    });
+  });
+  </script>
+  {% endif %}
+</div>
+
+<h2>Berechnungsparameter{% if mehrere and fahrzeuge | length > 1 %} · {{ fahrzeug_name or "Fahrzeug" }}{% endif %}</h2>
+<div class="card">
+  {% if mehrere and fahrzeuge | length > 1 and fahrzeug_aktuell is none %}
+  <p class="hint" style="margin-top:0">Gesamtsicht gewählt – die Werte gelten für das Hauptfahrzeug.
+    Für ein anderes Fahrzeug oben rechts umschalten. Der PV-Preis gilt für alle.</p>
+  {% endif %}
   <form class="inline" method="post" action="einstellungen/parameter">
+    {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ einstellungs_fahrzeug }}">{% endif %}
     <label class="feld">Fahrzeugname
       <input name="fahrzeug_name" value="{{ fahrzeug_name }}" placeholder="z.B. Mein Elektroauto" style="width:160px">
     </label>
@@ -75,7 +197,7 @@
   Vorlage: <a href="{{ n.url }}" target="_blank" rel="noopener">{{ n.titel }}</a> von {{ n.autor }},
   <a href="{{ n.lizenz_url }}" target="_blank" rel="noopener">{{ n.lizenz }}</a>, bearbeitet
 {%- endmacro %}
-<h2 id="fahrzeugbild">Fahrzeugbild</h2>
+<h2 id="fahrzeugbild">Fahrzeugbild{% if mehrere and fahrzeuge | length > 1 %} · {{ fahrzeug_name or "Fahrzeug" }}{% endif %}</h2>
 <div class="card">
   <p class="hint" style="margin-top:0">
     Bild im Kopf des Dashboards, neben dem Fahrzeugnamen von oben. JPG, PNG oder WebP, max. 8 MB.
@@ -84,7 +206,7 @@
     <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/fahrzeugbilder" target="_blank" rel="noopener">Fahrzeugbilder</a>.
   </p>
   <div class="inline">
-    <img id="auto-vorschau" src="api/auto-bild?v={{ bild_v }}" alt="Aktuelles Fahrzeugbild"
+    <img id="auto-vorschau" src="api/auto-bild?v={{ bild_v }}&fz={{ einstellungs_fahrzeug }}" alt="Aktuelles Fahrzeugbild"
          style="height:60px; border-radius:8px; object-fit:cover">
     <label class="feld">Neues Bild
       <input type="file" id="auto-bild-datei" accept=".jpg,.jpeg,.png,.webp">
@@ -180,6 +302,7 @@
 
 <h2>Home Assistant & Datenbank</h2>
 <form method="post" action="einstellungen/ha">
+  {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ einstellungs_fahrzeug }}">{% endif %}
 <div class="card">
   <div class="inline" style="display:flex; flex-wrap:wrap; gap:10px">
     <label class="feld">Datenquelle
@@ -208,7 +331,15 @@
     vielen echten Installationen erprobt – Rückmeldungen (auch „läuft“) bitte als Issue auf GitHub.</span>
   </p>
 
-  <h2>Sensoren</h2>
+  <h2>Sensoren{% if mehrere and fahrzeuge | length > 1 %} · {{ fahrzeug_name or "Fahrzeug" }}{% endif %}</h2>
+  {% if mehrere and fahrzeuge | length > 1 %}
+  <div class="sim-banner" style="margin-top:0">🚗 <b>Mehrere Fahrzeuge:</b>
+    Kilometerstand und Batteriestand gehören zu <b>{{ fahrzeug_name or "diesem Fahrzeug" }}</b>.
+    {% if heimladung == "eigen" %}PV/Netz ins Auto und Kosten sind die <b>eigenen Zähler</b> dieses Fahrzeugs.
+    {% else %}PV/Netz ins Auto und Kosten sind die Zähler der <b>gemeinsamen Wallbox</b> – gleich für alle
+    Fahrzeuge mit gemeinsamer Wallbox.{% endif %}
+    Die Kraftstoffpreise gelten für alle. Für ein anderes Fahrzeug oben rechts umschalten.</div>
+  {% endif %}
   <p class="hint">
     Wichtig: Bei den kWh-Feldern die Sensoren eintragen, die <strong>ins Auto geladene</strong>
     Energie zählen – nicht die gesamte PV-Erzeugung oder den Hausnetzbezug.

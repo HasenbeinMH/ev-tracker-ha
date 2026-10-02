@@ -21,4 +21,4 @@ rest_command:
     timeout: 20
     payload: >-
       {{ {"start": start, "ende": ende, "kwh_netz": kwh_netz, "kwh_pv": kwh_pv,
-          "kosten": kosten} | to_json }}
+          "kosten": kosten, "fahrzeug": fahrzeug | default("")} | to_json }}

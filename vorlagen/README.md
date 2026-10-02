@@ -142,6 +142,9 @@ Monatssumme.
 Anleitung: [`blueprints/README.md`](blueprints/README.md). Nur **einen** Weg nutzen – Paket
 oder Blueprint –, sonst kommt jede Ladung doppelt an.
 
+- **Mehrere Fahrzeuge** im EV Tracker: im Paket bei `fahrzeug: ""` die id oder den Namen des
+  Fahrzeugs eintragen (je Fahrzeug eine Kopie mit eigenen Namen für Helfer und Automation) –
+  einfacher geht es mit dem Blueprint (Abschnitt „Mehrere Fahrzeuge“).
 - Nutzt die Zähler der PV-Anteil-Vorlagen (`sensor.ev_ladung_netz`, `sensor.ev_ladung_pv`)
   und – falls vorhanden – den Kostenzähler aus `ev_netzkosten.yaml`.
 - Eine Ladung beginnt ab 50 W für 1 Minute und endet nach 15 Minuten ohne Leistung. Mit

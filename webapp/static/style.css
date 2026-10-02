@@ -358,3 +358,11 @@ progress { width: 100%; height: 6px; accent-color: var(--blau); }
 .tabelle-scroll { overflow-x: auto; }
 td input { width: 90px; padding: 4px 6px; font-size: 12px; }
 td input.breit { width: 100%; min-width: 130px; }
+
+/* Fahrzeug-Umschalter (mehrere Fahrzeuge) */
+.fz-wahl { margin-left: auto; display: flex; align-items: center; }
+.fz-wahl select { background: var(--card); color: var(--text); border: 1px solid var(--border2);
+  border-radius: 6px; padding: 4px 8px; font-size: 13px; max-width: 200px; }
+nav .fz-wahl + a.version { margin-left: 12px; }
+.unsichtbar { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.je-fahrzeug td.z, .je-fahrzeug th.z { text-align: right; white-space: nowrap; }

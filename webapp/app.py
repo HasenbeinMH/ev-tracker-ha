@@ -88,6 +88,58 @@ async def schreibsperre(request: Request, call_next):
     return await call_next(request)
 
 
+def _fahrzeug_wert(roh) -> int | str | None:
+    """'alle' oder eine Fahrzeug-id aus Cookie/Formular; Unbekanntes -> None."""
+    roh = str(roh or "").strip()
+    if roh == db.ALLE:
+        return db.ALLE
+    return int(roh) if roh.isdigit() else None
+
+
+@app.middleware("http")
+async def fahrzeug_waehlen(request: Request, call_next):
+    """Mehrere Fahrzeuge: gewaehltes Fahrzeug (?fahrzeug=… oder Cookie) als Kontext der
+    Anfrage. Ein ?fahrzeug=… merkt sich die Auswahl im Cookie. Bei einem Fahrzeug
+    wirkt das nicht – dann gilt immer das Hauptfahrzeug."""
+    neu = _fahrzeug_wert(request.query_params.get("fahrzeug"))
+    db.setze_fahrzeug(neu if neu is not None else _fahrzeug_wert(request.cookies.get("fahrzeug")))
+    antwort = await call_next(request)
+    if neu is not None:
+        antwort.set_cookie("fahrzeug", str(neu), max_age=365 * 24 * 3600, samesite="lax")
+    return antwort
+
+
+def mit_fahrzeug(func):
+    """Formular-Endpunkt: optionales Feld fahrzeug_id waehlt das Fahrzeug, fuer das
+    gespeichert wird (sonst das gewaehlte bzw. Hauptfahrzeug)."""
+    import functools
+    import inspect
+    from contextlib import nullcontext
+
+    def kontext(wert):
+        fid = _fahrzeug_wert(wert)
+        if isinstance(fid, int) and fid in [f["id"] for f in db.fahrzeuge(alle=True)]:
+            return db.fahrzeug_kontext(fid)
+        return nullcontext()
+
+    if inspect.iscoroutinefunction(func):
+        @functools.wraps(func)
+        async def wrapper(*args, fahrzeug_id: str = "", **kwargs):
+            with kontext(fahrzeug_id):
+                return await func(*args, **kwargs)
+    else:
+        @functools.wraps(func)
+        def wrapper(*args, fahrzeug_id: str = "", **kwargs):
+            with kontext(fahrzeug_id):
+                return func(*args, **kwargs)
+    sig = inspect.signature(func)
+    wrapper.__signature__ = sig.replace(parameters=[
+        *sig.parameters.values(),
+        inspect.Parameter("fahrzeug_id", inspect.Parameter.KEYWORD_ONLY,
+                          default=Form(""), annotation=str)])
+    return wrapper
+
+
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 templates.env.globals["MONATE"] = MONATE
@@ -105,6 +157,12 @@ def render(request, template, **ctx):
     ctx.setdefault("simulation", cfg["simulation"])
     ctx.setdefault("schema_zu_neu", db.SCHEMA_ZU_NEU)
     ctx.setdefault("nicht_gespeichert", request.query_params.get("nicht_gespeichert") == "1")
+    # Mehrere Fahrzeuge: Liste fuer Umschalter und Formularfeld, gewaehltes (None = alle)
+    ctx.setdefault("mehrere", db.mehrere_fahrzeuge())
+    ctx.setdefault("fahrzeuge", db.fahrzeuge())
+    ctx.setdefault("fahrzeug_aktuell", db.aktuelles_fahrzeug())
+    ctx.setdefault("gesamtsicht", ctx["mehrere"] and ctx["fahrzeug_aktuell"] is None
+                   and len(ctx["fahrzeuge"]) > 1)
     # Versionsmarke fuer api/auto-bild: aendert sich mit jedem Bildwechsel, damit der
     # Browser nicht das alte Bild aus dem Cache zeigt
     voll = _auto_bild_pfad()
@@ -150,16 +208,28 @@ def _auto_bild_pfad() -> str | None:
     return voll if os.path.exists(voll) else None
 
 
+def _bild_name(ext: str) -> str:
+    """Dateiname des Fahrzeugbilds: Fahrzeug 1 wie bisher, weitere mit ihrer id."""
+    fid = db.schreib_fahrzeug()
+    return f"auto_bild{ext}" if fid == 1 else f"auto_bild_{fid}{ext}"
+
+
 @app.get("/api/auto-bild")
-def auto_bild():
-    """Liefert das eigene Fahrzeugbild, sonst das mitgelieferte Standardbild."""
-    voll = _auto_bild_pfad()
+def auto_bild(fz: int | None = None):
+    """Liefert das eigene Fahrzeugbild, sonst das mitgelieferte Standardbild.
+    ?fz=<id>: Bild dieses Fahrzeugs (Umschalter, Uebersicht je Fahrzeug)."""
+    if fz is not None:
+        with db.fahrzeug_kontext(fz):
+            voll = _auto_bild_pfad()
+    else:
+        voll = _auto_bild_pfad()
     if voll:
         return FileResponse(voll)
     return FileResponse(os.path.join(STATIC_DIR, "Auto.jpg"))
 
 
 @app.post("/api/auto-bild")
+@mit_fahrzeug
 async def auto_bild_hochladen(bild: UploadFile = File(...)):
     ext = os.path.splitext(bild.filename or "")[1].lower()
     if ext not in AUTO_BILD_ERLAUBT:
@@ -172,7 +242,7 @@ async def auto_bild_hochladen(bild: UploadFile = File(...)):
     alt = _auto_bild_pfad()
     if alt:
         os.remove(alt)
-    dateiname = f"auto_bild{ext}"
+    dateiname = _bild_name(ext)
     with open(os.path.join(DATA_DIR, dateiname), "wb") as f:
         f.write(inhalt)
     db.set_einstellung("auto_bild_datei", dateiname)
@@ -203,6 +273,7 @@ def galerie_vorschau(datei: str):
 
 
 @app.post("/api/auto-bild/galerie")
+@mit_fahrzeug
 def auto_bild_aus_galerie(datei: str = Form(...)):
     """Galeriebild als Fahrzeugbild uebernehmen – als Kopie im Datenordner, damit es
     auch nach einem Update ohne dieses Bild erhalten bleibt."""
@@ -212,7 +283,7 @@ def auto_bild_aus_galerie(datei: str = Form(...)):
     alt = _auto_bild_pfad()
     if alt:
         os.remove(alt)
-    dateiname = f"auto_bild{os.path.splitext(datei)[1].lower()}"
+    dateiname = _bild_name(os.path.splitext(datei)[1].lower())
     shutil.copyfile(voll, os.path.join(DATA_DIR, dateiname))
     db.set_einstellung("auto_bild_datei", dateiname)
     db.set_einstellung("auto_bild_galerie", datei)
@@ -220,6 +291,7 @@ def auto_bild_aus_galerie(datei: str = Form(...)):
 
 
 @app.post("/api/auto-bild/reset")
+@mit_fahrzeug
 def auto_bild_zuruecksetzen():
     """Loescht das eigene Bild wieder – Dashboard zeigt danach das Standardbild."""
     voll = _auto_bild_pfad()
@@ -242,16 +314,20 @@ def dashboard(request: Request, zeitraum: str | None = None):
     f = zeitraum_mod.filtern(z, daten)
     cfg = daten["cfg"]
     kz = zeitraum_mod.kennzahlen(z, daten)
+    # Gesamtsicht mehrerer Fahrzeuge: Liter/CO2 je Fahrzeug gerechnet (eigener Verbrauch)
+    gesamt = bool(daten.get("fahrzeuge"))
 
     charts_html = {
         "monatlich": charts.chart_monatliche_ersparnis(
             f["fahrten"], f["benzin"], f["lade"], benziner_l=cfg["benziner_verbrauch"],
-            ersatzpreis=berechnung.durchschnitt_benzinpreis(daten["benzin"])),
+            ersatzpreis=berechnung.durchschnitt_benzinpreis(daten["benzin"]),
+            liter_je_monat=daten["liter_je_monat"] if gesamt else None),
         "kosten": charts.chart_kosten_vergleich(
             kz["benzin_kosten"], kz["strom_kosten"]),
         "co2": charts.chart_co2_ersparnis(
             f["fahrten"], benziner_l=cfg["benziner_verbrauch"],
-            co2_faktor=cfg["co2_faktor_benzin"]),
+            co2_faktor=cfg["co2_faktor_benzin"],
+            co2_je_monat=daten["co2_je_monat"] if gesamt else None),
         "verbrauch": charts.chart_verbrauch_100km(
             f["lade"], f["fahrten"], ev_ref=cfg["ev_verbrauch"], akku_monate=f["akku"]),
         "strommix": charts.chart_strommix(f["lade"]),
@@ -262,7 +338,8 @@ def dashboard(request: Request, zeitraum: str | None = None):
     }
     antwort = render(request, "dashboard.html", kz=kz, charts=charts_html,
                      zeitraum=z, zeitraum_optionen=zeitraum_mod.optionen(daten),
-                     fahrzeug_name=db.get_einstellung_str("fahrzeug_name") or "Mein Elektroauto",
+                     fahrzeug_name=("Alle Fahrzeuge" if gesamt else
+                                    db.get_einstellung_str("fahrzeug_name") or "Mein Elektroauto"),
                      galerie_aktiv=auto_bild_galerie(),
                      aktiv="dashboard")
     if zeitraum is not None:
@@ -366,11 +443,17 @@ def einrichtung(request: Request):
 def fahrten(request: Request):
     daten = db.get_fahrten_monate()
     cfg = db.get_config()
+    # Gesamtsicht mehrerer Fahrzeuge: Liter/CO2 je Fahrzeug mit dessen Verbrauch
+    je_monat = zeitraum_mod.laden() if db.aktuelles_fahrzeug() is None else None
     rows = []
     for d in daten:
-        liter = berechnung.benzin_liter(d["km"], cfg["benziner_verbrauch"])
-        rows.append({**d, "liter": liter,
-                     "co2": berechnung.co2_kg(liter, cfg["co2_faktor_benzin"])})
+        if je_monat is not None:
+            liter = je_monat["liter_je_monat"].get(d["monat"], 0.0)
+            co2 = je_monat["co2_je_monat"].get(d["monat"], 0.0)
+        else:
+            liter = berechnung.benzin_liter(d["km"], cfg["benziner_verbrauch"])
+            co2 = berechnung.co2_kg(liter, cfg["co2_faktor_benzin"])
+        rows.append({**d, "liter": liter, "co2": co2})
     verbrauch = berechnung.verbrauch_statistik()
     akku_monate = akkuverbrauch.pro_monat()
     akku_km = sum(m["km"] for m in akku_monate)
@@ -397,6 +480,7 @@ def fahrten(request: Request):
 
 
 @app.post("/fahrten/akku")
+@mit_fahrzeug
 def fahrten_akku_berechnen(zeitraum: str = Form("alles")):
     """Fahrtabschnitte aus dem Akkustand neu berechnen (ganze Historie oder 45 Tage)."""
     try:
@@ -409,6 +493,7 @@ def fahrten_akku_berechnen(zeitraum: str = Form("alles")):
 
 
 @app.post("/fahrten")
+@mit_fahrzeug
 def fahrten_add(monat: str = Form(...), km: str = Form(...)):
     v = parse_de(km, tausender=True)
     if v is not None and v >= 0:
@@ -417,6 +502,7 @@ def fahrten_add(monat: str = Form(...), km: str = Form(...)):
 
 
 @app.post("/fahrten/delete")
+@mit_fahrzeug
 def fahrten_delete(monat: str = Form(...)):
     db.delete_fahrt_monat(monat)
     return RedirectResponse("../fahrten", status_code=303)
@@ -442,6 +528,7 @@ def laden(request: Request):
 
 
 @app.post("/laden")
+@mit_fahrzeug
 def laden_add(datum: str = Form(...), kwh: str = Form(...),
               preis_kwh: str = Form(""), gesamt: str = Form(""),
               anbieter: str = Form(...), leistung: str = Form(""),
@@ -461,6 +548,7 @@ def laden_add(datum: str = Form(...), kwh: str = Form(...),
 
 
 @app.post("/laden/update")
+@mit_fahrzeug
 def laden_update(id: int = Form(...), datum: str = Form(...), kwh: str = Form(...),
                  preis_kwh: str = Form(""), gesamt: str = Form(""),
                  anbieter: str = Form(...), leistung: str = Form(""),
@@ -476,8 +564,11 @@ def laden_update(id: int = Form(...), datum: str = Form(...), kwh: str = Form(..
     if kwh_v is None or kwh_v <= 0 or gesamt_v is None:
         return JSONResponse({"error": "kWh und Gesamtpreis muessen Zahlen sein."},
                             status_code=400)
+    # Mit Fahrzeugauswahl (Gesamtsicht) wird die Ladung dem gewaehlten Fahrzeug
+    # zugeordnet; sonst ist es das angezeigte – die Zuordnung bleibt gleich
     db.update_ladevorgang(id, datum, kwh_v, ct_v, gesamt_v, anbieter,
-                          parse_de(leistung), ladetyp, notiz, blockier_v)
+                          parse_de(leistung), ladetyp, notiz, blockier_v,
+                          fahrzeug_id=db.aktuelles_fahrzeug())
     return {"ok": True}
 
 
@@ -561,6 +652,10 @@ def _ladetarif_werte(form) -> dict | None:
               "blockier_max_eur", "fremd_ab_ct", "fremd_max_ct", "ladekarte_eur"):
         werte[k] = parse_de(form.get(k), tausender=k.endswith(("_eur", "gebuehr")))
     werte["grundgebuehr"] = werte["grundgebuehr"] or 0.0
+    # Mehrere Fahrzeuge: Tarif eines Fahrzeugs oder gemeinsam (leer = NULL, nach km verteilt)
+    if "tarif_fahrzeug" in form:
+        roh = str(form.get("tarif_fahrzeug") or "")
+        werte["fahrzeug_id"] = int(roh) if roh.isdigit() else None
     if not werte["anbieter"] or not werte["gueltig_ab"] or not werte["preis_ac"]:
         return None
     return werte
@@ -606,6 +701,7 @@ def steuer(request: Request):
 
 
 @app.post("/steuer/kfz")
+@mit_fahrzeug
 def steuer_kfz(betrag: str = Form(...)):
     v = parse_de(betrag, tausender=True)
     if v is not None and v >= 0:
@@ -614,6 +710,7 @@ def steuer_kfz(betrag: str = Form(...)):
 
 
 @app.post("/steuer/eauto")
+@mit_fahrzeug
 def steuer_eauto(betrag: str = Form(...), ab: str = Form("")):
     """Jahressteuer des E-Autos, sobald die Steuerbefreiung endet. Ab-Monat 'YYYY-MM';
     ohne Angabe ab dem laufenden Monat (nicht rueckwirkend auf alle Daten)."""
@@ -629,6 +726,7 @@ def steuer_eauto(betrag: str = Form(...), ab: str = Form("")):
 
 
 @app.post("/steuer/thg")
+@mit_fahrzeug
 def steuer_thg_add(datum: str = Form(...), betrag: str = Form(...),
                    anbieter: str = Form(""), notiz: str = Form("")):
     v = parse_de(betrag, tausender=True)
@@ -666,6 +764,7 @@ def _instandhaltung_werte(form) -> dict | None:
 
 
 @app.post("/instandhaltung")
+@mit_fahrzeug
 async def instandhaltung_add(request: Request):
     werte = _instandhaltung_werte(await request.form())
     if werte:
@@ -674,12 +773,15 @@ async def instandhaltung_add(request: Request):
 
 
 @app.post("/instandhaltung/update")
+@mit_fahrzeug
 async def instandhaltung_update(request: Request):
     form = await request.form()
     werte = _instandhaltung_werte(form)
     if werte is None:
         return JSONResponse({"error": "Datum, Kategorie und Betrag sind Pflicht."},
                             status_code=400)
+    if form.get("fahrzeug_id"):          # Fahrzeugauswahl: Eintrag ggf. umhaengen
+        werte["fahrzeug_id"] = db.aktuelles_fahrzeug()
     db.update_instandhaltung(int(form["id"]), werte)
     return {"ok": True}
 
@@ -718,6 +820,7 @@ def _versicherung_werte(form) -> dict | None:
 
 
 @app.post("/versicherung")
+@mit_fahrzeug
 async def versicherung_add(request: Request):
     werte = _versicherung_werte(await request.form())
     if werte:
@@ -726,12 +829,15 @@ async def versicherung_add(request: Request):
 
 
 @app.post("/versicherung/update")
+@mit_fahrzeug
 async def versicherung_update(request: Request):
     form = await request.form()
     werte = _versicherung_werte(form)
     if werte is None:
         return JSONResponse({"error": "Fahrzeug, Gesellschaft, gültig ab, Deckung und "
                                       "Grundbeitrag sind Pflicht."}, status_code=400)
+    if form.get("fahrzeug_id"):          # Fahrzeugauswahl: Vertrag ggf. umhaengen
+        werte["fahrzeug_id"] = db.aktuelles_fahrzeug()
     db.update_versicherung(int(form["id"]), werte)
     return {"ok": True}
 
@@ -864,11 +970,15 @@ def import_page(request: Request):
 
 
 @app.post("/api/import/start")
+@mit_fahrzeug
 def import_start(von_monat: int = Form(...), von_jahr: int = Form(...),
                  bis_monat: int = Form(...), bis_jahr: int = Form(...)):
     if (von_jahr, von_monat) > (bis_jahr, bis_monat):
         return JSONResponse({"error": "Von muss vor Bis liegen."}, status_code=400)
-    cfg = db.get_ha_settings()
+    # Sensoren des gewaehlten Fahrzeugs (eigene Ladezaehler, wenn so eingestellt) –
+    # der Abruf laeuft in einem eigenen Thread und bekommt sie fertig mit
+    cfg = db.get_ha_settings(eigene_zaehler=db.mehrere_fahrzeuge()
+                             and db.heimladung_modus() == "eigen")
     if not _ha_verbindung(cfg) and cfg.get("datasource") not in datenquellen.QUELLEN:
         return JSONResponse({"error": "Keine Datenquelle konfiguriert."}, status_code=400)
     monate = _monat_liste(von_jahr, von_monat, bis_jahr, bis_monat)
@@ -890,6 +1000,32 @@ def import_status(job_id: str):
 
 @app.post("/api/import/apply")
 def import_apply(payload: dict):
+    with _json_fahrzeug(payload):
+        return _import_apply(payload)
+
+
+def _json_fahrzeug(payload: dict):
+    """Kontext fuer JSON-Endpunkte: payload["fahrzeug_id"] waehlt das Fahrzeug."""
+    from contextlib import nullcontext
+    fid = _fahrzeug_wert(payload.get("fahrzeug_id"))
+    if isinstance(fid, int) and fid in [f["id"] for f in db.fahrzeuge(alle=True)]:
+        return db.fahrzeug_kontext(fid)
+    return nullcontext()
+
+
+def _wallbox_quelle():
+    """Stundenwerte-Abruf der gemeinsamen Wallbox mit den aktuellen Einstellungen."""
+    cfg = db.get_ha_settings(db.hauptfahrzeug())
+    verbindung = _ha_verbindung(cfg)
+    client = HAClient(**verbindung) if verbindung else None
+    try:
+        dq = datenquellen.aus_einstellungen(cfg)
+    except Exception:
+        dq = None
+    return _wallbox_stundenwerte(client, dq, cfg)
+
+
+def _import_apply(payload: dict):
     """Schreibt die (ggf. editierten) Vorschauzeilen in die DB."""
     rows = payload.get("rows", [])
     pv_ct = db.get_einstellung("pv_preis_ct") or 13.0
@@ -917,21 +1053,32 @@ def import_apply(payload: dict):
             db.set_benzinpreis(monat, round(benzin, 3))
             teile.append(mit_quelle(f"{benzin:.3f} €/L", "benzin"))
         kosten = parse_de(str(r.get("kosten") or ""))
+        # Ladezaehler: bei mehreren Fahrzeugen mit gemeinsamer Wallbox nach km verteilt
+        # (bzw. ueber den Akkustand, Modus "akku")
+        fid = db.schreib_fahrzeug()
+        ids = heimladung.gruppe(fid)
+        akku = {}
+        if len(ids) > 1 and any(db.heimladung_modus(i) == "akku" for i in ids):
+            akku, hinweis = heimladung.akku_anteile(monat, ids, _wallbox_quelle())
+            if hinweis:
+                teile.append(hinweis)
         for key, anbieter, ct in [("pv", "Privat – PV", pv_ct),
                                   ("wallbox", "Privat – Netzbezug", netz_ct)]:
             kwh = parse_de(str(r.get(key) or ""))
             if kwh is not None and kwh > 0:
                 # Einzelladungen aus HA abziehen, nur der Rest wird Monatssumme
-                summe = heimladung.monatssumme(monat, anbieter, kwh, kosten, ct)
-                if not summe["kwh"]:
+                for ziel, summe in heimladung.verteilen(monat, anbieter, kwh, kosten, ct, ids,
+                                                        akku=akku.get(key)):
+                    if not summe["kwh"]:
+                        teile.append(mit_quelle(f"{key} {kwh:.1f} kWh", key) + summe["text"])
+                        continue
+                    with db.fahrzeug_kontext(ziel):
+                        if db.ladevorgang_exists(f"{monat}-01", summe["kwh"], anbieter):
+                            teile.append(f"{key} übersprungen (Duplikat)")
+                            continue
+                        db.add_ladevorgang(f"{monat}-01", summe["kwh"], summe["ct"], summe["gesamt"],
+                                           anbieter, 11, "AC", f"Import {monat}{summe['zusatz']}")
                     teile.append(mit_quelle(f"{key} {kwh:.1f} kWh", key) + summe["text"])
-                    continue
-                if db.ladevorgang_exists(f"{monat}-01", summe["kwh"], anbieter):
-                    teile.append(f"{key} übersprungen (Duplikat)")
-                    continue
-                db.add_ladevorgang(f"{monat}-01", summe["kwh"], summe["ct"], summe["gesamt"],
-                                   anbieter, 11, "AC", f"Import {monat}{summe['zusatz']}")
-                teile.append(mit_quelle(f"{key} {kwh:.1f} kWh", key) + summe["text"])
         if teile:
             log.append(f"{monat}: " + ", ".join(teile))
     kopf = f"Zeitraum-Import übernommen ({len(log)} Monat(e))"
@@ -1133,6 +1280,11 @@ def _kwh_aus_akkustand(v):
 
 @app.post("/api/rechnung/apply")
 def rechnung_apply(payload: dict):
+    with _json_fahrzeug(payload):
+        return _rechnung_apply(payload)
+
+
+def _rechnung_apply(payload: dict):
     rows = payload.get("rows", [])
     log, fehler = [], []
     for i, r in enumerate(rows):
@@ -1187,6 +1339,7 @@ def settings_export(secrets: int = 1):
              "ist_system": a["ist_system"]}
             for a in db.get_lade_anbieter()
         ],
+        "fahrzeuge": db.get_fahrzeug_liste_roh(),
     }
     pfad = os.path.join(STATIC_DIR, f"_settings_{uuid.uuid4().hex}.json")
     with open(pfad, "w", encoding="utf-8") as f:
@@ -1222,8 +1375,18 @@ async def settings_import(datei: UploadFile = File(...)):
     # Leere Zugangsdaten nicht über vorhandene schreiben
     vorhanden = db.get_alle_einstellungen()
     werte = {k: v for k, v in werte.items()
-             if not (k in GEHEIM_KEYS and not str(v).strip() and vorhanden.get(k))}
+             if not (k in GEHEIM_KEYS and not str(v).strip() and vorhanden.get(k))
+             and k not in db.NICHT_IMPORTIEREN}
+    # Mehrere Fahrzeuge aus der Datei: Tabellen vorher umbauen (mit Sicherung) – sonst
+    # bleibt es bei einem Fahrzeug
+    if str(werte.get("mehrere_fahrzeuge")) == "1" and db.schema_stand() < 3:
+        _sicherungskopie("vor_mehrere_fahrzeuge")
+        try:
+            db.struktur_mehrere_fahrzeuge()
+        except Exception:
+            werte["mehrere_fahrzeuge"] = "0"
     db.set_einstellungen(werte)
+    db.set_fahrzeug_liste_roh(daten.get("fahrzeuge"))
 
     neue_anbieter = 0
     bekannt = {a["name"] for a in db.get_lade_anbieter()}
@@ -1258,7 +1421,20 @@ def berichte_seite(request: Request):
 
 
 def _monat_pruefen(jahr: int, monat: int) -> dict:
-    """Ist der Monat abschlussreif? Prueft Datenbestand und offene Ladevorgaenge."""
+    """Ist der Monat abschlussreif? Prueft Datenbestand und offene Ladevorgaenge.
+    Gesamtsicht mehrerer Fahrzeuge: jedes Fahrzeug fuer sich (eigener Akkustand)."""
+    if db.aktuelles_fahrzeug() is None:
+        je = []
+        for fz in db.fahrzeuge():
+            with db.fahrzeug_kontext(fz["id"]):
+                je.append((fz, _monat_pruefen(jahr, monat)))
+        offen = [f"{fz['name']}: {o}" for fz, p in je for o in p["offen"]]
+        erst = je[0][1]
+        return {"monat": erst["monat"], "bereit": not offen, "offen": offen,
+                "ladeerkennung": erst["ladeerkennung"],
+                "km": sum(p["km"] or 0 for _, p in je),
+                "ladevorgaenge": sum(p["ladevorgaenge"] for _, p in je),
+                "je_fahrzeug": [{"name": fz["name"], **p} for fz, p in je]}
     import calendar
     schluessel = f"{jahr}-{monat:02d}"
     letzter = calendar.monthrange(jahr, monat)[1]
@@ -1393,6 +1569,26 @@ def _rohwerte_text(werte: dict) -> str:
     return text
 
 
+def _wallbox_stundenwerte(client, dq, cfg):
+    """Stundenwerte der gemeinsamen Wallbox-Zaehler fuer die Zuordnung ueber den Akkustand:
+    zuerst aus der eingestellten Datenbank, sonst aus der HA-Langzeitstatistik."""
+    felder = {"wallbox": "ha_wallbox_energy", "pv": "ha_pv_production"}
+
+    def stundenwerte(schluessel, start, ende):
+        if dq is not None and dq.hat(schluessel):
+            try:
+                werte = dq.stundenwerte(schluessel, start, ende, "last")
+                if werte:
+                    return werte
+            except Exception:
+                pass
+        entity = (datenquellen.namen_liste(cfg.get(felder[schluessel])) or [""])[-1]
+        if client is None or not entity:
+            return []
+        return akkuverbrauch._stundenwerte(client, entity, start, ende, ("state", "sum"))
+    return stundenwerte
+
+
 def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> list:
     """Holt die aktuellen Monatswerte aus HA bzw. der eingestellten Datenbank und
     schreibt sie fort.
@@ -1428,60 +1624,107 @@ def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> lis
     pv_ct = db.get_einstellung("pv_preis_ct") or 13.0
     tarife = db.get_stromtarife()
 
+    # Fahrzeuge und ihre Zaehler: bei einem Fahrzeug nur das Hauptfahrzeug mit den
+    # bisherigen Einstellungen. Bei mehreren je Fahrzeug Kilometer (und eigene
+    # Ladezaehler); die gemeinsame Wallbox wird einmal nach km verteilt.
+    mehrere = db.mehrere_fahrzeuge()
+    fahrzeuge = db.fahrzeuge() if mehrere else [{"id": db.hauptfahrzeug(), "name": ""}]
+    quellen = {}
+    for fz in fahrzeuge:
+        eigen = mehrere and db.heimladung_modus(fz["id"]) == "eigen"
+        cfg_fz = db.get_ha_settings(fz["id"], eigene_zaehler=eigen)
+        try:
+            dq_fz = datenquellen.aus_einstellungen(cfg_fz) if dq is not None else None
+        except Exception:
+            dq_fz = dq
+        quellen[fz["id"]] = (cfg_fz, dq_fz, eigen)
+
     protokoll = []
     fehler = 0
     for jahr, monat in monate:
         schluessel = f"{jahr}-{monat:02d}"
         netz_ct = berechnung.netzpreis_monat(schluessel, tarife)
+        werte_je = {}
         try:
-            werte = _fetch_monat(client, dq, cfg, jahr, monat)
+            for fz in fahrzeuge:
+                cfg_fz, dq_fz, _ = quellen[fz["id"]]
+                werte_je[fz["id"]] = _fetch_monat(client, dq_fz, cfg_fz, jahr, monat)
         except Exception as e:
             fehler += 1
             _log_import([f"✗ {schluessel}: Abruf fehlgeschlagen ({e})"])
             protokoll.append(f"{schluessel}: Abruf fehlgeschlagen ({e})")
             continue
 
-        zeilen = _rohwerte_text(werte).split("\n")
-        _log_import([f"{schluessel}: gelesen {zeilen[0]}"]
-                    + [f"{schluessel}:   {z.strip()}" for z in zeilen[1:]])
-
         teile = []
-        herkunft = werte["_quelle"]
-        if werte.get("km"):
-            db.set_fahrt_monat(schluessel, round(werte["km"], 1))
-            teile.append(f"{werte['km']:.0f} km ({herkunft['km']})")
-        if werte.get("benzin"):
-            db.set_benzinpreis(schluessel, round(werte["benzin"], 3))
-            teile.append(f"{werte['benzin']:.3f} €/L ({herkunft['benzin']})")
-        for key, anbieter, ct in [("pv", "Privat – PV", pv_ct),
-                                  ("wallbox", "Privat – Netzbezug", netz_ct)]:
-            kwh = werte.get(key)
-            if kwh:
-                # Einzelladungen aus HA abziehen, nur der Rest wird Monatssumme
-                summe = heimladung.monatssumme(schluessel, anbieter, kwh,
-                                               werte.get("kosten"), ct)
-                if not summe["kwh"]:
-                    if db.delete_auto_ladevorgang(f"{schluessel}-01", anbieter):
-                        teile.append(f"{key} {kwh:.1f} kWh ({herkunft[key]}{summe['text']}, "
-                                     f"Monatssumme entfernt)")
+        for fz in fahrzeuge:
+            werte = werte_je[fz["id"]]
+            vor = f"{fz['name']}: " if mehrere and len(fahrzeuge) > 1 else ""
+            zeilen = _rohwerte_text(werte).split("\n")
+            _log_import([f"{schluessel}: {vor}gelesen {zeilen[0]}"]
+                        + [f"{schluessel}:   {z.strip()}" for z in zeilen[1:]])
+            if werte.get("km"):
+                db.set_fahrt_monat(schluessel, round(werte["km"], 1), fahrzeug_id=fz["id"])
+                teile.append(f"{vor}{werte['km']:.0f} km ({werte['_quelle']['km']})")
+        erste = werte_je[fahrzeuge[0]["id"]]
+        if erste.get("benzin"):
+            db.set_benzinpreis(schluessel, round(erste["benzin"], 3))
+            teile.append(f"{erste['benzin']:.3f} €/L ({erste['_quelle']['benzin']})")
+
+        # Ladezaehler: je Gruppe (eigene Zaehler = ein Fahrzeug, gemeinsame Wallbox = alle
+        # mit gemeinsamer Wallbox) einmal lesen und verteilen
+        km_je = db.get_fahrten_je_fahrzeug()
+        erledigt = set()
+        for fz in fahrzeuge:
+            ids = heimladung.gruppe(fz["id"]) if mehrere else [fz["id"]]
+            if fz["id"] in erledigt or not ids:
+                continue
+            erledigt |= set(ids)
+            werte = werte_je[fz["id"]]
+            herkunft = werte["_quelle"]
+            # Gemeinsame Wallbox mit Modus "akku": Stunden dem Auto zuordnen, dessen Akkustand stieg
+            akku, hinweis = ({}, "")
+            if mehrere and len(ids) > 1:
+                cfg_fz, dq_fz, _ = quellen[fz["id"]]
+                akku, hinweis = heimladung.akku_anteile(
+                    schluessel, ids, _wallbox_stundenwerte(client, dq_fz, cfg_fz))
+                if hinweis:
+                    _log_import([f"{schluessel}: {hinweis}"])
+            for key, anbieter, ct in [("pv", "Privat – PV", pv_ct),
+                                      ("wallbox", "Privat – Netzbezug", netz_ct)]:
+                kwh = werte.get(key)
+                if not kwh:
                     continue
-                ergebnis = db.upsert_auto_ladevorgang(
-                    f"{schluessel}-01", summe["kwh"], summe["ct"], summe["gesamt"], anbieter,
-                    db.AUTO_NOTIZ + summe["zusatz"])
-                if ergebnis != "unveraendert":
-                    teile.append(f"{key} {kwh:.1f} kWh ({ergebnis}, {herkunft[key]}{summe['text']})")
+                # Einzelladungen aus HA abziehen, nur der Rest wird Monatssumme
+                for fid, summe in heimladung.verteilen(schluessel, anbieter, kwh,
+                                                       werte.get("kosten"), ct, ids, km_je,
+                                                       akku=akku.get(key)):
+                    name = next((f["name"] for f in fahrzeuge if f["id"] == fid), "")
+                    vor = f"{name}: " if mehrere and len(fahrzeuge) > 1 else ""
+                    if not summe["kwh"]:
+                        if db.delete_auto_ladevorgang(f"{schluessel}-01", anbieter, fahrzeug_id=fid):
+                            teile.append(f"{vor}{key} {kwh:.1f} kWh ({herkunft[key]}{summe['text']}, "
+                                         f"Monatssumme entfernt)")
+                        continue
+                    ergebnis = db.upsert_auto_ladevorgang(
+                        f"{schluessel}-01", summe["kwh"], summe["ct"], summe["gesamt"], anbieter,
+                        db.AUTO_NOTIZ + summe["zusatz"], fahrzeug_id=fid)
+                    if ergebnis != "unveraendert":
+                        teile.append(f"{vor}{key} {kwh:.1f} kWh ({ergebnis}, {herkunft[key]}{summe['text']})")
         zeile = ", ".join(teile) if teile else "keine neuen Werte"
         _log_import([f"{schluessel}: übernommen {zeile}"])
         protokoll.append(f"{schluessel}: {zeile}")
 
     # Verbrauch aus dem Akkustand fortschreiben (Datenbank oder HA-API, wie eingestellt)
     if client is not None or dq is not None:
-        try:
-            meldung = akkuverbrauch.aktualisieren()
-        except Exception as e:
-            meldung = f"Fehler ({e})"
-        _log_import([f"Akkuverbrauch: {meldung}"])
-        protokoll.append(f"Akkuverbrauch: {meldung}")
+        for fz in fahrzeuge:
+            vor = f" {fz['name']}" if mehrere and len(fahrzeuge) > 1 else ""
+            try:
+                with db.fahrzeug_kontext(fz["id"]):
+                    meldung = akkuverbrauch.aktualisieren()
+            except Exception as e:
+                meldung = f"Fehler ({e})"
+            _log_import([f"Akkuverbrauch{vor}: {meldung}"])
+            protokoll.append(f"Akkuverbrauch{vor}: {meldung}")
 
     _log_import([f"Abruf beendet – {len(monate)} Monat(e), {fehler} Fehler"])
     return protokoll
@@ -1556,9 +1799,15 @@ def import_log(zeilen: int = 200):
 
 
 def _versand_pruefen():
-    """Verschickt faellige Berichte. Merker verhindert Doppelversand."""
+    """Verschickt faellige Berichte. Merker verhindert Doppelversand.
+    Bei mehreren Fahrzeugen ein Bericht ueber alle (Summe und je Fahrzeug)."""
     if db.SCHEMA_ZU_NEU:      # Merker waere nicht speicherbar -> sonst taeglich dieselbe Mail
         return
+    with db.fahrzeug_kontext(db.ALLE):
+        _versand_pruefen_kontext()
+
+
+def _versand_pruefen_kontext():
     cfg = db.get_mail_settings()
     if cfg.get("mail_aktiv") != "1":
         return
@@ -1802,6 +2051,7 @@ def reset_vorschau():
 
 
 @app.post("/api/reset")
+@mit_fahrzeug
 def reset_messdaten(bereiche: str = Form(""), bestaetigt: str = Form("")):
     """Leert die gewaehlten Messdaten-Tabellen (Fahrzeugwechsel, Testdaten raus).
 
@@ -1872,9 +2122,22 @@ SENSOR_FELDER = [
 
 
 @app.get("/einstellungen", response_class=HTMLResponse)
-def einstellungen(request: Request):
-    ha_settings = db.get_ha_settings()
+def einstellungen(request: Request, meldung: str = ""):
+    mehrere = db.mehrere_fahrzeuge()
+    modus = db.heimladung_modus()
+    # Bei "eigene Zaehler" zeigt das Sensor-Formular die Ladezaehler dieses Fahrzeugs
+    ha_settings = db.get_ha_settings(eigene_zaehler=mehrere and modus == "eigen")
+    alle_fz = db.fahrzeuge(alle=True)
+    for f in alle_fz:
+        f["heimladung"] = db.heimladung_modus(f["id"])
+        hs = db.get_ha_settings(f["id"])
+        f["ohne_akku"] = not (hs.get("ha_ev_battery") or hs.get("fn_ev_battery"))
     return render(request, "einstellungen.html",
+                  meldung=meldung,
+                  fahrzeuge_alle=alle_fz,
+                  hauptfahrzeug=db.hauptfahrzeug(),
+                  heimladung=modus, heimladung_modi=db.HEIMLADUNG_MODI,
+                  einstellungs_fahrzeug=db.schreib_fahrzeug(),
                   cfg=db.get_config(),
                   fahrzeug_name=db.get_einstellung_str("fahrzeug_name") or "",
                   kfz=db.get_einstellung("kfz_steuer_benziner") or 0.0,
@@ -1896,6 +2159,7 @@ def einstellungen(request: Request):
 
 
 @app.post("/einstellungen/parameter")
+@mit_fahrzeug
 def einstellungen_parameter(benziner_verbrauch: str = Form(...),
                             ev_verbrauch: str = Form(...),
                             pv_preis: str = Form(...),
@@ -1949,6 +2213,7 @@ def anbieter_delete(id: int = Form(...)):
 
 
 @app.post("/einstellungen/ha")
+@mit_fahrzeug
 async def einstellungen_ha(request: Request):
     form = await request.form()
     # Alle HA-/Datenbank-Einstellungen, die das Formular mitschickt
@@ -1959,5 +2224,103 @@ async def einstellungen_ha(request: Request):
     for key in GEHEIM_KEYS:
         if settings.get(key) == "":
             settings.pop(key)
+    if db.mehrere_fahrzeuge() and db.heimladung_modus() == "eigen":
+        # Eigene Ladezaehler dieses Fahrzeugs statt der gemeinsamen Wallbox
+        fid = db.schreib_fahrzeug()
+        for key in db.WALLBOX_SCHLUESSEL:
+            if key in settings:
+                db.save_ha_settings({f"{key}@{fid}": settings.pop(key)})
     db.save_ha_settings(settings)
     return RedirectResponse("../einstellungen", status_code=303)
+
+
+# ─────────────────────────────────────────────────────────────
+#  Fahrzeuge: ein oder mehrere, Verwaltung
+# ─────────────────────────────────────────────────────────────
+
+def _zu_einstellungen(meldung: str = "", fahrzeug=None):
+    from urllib.parse import urlencode
+    teile = {k: v for k, v in (("meldung", meldung), ("fahrzeug", fahrzeug)) if v}
+    return RedirectResponse("../../einstellungen" + (f"?{urlencode(teile)}" if teile else "")
+                            + "#fahrzeuge", status_code=303)
+
+
+@app.post("/einstellungen/fahrzeuge/modus")
+def fahrzeuge_modus(modus: str = Form(...), haupt: str = Form("")):
+    """Ein Fahrzeug <-> mehrere. Beim ersten Umschalten auf mehrere werden zwei Tabellen
+    umgebaut – vorher wird die Datenbank gesichert. Zurueck auf ein Fahrzeug loescht
+    nichts: die anderen Fahrzeuge werden nur nicht mehr angezeigt."""
+    if modus == "mehrere":
+        if not db.mehrere_fahrzeuge():
+            sicherung = ""
+            if db.schema_stand() < 3:
+                sicherung = _sicherungskopie("vor_mehrere_fahrzeuge")
+                try:
+                    db.struktur_mehrere_fahrzeuge()
+                except Exception as e:
+                    return _zu_einstellungen(f"Umschalten abgebrochen, nichts geändert: {e}")
+            db.set_einstellung("mehrere_fahrzeuge", "1")
+            return _zu_einstellungen("Mehrere Fahrzeuge eingeschaltet"
+                                     + (f" – Sicherung: {sicherung}" if sicherung else ""))
+        return _zu_einstellungen()
+    if modus == "ein":
+        ids = [f["id"] for f in db.fahrzeuge(alle=True)]
+        neu_haupt = int(haupt) if haupt.isdigit() and int(haupt) in ids else db.hauptfahrzeug()
+        db.set_einstellung("hauptfahrzeug", neu_haupt)
+        db.set_einstellung("mehrere_fahrzeuge", "0")
+        weitere = len(ids) - 1
+        return _zu_einstellungen(
+            "Ein Fahrzeug: " + next(f["name"] for f in db.fahrzeuge(alle=True) if f["id"] == neu_haupt)
+            + (f" – {weitere} weitere(s) ausgeblendet, alle Daten bleiben erhalten" if weitere else ""))
+    return _zu_einstellungen()
+
+
+@app.post("/einstellungen/fahrzeuge/neu")
+def fahrzeuge_neu(name: str = Form(...)):
+    if not db.mehrere_fahrzeuge():
+        return _zu_einstellungen("Erst „Mehrere Fahrzeuge“ einschalten")
+    fid = db.fahrzeug_anlegen(name)
+    return _zu_einstellungen(f"Fahrzeug „{name.strip()}“ angelegt und ausgewählt – "
+                             f"jetzt Sensoren und Vergleichswerte eintragen", fahrzeug=fid)
+
+
+@app.post("/einstellungen/fahrzeuge/aendern")
+def fahrzeuge_aendern(id: int = Form(...), name: str = Form(""), heimladung: str = Form(""),
+                      aktiv: str = Form(""), haupt: str = Form("")):
+    ids = [f["id"] for f in db.fahrzeuge(alle=True)]
+    if id not in ids:
+        return _zu_einstellungen("Fahrzeug nicht gefunden")
+    with db.fahrzeug_kontext(id):
+        if name.strip():
+            db.set_einstellung("fahrzeug_name", name.strip())
+        if heimladung in db.HEIMLADUNG_MODI:
+            db.set_einstellung("heimladung", heimladung)
+    einblenden = aktiv == "1"
+    if haupt == "1":
+        db.set_einstellung("hauptfahrzeug", id)
+        einblenden = True
+    if not einblenden and id == db.hauptfahrzeug():
+        return _zu_einstellungen("Das Hauptfahrzeug kann nicht ausgeblendet werden – "
+                                 "erst ein anderes zum Hauptfahrzeug machen")
+    db.fahrzeug_aktiv(id, einblenden)
+    return _zu_einstellungen("Gespeichert")
+
+
+@app.post("/einstellungen/fahrzeuge/loeschen")
+def fahrzeuge_loeschen(id: int = Form(...), bestaetigung: str = Form("")):
+    """Loescht ein Fahrzeug mit allen Daten – nur nach Eingabe seines Namens; vorher
+    wird die Datenbank gesichert."""
+    fz = next((f for f in db.fahrzeuge(alle=True) if f["id"] == id), None)
+    if fz is None:
+        return _zu_einstellungen("Fahrzeug nicht gefunden")
+    if bestaetigung.strip() != fz["name"]:
+        return _zu_einstellungen("Nicht gelöscht: der eingegebene Name passt nicht")
+    try:
+        if id == db.hauptfahrzeug() or len(db.fahrzeuge(alle=True)) <= 1:
+            raise ValueError("Hauptfahrzeug bzw. letztes Fahrzeug lässt sich nicht löschen")
+        sicherung = _sicherungskopie("vor_fahrzeug_loeschen")
+        anzahl = db.fahrzeug_loeschen(id)
+    except ValueError as e:
+        return _zu_einstellungen(f"Nicht gelöscht: {e}")
+    return _zu_einstellungen(f"„{fz['name']}“ gelöscht ({sum(anzahl.values())} Datensätze) – "
+                             f"Sicherung: {sicherung}")

@@ -177,6 +177,13 @@ def ladevorgaenge(von: str | None = None, bis: str | None = None) -> list:
     """Ladevorgaenge fuer die Auswertungen: im Simulationsmodus die aus den km
     gerechneten, sonst die gespeicherten plus die Grundgebuehren der Ladetarife
     (Eintraege ohne kWh, markiert mit "grundgebuehr"). von/bis 'YYYY-MM-DD' (inklusive)."""
+    if db.aktuelles_fahrzeug() is None:
+        # Gesamtsicht: je Fahrzeug (eigene Simulation, eigener Anteil an Grundgebuehren)
+        liste = []
+        for fz in db.fahrzeuge():
+            with db.fahrzeug_kontext(fz["id"]):
+                liste += ladevorgaenge(von, bis)
+        return liste
     cfg = db.get_config()
     if cfg["simulation"]:
         liste = simulierte_ladungen(cfg)

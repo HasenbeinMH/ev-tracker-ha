@@ -39,6 +39,12 @@
   <h2>Fahrzeug und Vergleich festlegen
     {{ stand("ok", "erledigt") if fahrzeug_name else stand("pruefen", "prüfen") }}</h2>
   <div>
+    <p><b>Ein oder mehrere E-Autos?</b> Unter <b>Einstellungen → Fahrzeuge</b>. Standard ist
+      „Ein Fahrzeug“ – dann bleibt alles so einfach wie hier beschrieben. Mit „Mehrere Fahrzeuge“
+      bekommt jedes Auto eigene Kilometer, Ladungen, Steuer und Sensoren; oben rechts wählst du
+      das Fahrzeug oder die Summe aller.
+      {% if mehrere and fahrzeuge | length > 1 %}<br><span class="gruen">Mehrere Fahrzeuge sind eingeschaltet –
+      die Schritte unten gelten für das oben rechts gewählte.</span>{% endif %}</p>
     <p>Unter <b>Einstellungen → Berechnungsparameter</b>:</p>
     <ul>
       <li><b>Fahrzeugname</b> – erscheint im Kopf des Dashboards.</li>

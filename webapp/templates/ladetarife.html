@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titel %}Ladetarife{% endblock %}
 {% block inhalt %}
+{% from "_fahrzeug.html" import fahrzeug_feld, fahrzeug_name_von with context %}
 <h1>🏷️ Ladetarife</h1>
 <p class="hint">Deine Abos für öffentliches Laden. Bei einer Preisänderung einen neuen Eintrag mit
   neuem „gültig ab“ anlegen – der alte bleibt als Verlauf stehen. Auf der Seite Laden wird
@@ -53,6 +54,7 @@
     <label class="feld">Notiz
       <input name="notiz" id="t-notiz" placeholder="optional">
     </label>
+    {{ fahrzeug_feld(name="tarif_fahrzeug", gemeinsam="Gemeinsam (alle Fahrzeuge)", wert=0, id="t-fahrzeug_id") }}
     <button type="submit" id="t-senden">➕ Hinzufügen</button>
     <button type="button" class="secondary" id="t-abbrechen" style="display:none"
             onclick="location.reload()">✕ Abbrechen</button>
@@ -68,12 +70,13 @@
 
 <h2>Einträge</h2>
 <div class="tabelle-scroll"><table>
-  <tr><th>Anbieter</th><th>Tarif</th><th>Gültig</th><th>AC ct</th><th>DC ct</th><th>Änderung</th>
+  <tr><th>Anbieter</th><th>Tarif</th>{% if mehrere and fahrzeuge | length > 1 %}<th>Fahrzeug</th>{% endif %}<th>Gültig</th><th>AC ct</th><th>DC ct</th><th>Änderung</th>
       <th>Grundgebühr</th><th>Blockiergebühr</th><th>Fremdnetz</th><th>Ladekarte</th><th>Notiz</th><th></th></tr>
   {% for t in tarife %}
   <tr>
     <td>{{ t.anbieter }}</td>
     <td>{{ t.tarif_name or "—" }}</td>
+    {% if mehrere and fahrzeuge | length > 1 %}<td>{{ fahrzeug_name_von(t.fahrzeug_id) if t.fahrzeug_id else "gemeinsam" }}</td>{% endif %}
     <td style="white-space:nowrap">{{ t.gueltig_ab }}{{ " – " ~ t.gueltig_bis if t.gueltig_bis }}</td>
     <td>{{ t.preis_ac | de(2) }}</td>
     <td>{{ (t.preis_dc | de(2)) if t.preis_dc else "wie AC" }}</td>

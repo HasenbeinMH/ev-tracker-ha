@@ -889,7 +889,7 @@ def _zeilen():
 
 with sqlite3.connect(db.DB_PATH) as k:
     stand = k.execute("SELECT value FROM einstellungen WHERE key='schema_version'").fetchone()
-check("Schema", "Struktur-Stand wird gespeichert", stand and stand[0] == str(db.SCHEMA_VERSION), str(stand))
+check("Schema", "Struktur-Stand wird gespeichert", stand and stand[0] == str(db.BASIS_SCHEMA), str(stand))
 # Sicherung im heutigen Stand – fuer den Weg zurueck per Wiederherstellung
 _alt = os.path.join(TESTDIR, "stand_heute.db")
 with sqlite3.connect(db.DB_PATH) as q, sqlite3.connect(_alt) as z:
@@ -899,7 +899,7 @@ with sqlite3.connect(db.DB_PATH) as k:
     k.execute("UPDATE einstellungen SET value='1' WHERE key='schema_version'")
 db.init_db()
 check("Schema", "Aelterer Stand wird angehoben",
-      db.get_einstellung_str("schema_version") == str(db.SCHEMA_VERSION))
+      db.get_einstellung_str("schema_version") == str(db.BASIS_SCHEMA))
 
 vorher_z = _zeilen()
 with sqlite3.connect(db.DB_PATH) as k:

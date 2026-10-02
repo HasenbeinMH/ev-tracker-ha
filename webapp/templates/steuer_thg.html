@@ -1,11 +1,15 @@
 {% extends "base.html" %}
 {% block titel %}Steuer & THG{% endblock %}
 {% block inhalt %}
+{% from "_fahrzeug.html" import fahrzeug_feld, fahrzeug_name_von with context %}
 <h1>💶 KFZ-Steuer & THG-Quote</h1>
 
 <div class="card">
   <h2 style="margin-top:0">KFZ-Steuer {{ kf.fahrzeug }}</h2>
+  {% if gesamtsicht %}<p class="hint" style="margin-top:0">Gesamtsicht: Steuerwerte des Hauptfahrzeugs –
+    für ein anderes Fahrzeug oben rechts umschalten.</p>{% endif %}
   <form class="inline" method="post" action="steuer/kfz">
+    {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ fahrzeug_aktuell or '' }}">{% endif %}
     <label class="feld">€/Jahr
       <input name="betrag" value="{{ '%.2f'|format(kfz)|replace('.', ',') }}" required>
     </label>
@@ -28,6 +32,7 @@
     0 = steuerfrei.
   </p>
   <form class="inline" method="post" action="steuer/eauto">
+    {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ fahrzeug_aktuell or '' }}">{% endif %}
     <label class="feld">€/Jahr
       <input name="betrag" value="{{ '%.2f'|format(kfz_eauto)|replace('.', ',') }}" required>
     </label>
@@ -62,14 +67,16 @@
     <label class="feld">Notiz
       <input name="notiz" placeholder="optional">
     </label>
+    {{ fahrzeug_feld() }}
     <button type="submit">➕ Hinzufügen</button>
   </form>
 </div>
 
 <div class="tabelle-scroll"><table>
-  <tr><th>Datum</th><th>Betrag</th><th>Anbieter</th><th>Notiz</th><th></th></tr>
+  <tr>{% if gesamtsicht %}<th>Fahrzeug</th>{% endif %}<th>Datum</th><th>Betrag</th><th>Anbieter</th><th>Notiz</th><th></th></tr>
   {% for d in rows %}
   <tr>
+    {% if gesamtsicht %}<td>{{ fahrzeug_name_von(d.fahrzeug_id) }}</td>{% endif %}
     <td>{{ d.datum }}</td>
     <td class="gruen">{{ "%.2f"|format(d.betrag)|replace(".", ",") }} €</td>
     <td>{{ d.anbieter }}</td>

@@ -96,6 +96,9 @@ def erkenne_ladungen(verlauf: list, min_anstieg: float = MIN_ANSTIEG,
             stunden = 0
         ladungen.append({
             "datum": start_zeit[:10],
+            # Zeitfenster des Anstiegs: letzter Wert davor bis Hoechststand ('YYYY-MM-DDTHH:MM')
+            "start": str(vor_zeit)[:16],
+            "ende": str(ende_zeit)[:16],
             "von_prozent": round(start_wert, 1),
             "bis_prozent": round(bis_wert, 1),
             "kwh": kwh,
@@ -178,7 +181,8 @@ def pruefe_monat(jahr: int, monat: int) -> dict:
       "fehlend"   – es fehlen Ladevorgänge (vermutlich auswärts geladen)
       "unbekannt" – keine Batteriedaten verfügbar, keine Aussage möglich
     """
-    cfg_alle = db.get_alle_einstellungen()
+    # Werte des aktuellen Fahrzeugs (bei mehreren Fahrzeugen je Auto eigene)
+    cfg_alle = db.get_mail_settings()
     try:
         kapazitaet = float(cfg_alle.get("akku_kapazitaet_kwh") or 58.3)
     except ValueError:

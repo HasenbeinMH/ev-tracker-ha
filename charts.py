@@ -223,10 +223,12 @@ def _kf() -> dict:
 
 
 def chart_monatliche_ersparnis(fahrten_daten, benzinpreise_daten, lade_daten,
-                               benziner_l=7.0, ersatzpreis=None):
+                               benziner_l=7.0, ersatzpreis=None, liter_je_monat=None):
     """Benziner- und Stromkosten je Monat. Alle Monate mit km oder Ladungen, damit die
     Summe der Ersparnis-Linie der Kachel „Kraftstoff-Ersparnis“ entspricht; Monate
-    ohne Benzinpreis werden mit `ersatzpreis` (Ø aller erfassten Preise) gerechnet."""
+    ohne Benzinpreis werden mit `ersatzpreis` (Ø aller erfassten Preise) gerechnet.
+    liter_je_monat: Liter des Vergleichs-Verbrenners je Monat, falls schon gerechnet
+    (mehrere Fahrzeuge mit unterschiedlichem Verbrauch) – sonst km × benziner_l."""
     if not fahrten_daten:
         return _leer("Keine Fahrtdaten")
 
@@ -245,7 +247,9 @@ def chart_monatliche_ersparnis(fahrten_daten, benzinpreise_daten, lade_daten,
     benzin_k, strom_k, ersparnis = [], [], []
     for m in monate:
         km = km_pro_monat.get(m, 0)
-        bk = round((km / 100) * benziner_l * bp.get(m, ersatzpreis), 2)
+        liter = (liter_je_monat.get(m, 0) if liter_je_monat is not None
+                 else (km / 100) * benziner_l)
+        bk = round(liter * bp.get(m, ersatzpreis), 2)
         sk = round(strom_pro_monat.get(m, 0), 2)
         benzin_k.append(bk)
         strom_k.append(sk)
@@ -301,11 +305,13 @@ def chart_kosten_vergleich(benzin_kosten, strom_kosten):
     return opt
 
 
-def chart_co2_ersparnis(fahrten_daten, benziner_l=7.0, co2_faktor=2.37):
+def chart_co2_ersparnis(fahrten_daten, benziner_l=7.0, co2_faktor=2.37, co2_je_monat=None):
+    """co2_je_monat: kg je Monat, falls schon je Fahrzeug gerechnet (mehrere Fahrzeuge)."""
     if not fahrten_daten:
         return _leer("Keine Fahrtdaten")
     monate = [d["datum"] for d in fahrten_daten]
-    co2_werte = [(d["km"] / 100) * benziner_l * co2_faktor for d in fahrten_daten]
+    co2_werte = [co2_je_monat.get(d["datum"], 0) if co2_je_monat is not None
+                 else (d["km"] / 100) * benziner_l * co2_faktor for d in fahrten_daten]
     kumulativ, total = [], 0
     for v in co2_werte:
         total += v

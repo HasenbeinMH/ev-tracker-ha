@@ -191,7 +191,8 @@ def aktualisieren(tage: int | None = TAGE_NACHTLAUF) -> str:
     tage=None rechnet die gesamte Historie neu (ab dem ersten erfassten
     Fahrtenmonat), sonst nur die letzten `tage` Tage. Rueckgabe: Kurzmeldung.
     """
-    cfg_alle = db.get_alle_einstellungen()
+    # Werte des aktuellen Fahrzeugs (bei mehreren Fahrzeugen je Auto eigene)
+    cfg_alle = db.get_mail_settings()
     try:
         kapazitaet = float(cfg_alle.get("akku_kapazitaet_kwh") or 58.3)
     except ValueError:

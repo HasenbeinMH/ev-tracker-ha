@@ -118,6 +118,35 @@ blueprint:
               max: 120
               unit_of_measurement: min
               mode: box
+    mehrere:
+      name: Mehrere Fahrzeuge (optional)
+      icon: mdi:car-multiple
+      collapsed: true
+      input:
+        fahrzeug:
+          name: Fahrzeug im EV Tracker
+          description: >
+            Nur bei mehreren Fahrzeugen: id oder Name des Fahrzeugs (Einstellungen →
+            Fahrzeuge). Leer = Hauptfahrzeug. Je Fahrzeug eine eigene Automation aus diesem
+            Blueprint, jede mit eigenem Text-Helfer.
+          default: ""
+          selector:
+            text:
+        auto_laedt:
+          name: Lädt dieses Auto?
+          description: >
+            Gemeinsame Wallbox: ein Sensor der Fahrzeug-Integration, der beim Laden dieses
+            Autos den Zustand unten hat (z.B. Ladestatus oder Stecker). Leer = jede Ladung
+            gehört zu diesem Fahrzeug.
+          default: ""
+          selector:
+            entity:
+        auto_laedt_zustand:
+          name: Zustand beim Laden
+          description: Ein oder mehrere Zustände, mit Komma getrennt (z.B. "on" oder "charging, Laden").
+          default: "on"
+          selector:
+            text:
 
 mode: queued
 
@@ -128,6 +157,13 @@ variables:
   e_pv: !input zaehler_pv
   e_kosten: !input zaehler_kosten
   e_speicher: !input speicher
+  fahrzeug: !input fahrzeug
+  e_auto: !input auto_laedt
+  auto_zustand: !input auto_laedt_zustand
+  # Gemeinsame Wallbox: gehoert die beginnende Ladung zu diesem Auto?
+  dieses_auto: >
+    {{ not e_auto or states(e_auto) | lower in
+       (auto_zustand | lower).split(',') | map('trim') | list }}
   netz: "{{ states(e_netz) | float(none) }}"
   pv: "{{ states(e_pv) | float(none) }}"
   kosten_stand: "{{ states(e_kosten) | float(none) if e_kosten else none }}"
@@ -192,6 +228,7 @@ actions:
               kwh_netz: "{{ kwh_netz }}"
               kwh_pv: "{{ kwh_pv }}"
               kosten: "{{ kosten }}"
+              fahrzeug: "{{ fahrzeug }}"
           - if:
               - condition: template
                 value_template: "{{ antwort is not defined or antwort.status != 200 }}"
@@ -214,7 +251,7 @@ actions:
   # Ladebeginn (auch der zweite Teil nach dem Monatswechsel): Stände merken
   - if:
       - condition: template
-        value_template: "{{ trigger.id == 'start' or monatswechsel }}"
+        value_template: "{{ (trigger.id == 'start' and dieses_auto) or monatswechsel }}"
     then:
       - action: input_text.set_value
         target:

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titel %}Laden{% endblock %}
 {% block inhalt %}
+{% from "_fahrzeug.html" import fahrzeug_feld, fahrzeug_name_von with context %}
 <h1>🔌 Ladevorgänge</h1>
 {% if tarif %}
 <p class="hint">Aktueller Stromtarif: {{ "%.2f"|format(tarif.preis_kwh)|replace(".", ",") }} ct/kWh
@@ -43,19 +44,21 @@
     <label class="feld">Notiz
       <input name="notiz" placeholder="optional">
     </label>
+    {{ fahrzeug_feld() }}
     <button type="submit">➕ Hinzufügen</button>
   </form>
 </div>
 
 <div class="tabelle-scroll"><table>
-  <tr><th>Datum</th><th>kWh</th><th>ct/kWh</th><th>Gesamt €</th><th>Anbieter</th><th>kW</th><th>Typ</th><th>Blockier €</th><th>Notiz</th><th></th></tr>
+  <tr>{% if gesamtsicht %}<th>Fahrzeug</th>{% endif %}<th>Datum</th><th>kWh</th><th>ct/kWh</th><th>Gesamt €</th><th>Anbieter</th><th>kW</th><th>Typ</th><th>Blockier €</th><th>Notiz</th><th></th></tr>
   {% for d in rows %}
   <tr data-id="{{ d.id }}"
       data-datum="{{ d.datum }}" data-kwh="{{ d.menge_kwh }}"
       data-ct="{{ d.preis_kwh or '' }}" data-gesamt="{{ d.gesamtpreis }}"
       data-anbieter="{{ d.anbieter }}" data-kw="{{ d.ladeleistung_kw or '' }}"
       data-typ="{{ d.ladetyp }}" data-blockier="{{ d.blockiergebuehr or '' }}"
-      data-notiz="{{ d.notiz or '' }}">
+      data-notiz="{{ d.notiz or '' }}" data-fahrzeug="{{ d.fahrzeug_id }}">
+    {% if gesamtsicht %}<td>{{ fahrzeug_name_von(d.fahrzeug_id) }}</td>{% endif %}
     <td>{{ d.datum }}</td>
     <td>{{ "%.2f"|format(d.menge_kwh)|replace(".", ",") }}</td>
     <td>{{ ("%.2f"|format(d.preis_kwh)|replace(".", ",")) if d.preis_kwh else "—" }}</td>
@@ -81,6 +84,10 @@
 <script>
 const ANBIETER = [{% for a in anbieter %}"{{ a.name }}"{{ "," if not loop.last }}{% endfor %}];
 
+const GESAMT = {{ "true" if gesamtsicht else "false" }};
+const FAHRZEUGE = {{ fahrzeuge | map(attribute="id") | list | tojson }}.map((id, i) =>
+    ({ id: id, name: {{ fahrzeuge | map(attribute="name") | list | tojson }}[i] }));
+
 function bearbeiten(btn) {
   const tr = btn.closest("tr");
   if (tr.dataset.bearbeitung === "1") return;
@@ -88,7 +95,11 @@ function bearbeiten(btn) {
   const d = tr.dataset;
   const optionen = ANBIETER.map(a =>
       `<option${a === d.anbieter ? " selected" : ""}>${a}</option>`).join("");
-  tr.innerHTML =
+  // Gesamtsicht mehrerer Fahrzeuge: erste Spalte ist das Fahrzeug – umhaengen moeglich
+  const fzZelle = GESAMT ? `<td><select data-f="fahrzeug_id">` + FAHRZEUGE.map(f =>
+      `<option value="${f.id}"${String(f.id) === d.fahrzeug ? " selected" : ""}>${f.name}</option>`).join("")
+      + `</select></td>` : "";
+  tr.innerHTML = fzZelle +
     `<td><input value="${d.datum}" data-f="datum" style="width:110px"></td>` +
     `<td><input value="${d.kwh}" data-f="kwh" style="width:70px"></td>` +
     `<td><input value="${d.ct}" data-f="preis_kwh" style="width:65px"></td>` +

@@ -91,7 +91,11 @@ def monate(z: dict, daten: dict) -> list:
 def _datenmonate(daten: dict) -> list:
     alle = {f["datum"][:7] for f in daten["fahrten"]}
     alle |= {l["datum"][:7] for l in berechnung.nur_ladungen(daten["lade"])}
-    alle |= {b["monat"][:7] for b in daten["benzin"]}
+    # Kraftstoffpreise gelten fuer alle Fahrzeuge – bei mehreren zaehlen fuer ein Fahrzeug
+    # nur seine eigenen Monate (ein spaeter gekauftes Auto bekaeme sonst Steuer-Ersparnis
+    # fuer Monate, in denen es noch gar nicht da war)
+    if not daten.get("nur_eigene_monate"):
+        alle |= {b["monat"][:7] for b in daten["benzin"]}
     alle |= {t["datum"][:7] for t in daten["thg"]}
     return sorted(m for m in alle if m)
 
@@ -121,7 +125,32 @@ def optionen(daten: dict) -> list:
 # ── Daten laden und filtern ──────────────────────────────────────────────────
 
 def laden() -> dict:
-    """Alle Rohdaten einmal aus der DB (fuer mehrere Zeitraeume wiederverwendbar)."""
+    """Alle Rohdaten einmal aus der DB (fuer mehrere Zeitraeume wiederverwendbar).
+
+    Gesamtsicht ueber mehrere Fahrzeuge: oben die zusammengefassten Rohdaten (fuer
+    Diagramme und Zeitraum-Auswahl), unter "fahrzeuge" die Daten je Fahrzeug – die
+    Kennzahlen werden je Fahrzeug mit dessen Vergleichswerten gerechnet und summiert."""
+    daten = _laden_einzeln()
+    if db.aktuelles_fahrzeug() is None:
+        daten["fahrzeuge"] = []
+        for fz in db.fahrzeuge():
+            with db.fahrzeug_kontext(fz["id"]):
+                daten["fahrzeuge"].append((fz, _laden_einzeln()))
+    # Liter und CO2 des Vergleichs-Verbrenners je Monat – in der Gesamtsicht je Fahrzeug
+    # mit dessen Verbrauch und CO2-Faktor, damit die Diagramme zu den Kennzahlen passen
+    teile = [d for _, d in daten["fahrzeuge"]] if daten.get("fahrzeuge") else [daten]
+    daten["liter_je_monat"], daten["co2_je_monat"] = {}, {}
+    for d in teile:
+        for f in d["fahrten"]:
+            m = f["datum"][:7]
+            liter = berechnung.benzin_liter(f["km"], d["cfg"]["benziner_verbrauch"])
+            daten["liter_je_monat"][m] = daten["liter_je_monat"].get(m, 0) + liter
+            daten["co2_je_monat"][m] = (daten["co2_je_monat"].get(m, 0)
+                                        + berechnung.co2_kg(liter, d["cfg"]["co2_faktor_benzin"]))
+    return daten
+
+
+def _laden_einzeln() -> dict:
     import akkuverbrauch
     return {
         "fahrten": db.get_fahrten_alle_als_liste(),
@@ -137,6 +166,9 @@ def laden() -> dict:
         "kfz_steuer": db.get_einstellung("kfz_steuer_benziner") or 0.0,
         "kfz_steuer_eauto": db.get_einstellung("kfz_steuer_eauto") or 0.0,
         "kfz_steuer_eauto_ab": db.get_einstellung_str("kfz_steuer_eauto_ab") or "",
+        "fahrzeug_id": db.aktuelles_fahrzeug(),
+        "nur_eigene_monate": (db.mehrere_fahrzeuge() and db.aktuelles_fahrzeug() is not None
+                              and len(db.sichtbare_ids()) > 1),
     }
 
 
@@ -158,6 +190,12 @@ def filtern(z: dict, daten: dict) -> dict:
 
 def kennzahlen(z: dict, daten: dict) -> dict:
     """Kennzahlen eines Zeitraums. `daten` sind die ungefilterten Rohdaten."""
+    if daten.get("fahrzeuge"):
+        je = [(fz, kennzahlen(z, {**d, "lade": _ersetzt(daten, d)}))
+              for fz, d in daten["fahrzeuge"]]
+        summe = kennzahlen_summe([k for _, k in je], z["titel"])
+        summe["je_fahrzeug"] = [{"fahrzeug": fz, **k} for fz, k in je]
+        return summe
     f = filtern(z, daten)
     cfg = daten["cfg"]
     mon = monate(z, daten)
@@ -205,6 +243,10 @@ def kennzahlen(z: dict, daten: dict) -> dict:
         quellen[berechnung.stromquelle(l["anbieter"])] += l["menge_kwh"]
 
     return {
+        # Zwischenwerte fuer die Summe ueber mehrere Fahrzeuge (kennzahlen_summe)
+        "_v_km": v_km, "_v_kwh": sum(kwh_m[m] for m in beide),
+        "_a_km": a_km, "_a_kwh": sum(a["kwh"] for a in f["akku"]),
+        "_quellen": quellen,
         "titel":            z["titel"],
         "monate":           len(mon),
         "gesamt_km":        km,
@@ -237,6 +279,47 @@ def steuer_eauto(mon: list, daten: dict) -> float:
         return 0.0
     ab = (daten.get("kfz_steuer_eauto_ab") or "")[:7]
     return betrag * len([m for m in mon if m >= ab]) / 12
+
+
+def _ersetzt(gesamt: dict, einzeln: dict) -> list:
+    """Ladungen eines Fahrzeugs; wurden die Ladungen der Gesamtsicht ersetzt (Prognose
+    aus der Simulation), die simulierten des Fahrzeugs."""
+    if gesamt.get("lade") is gesamt.get("lade_sim"):
+        return einzeln["lade_sim"]
+    return einzeln["lade"]
+
+
+# Kennzahlen, die sich ueber Fahrzeuge einfach addieren
+_SUMMEN = ("gesamt_km", "gesamt_kwh", "ladevorgaenge", "strom_kosten", "benzin_kosten",
+           "liter", "thg_gesamt", "kfz_steuer", "kfz_steuer_eauto", "ersparnis_kraft",
+           "ersparnis_gesamt", "co2_gespart", "_v_km", "_v_kwh", "_a_km", "_a_kwh")
+
+
+def kennzahlen_summe(liste: list, titel: str) -> dict:
+    """Kennzahlen mehrerer Fahrzeuge zusammengefasst. Summen addiert; Verhaeltnisse
+    (Verbrauch, ct/kWh, je 100 km, Anteile, Ø Kraftstoffpreis) aus den Summen neu
+    gebildet – nie als Mittelwert der Fahrzeuge."""
+    s = {k: sum(x.get(k) or 0 for x in liste) for k in _SUMMEN}
+    quellen = {}
+    for x in liste:
+        for q, v in x["_quellen"].items():
+            quellen[q] = quellen.get(q, 0) + v
+    km, kwh, kosten = s["gesamt_km"], s["gesamt_kwh"], s["strom_kosten"]
+    preise = [x["avg_benzin"] for x in liste if x.get("avg_benzin")]
+    return {
+        **s,
+        "titel": titel,
+        "monate": max((x["monate"] for x in liste), default=0),
+        "avg_benzin": (s["benzin_kosten"] / s["liter"] if s["liter"]
+                       else (preise[0] if preise else None)),
+        "verbrauch": s["_v_kwh"] / s["_v_km"] * 100 if s["_v_km"] else None,
+        "verbrauch_akku": s["_a_kwh"] / s["_a_km"] * 100 if s["_a_km"] else None,
+        "kosten_pro_100km": kosten / km * 100 if km and kosten else None,
+        "ersparnis_100km": s["ersparnis_kraft"] / km * 100 if km else None,
+        "strompreis_ct": kosten / kwh * 100 if kwh else None,
+        "anteile": {q: (v / kwh * 100 if kwh else None) for q, v in quellen.items()},
+        "_quellen": quellen,
+    }
 
 
 def vorlagen() -> list:
@@ -334,6 +417,8 @@ def vergleich_zeilen(ka: dict, kb: dict, nur: tuple | None = None) -> list:
 
 def monatswerte(z: dict, daten: dict) -> list:
     """Werte je Monat des Zeitraums (fuer den Verlaufsvergleich auf der Statistikseite)."""
+    if daten.get("fahrzeuge"):
+        return _monatswerte_summe(z, daten)
     f = filtern(z, daten)
     cfg = daten["cfg"]
     km_m = {x["datum"][:7]: x["km"] for x in f["fahrten"]}
@@ -366,6 +451,34 @@ def monatswerte(z: dict, daten: dict) -> list:
             "km_akku": a["km"] if a else None,
             "kwh_akku": a["kwh"] if a else None,
             "verbrauch_akku": a["verbrauch"] if a else None,
+        })
+    return werte
+
+
+def _monatswerte_summe(z: dict, daten: dict) -> list:
+    """Monatswerte der Gesamtsicht: je Fahrzeug gerechnet, Monat fuer Monat addiert."""
+    summe = {m: {"monat": m, "km": 0.0, "kwh": 0.0, "strom_kosten": 0.0, "ersparnis": 0.0,
+                 "km_akku": None, "kwh_akku": None}
+             for m in monate(z, daten)}
+    for _, d in daten["fahrzeuge"]:
+        for w in monatswerte(z, d):
+            s = summe.get(w["monat"])
+            if s is None:
+                continue
+            for k in ("km", "kwh", "strom_kosten", "ersparnis"):
+                s[k] += w[k]
+            for k in ("km_akku", "kwh_akku"):
+                if w[k]:
+                    s[k] = (s[k] or 0) + w[k]
+    werte = []
+    for s in summe.values():
+        werte.append({
+            **s,
+            "km": round(s["km"], 1), "kwh": round(s["kwh"], 1),
+            "strom_kosten": round(s["strom_kosten"], 2), "ersparnis": round(s["ersparnis"], 2),
+            "verbrauch": round(s["kwh"] / s["km"] * 100, 2) if s["km"] and s["kwh"] else None,
+            "verbrauch_akku": (round(s["kwh_akku"] / s["km_akku"] * 100, 2)
+                               if s["km_akku"] and s["kwh_akku"] else None),
         })
     return werte
 

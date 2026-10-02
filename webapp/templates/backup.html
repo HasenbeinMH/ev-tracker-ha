@@ -67,7 +67,10 @@
   </div>
 </div>
 
-<h2>Messdaten zurücksetzen</h2>
+<h2>Messdaten zurücksetzen{% if mehrere and fahrzeuge | length > 1 %} · {{ "alle sichtbaren Fahrzeuge" if fahrzeug_aktuell is none else fahrzeuge | selectattr("id", "equalto", fahrzeug_aktuell) | map(attribute="name") | first }}{% endif %}</h2>
+{% if mehrere and fahrzeuge | length > 1 %}<p class="hint">Gelöscht werden nur Daten des oben rechts gewählten Fahrzeugs
+  (bei „Alle Fahrzeuge“ aller sichtbaren). Ausgeblendete Fahrzeuge bleiben unberührt; die
+  {{ kf.name }}preise gelten für alle.</p>{% endif %}
 <div class="card">
   <p class="hint" style="margin-top:0">
     Löscht die erfassten Messwerte – etwa beim Fahrzeugwechsel oder um Testdaten loszuwerden.

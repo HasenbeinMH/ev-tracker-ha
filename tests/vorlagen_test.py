@@ -482,7 +482,8 @@ BP_EIN = {"adresse": "http://ev/api/ladung", "token": "geheim", "zaehler_netz": 
 
 def bp_lauf(zust, trigger_id, jetzt, eingabe=None):
     """Spielt die Blueprint-Automation durch. Rueckgabe: (gesendet JSON | None, Speicher)"""
-    ein = {**BP_EIN, **(eingabe or {})}
+    # Standardwerte aus dem Blueprint, darueber die Testeingaben
+    ein = {**{k: v.get("default", "") for k, v in eingaben.items()}, **BP_EIN, **(eingabe or {})}
     env = renderer_s(zust, jetzt)
     env.filters["from_json"] = json.loads
     trig = {"id": trigger_id}
@@ -542,6 +543,24 @@ j, sp4 = bp_lauf(ENDE_BP, "mitternacht", _dt(2026, 9, 25, 0, 0))
 check("Blueprint", "Mitternacht mitten im Monat: nichts", j is None and sp4 == sp, str(j))
 j, sp5 = bp_lauf({**ENDE_BP, "input_text.ev": Zustand("{}")}, "mitternacht", _dt(2026, 10, 1, 0, 0))
 check("Blueprint", "Monatswechsel ohne Ladung: nichts", j is None and sp5 == "{}", str(j))
+# Mehrere Fahrzeuge: Kennung geht mit, ohne Angabe leer (= Hauptfahrzeug)
+j, _ = bp_lauf(ENDE_BP, "ende", _dt(2026, 9, 25, 5, 30))
+check("Blueprint", "Ohne Fahrzeug-Angabe: fahrzeug leer (Hauptfahrzeug)", j and j["fahrzeug"] == "", str(j))
+j, _ = bp_lauf(ENDE_BP, "ende", _dt(2026, 9, 25, 5, 30), {"fahrzeug": "2"})
+# HA wandelt "2" in eine Zahl – der EV Tracker nimmt "2", 2 und 2.0 (siehe Funktionstest)
+check("Blueprint", "Fahrzeug-Kennung wird mitgeschickt", j and j["fahrzeug"] in ("2", 2, 2.0), str(j))
+AUTO = {"zaehler_kosten": "", "auto_laedt": "sensor.auto_status", "auto_laedt_zustand": "on, Laden"}
+_, sp6 = bp_lauf({**STAENDE, "sensor.auto_status": Zustand("off")}, "start", T_START, AUTO)
+check("Blueprint", "Gemeinsame Wallbox: anderes Auto lädt -> Ladung nicht gemerkt", sp6 == "", sp6)
+_, sp7 = bp_lauf({**STAENDE, "sensor.auto_status": Zustand("Laden")}, "start", T_START, AUTO)
+check("Blueprint", "Gemeinsame Wallbox: dieses Auto lädt (Zustand aus Liste) -> gemerkt",
+      sp7.startswith("{") and json.loads(sp7)["start"] == "2026-09-24 22:10:00", sp7)
+_, sp8 = bp_lauf(STAENDE, "start", T_START, {"auto_laedt": ""})
+check("Blueprint", "Ohne Lade-Sensor gehört jede Ladung zu diesem Fahrzeug", sp8.startswith("{"), sp8)
+pkt = yaml.safe_load(open(PAKET_S, encoding="utf-8"))
+daten_pkt = pkt["automation"][0]["action"][0]["then"][1]["then"][0]["data"]
+check("Senden-Paket", "Paket schickt Feld fahrzeug (leer = Hauptfahrzeug)",
+      "fahrzeug" in daten_pkt and daten_pkt["fahrzeug"] == "", str(daten_pkt.keys()))
 env_ = renderer_s({}, _dt.now())
 vt = bp["triggers"][0]["value_template"]
 check("Blueprint", "Ladeleistung in kW wird in W umgerechnet",

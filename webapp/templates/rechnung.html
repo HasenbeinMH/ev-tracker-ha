@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titel %}Rechnungen{% endblock %}
 {% block inhalt %}
+{% from "_fahrzeug.html" import fahrzeug_feld with context %}
 <h1>📄 Rechnungsimport</h1>
 <p class="hint">PDF-Laderechnung (EWE go, EnBW, medl, Charge myHyundai / DCS, Shell Recharge, vaylens, reev, Tesla Supercharger) hochladen oder Rechnungstext einfügen.
   Erkannte Vorgänge erscheinen als editierbare Vorschau.</p>
@@ -31,6 +32,7 @@
   </table></div>
   <div style="margin-top:12px; display:flex; gap:10px">
     <button id="btn-add-row" class="secondary">➕ Zeile hinzufügen</button>
+    <span id="r-fahrzeug" class="inline" style="display:inline-flex">{{ fahrzeug_feld() }}</span>
     <button id="btn-apply" style="background:#3a7a3a">✓ Alle Zeilen übernehmen</button>
   </div>
 </div>
@@ -114,6 +116,8 @@ document.getElementById("btn-add-row").addEventListener("click", () => {
 });
 
 document.getElementById("btn-apply").addEventListener("click", async () => {
+  const fz = document.querySelector("#r-fahrzeug [name=fahrzeug_id]");
+  if (fz && !fz.value) { alert("Bitte zuerst das Fahrzeug wählen."); fz.focus(); return; }
   const rows = [];
   document.querySelectorAll("#vorschau-tabelle tr.vorgang").forEach(tr => {
     const r = {};
@@ -123,7 +127,8 @@ document.getElementById("btn-apply").addEventListener("click", async () => {
   const resp = await fetch("api/rechnung/apply", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ rows }),
+    body: JSON.stringify({ rows,
+      fahrzeug_id: (document.querySelector("#r-fahrzeug [name=fahrzeug_id]") || {}).value }),
   });
   const data = await resp.json();
   const log = document.getElementById("log");

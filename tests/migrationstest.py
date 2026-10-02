@@ -45,13 +45,14 @@ def check(bereich, test, ok, detail=""):
     ERG.append((bereich, test, bool(ok), detail))
 
 
-def versionen(anzahl=4):
+def versionen(anzahl=5):
     log = subprocess.run(["git", "log", "--format=%h %s", "-n", "60"], cwd=REPO,
                          capture_output=True, text=True).stdout.splitlines()
     gefunden = []
     for zeile in log:
         h, _, msg = zeile.partition(" ")
-        if msg.startswith("Version ") and h != _kopf():
+        # HEAD zaehlt mit: verglichen wird mit dem Arbeitsstand (auch ungespeicherte Aenderungen)
+        if msg.startswith("Version "):
             gefunden.append((h, msg.split(":")[0]))
     return gefunden[:anzahl]
 
@@ -183,11 +184,11 @@ def main():
                       "; ".join(abw_t[:8]))
                 with sqlite3.connect(kopie_b) as k:
                     st = k.execute("SELECT value FROM einstellungen WHERE key='schema_version'").fetchone()
-                check(b, "Struktur-Stand gesetzt", st and st[0] == str(db_neu_modul.SCHEMA_VERSION), str(st))
+                check(b, "Struktur-Stand gesetzt (Basis, kein Umbau)", st and st[0] == str(db_neu_modul.BASIS_SCHEMA), str(st))
                 rs = restore_test(alt_db)
                 check(b, "Wiederherstellen ueber Backup-Seite, alle Seiten laden",
                       rs["status"] == 200 and not rs["seiten"] and not rs["gesperrt"]
-                      and rs["schema"] == str(db_neu_modul.SCHEMA_VERSION), str(rs))
+                      and rs["schema"] == str(db_neu_modul.BASIS_SCHEMA), str(rs))
             finally:
                 subprocess.run(["git", "worktree", "remove", "--force", wt], cwd=REPO,
                                capture_output=True)

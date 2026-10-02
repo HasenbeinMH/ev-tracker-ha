@@ -19,10 +19,28 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "2.16.0"
+VERSION = "3.0.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.0.0",
+        "datum": "2026-10-02",
+        "titel": "Mehrere E-Autos",
+        "aenderungen": [
+            "Einstellungen → Fahrzeuge: Schalter \"Ein Fahrzeug / Mehrere Fahrzeuge\". Standard bleibt \"Ein Fahrzeug\" – dann sieht und rechnet alles genau wie bisher, an Daten und Einstellungen aendert sich nichts",
+            "Mehrere Fahrzeuge: je Auto eigene km, Ladungen, Akku-Verbrauch, THG, Instandhaltung, Versicherung, KFZ-Steuer, Vergleichs-Verbrenner, Bild und Kilometer-/Batteriesensor; Stromtarif, Kraftstoffpreise und PV-Preis gelten fuer alle",
+            "Umschalter oben rechts: einzelnes Fahrzeug oder \"Alle Fahrzeuge\" – die Gesamtsicht rechnet jedes Auto mit seinen eigenen Vergleichswerten und addiert, mit Tabelle je Fahrzeug; Verbrauch und Preise aus den Summen, nie gemittelt. Monats- und Jahresbericht mit Abschnitt je Fahrzeug",
+            "Heimladung je Fahrzeug waehlbar: gemeinsame Wallbox (Monatssumme nach km verteilt), gemeinsame Wallbox mit Einzelladungen per Push (Rest nach km), gemeinsame Wallbox mit Zuordnung ueber den Akkustand (jede Wallbox-Stunde dem Auto, dessen Akkustand gerade stieg; Rest nach km) oder eigene Zaehler. Gemeinsame Ladetarife: Grundgebuehr nach km verteilt",
+            "Push-Schnittstelle, Vorlage ev_ladung_senden.yaml und Blueprint: optionales Feld \"fahrzeug\" (id oder Name); Blueprint mit \"Laedt dieses Auto?\" fuer eine gemeinsame Wallbox",
+            "Umschalten auf \"Mehrere\" legt vorher eine Sicherung an (vor_mehrere_fahrzeuge_….db) und stellt zwei Tabellen in einer Transaktion um – mit Pruefsummen, bei Abweichung wird zurueckgerollt",
+            "Zurueck auf \"Ein Fahrzeug\" loescht nie Daten: die anderen Fahrzeuge werden nur ausgeblendet, nichts mehr importiert, Push-Ladungen fuer sie abgelehnt. Loeschen nur ausdruecklich mit Namenseingabe und Sicherung",
+            "Achtung: nach dem Umschalten auf \"Mehrere\" kann eine Version vor 3.0 die Datenbank nur noch lesen – zurueck ueber die Sicherung. Wer bei einem Fahrzeug bleibt, ist nicht betroffen",
+            "Einstellungs-Export/-Import mit Fahrzeugliste; ein Import mit \"Mehrere\" baut die Datenbank vorher um (mit Sicherung)",
+            "Hilfe: neuer Abschnitt \"Mehrere Fahrzeuge\", Einrichtung und FAQ ergaenzt; Kontaktadresse ev-tracker@email.de unter \"Unterstuetzen\"",
+            "Neue Tests: fahrzeuge_test.py (Umschalten, Gesamtsicht, Verteilung, Push, Ausblenden, Loeschen, Abbruch des Umbaus, sichtbarer Text wie 2.16), migrationstest.py und oberflaeche_test.py (Browser) erweitert",
+        ],
+    },
     {
         "version": "2.16.0",
         "datum": "2026-10-02",

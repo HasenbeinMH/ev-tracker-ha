@@ -101,6 +101,67 @@ def main():
                   seite.input_value("form[action='steuer/kfz'] input[name=betrag]") == "210,00")
             check("Normal", "Kein Nur-lesbar-Banner", "Nur lesbar" not in seite.content())
 
+            # Mehrere Fahrzeuge ueber die Oberflaeche einschalten und bedienen
+            seite = browser.new_page(viewport={"width": 1280, "height": 900})
+            dialoge = []
+            seite.on("dialog", lambda d: (dialoge.append(d.message), d.accept()))
+            seite.goto(basis + "einstellungen")
+            seite.select_option("#fz-modus", "mehrere")
+            with seite.expect_navigation():
+                seite.click("#fz-modus-form button[type=submit]")
+            check("Mehrere", "Umschalten fragt nach (Sicherung, Downgrade-Hinweis)",
+                  dialoge and "gesichert" in dialoge[-1], "; ".join(dialoge))
+            check("Mehrere", "Meldung nach dem Umschalten", "Mehrere Fahrzeuge eingeschaltet" in seite.content())
+            seite.fill("form[action='einstellungen/fahrzeuge/neu'] input[name=name]", "Zweitwagen")
+            with seite.expect_navigation():
+                seite.click("form[action='einstellungen/fahrzeuge/neu'] button[type=submit]")
+            check("Mehrere", "Neues Fahrzeug angelegt und im Umschalter gewaehlt",
+                  seite.locator("#fz-wahl").input_value() not in ("", "alle")
+                  and "Zweitwagen" in seite.locator("#fz-wahl").inner_text())
+            if bilder:
+                seite.screenshot(path=os.path.join(bilder, "mehrere_einstellungen.png"), full_page=False)
+            # km fuer das Zweitauto ueber das Formular
+            seite.goto(basis + "fahrten")
+            seite.fill("form[action='fahrten'] input[name=monat]", "2026-07")
+            seite.fill("form[action='fahrten'] input[name=km]", "900")
+            with seite.expect_navigation():
+                seite.click("form[action='fahrten'] button[type=submit]")
+            # Umschalter auf "Alle Fahrzeuge"
+            seite.goto(basis)
+            with seite.expect_navigation():
+                seite.select_option("#fz-wahl", "alle")
+            seite.wait_for_load_state("networkidle")
+            check("Mehrere", "Gesamtsicht: Tabelle je Fahrzeug mit beiden Autos",
+                  seite.locator(".je-fahrzeug").is_visible()
+                  and "Zweitwagen" in seite.locator(".je-fahrzeug").inner_text())
+            if bilder:
+                seite.screenshot(path=os.path.join(bilder, "mehrere_dashboard_alle.png"), full_page=True)
+            seite.goto(basis + "laden")
+            check("Mehrere", "Gesamtsicht: Ladeformular verlangt ein Fahrzeug",
+                  seite.locator("form[action='laden'] select[name=fahrzeug_id]").is_visible())
+            if bilder:
+                seite.locator("form[action='laden']").screenshot(
+                    path=os.path.join(bilder, "mehrere_laden_formular.png"))
+            seite.close()
+            for wahl in ("1", "2", "alle"):
+                ctx = browser.new_context(viewport={"width": 1280, "height": 900})
+                ctx.add_cookies([{"name": "fahrzeug", "value": wahl, "url": basis}])
+                class _B:                       # seiten_pruefen erwartet browser.new_page()
+                    new_page = staticmethod(lambda **kw: ctx.new_page())
+                seiten_pruefen(_B, basis, f"Mehrere ({wahl})", None, "")
+                ctx.close()
+            # Handy-Breite: Umschalter und Seite ohne waagrechtes Scrollen
+            ctx = browser.new_context(viewport={"width": 390, "height": 844})
+            ctx.add_cookies([{"name": "fahrzeug", "value": "alle", "url": basis}])
+            handy = ctx.new_page()
+            handy.goto(basis, wait_until="networkidle")
+            breite = handy.evaluate("document.documentElement.scrollWidth")
+            check("Mehrere", "Handy (390 px): Umschalter sichtbar",
+                  handy.locator("#fz-wahl").is_visible(), f"scrollWidth {breite}")
+            if bilder:
+                handy.screenshot(path=os.path.join(bilder, "mehrere_handy.png"))
+            ctx.close()
+
             # Nur lesbar: Datenbank aus einer neueren Version
             server.terminate()
             server.wait()

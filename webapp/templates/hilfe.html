@@ -71,6 +71,7 @@
   <a href="#berichte">Berichte</a>
   <a href="#backup">Backup</a>
   <a href="#einstellungen">Einstellungen</a>
+  <a href="#fahrzeuge">Mehrere Fahrzeuge</a>
   <a href="#formeln">Alle Formeln</a>
   <a href="#kennzahlen">Kennzahlen im Detail</a>
   <a href="#diagramme">Diagramme</a>
@@ -341,13 +342,71 @@
   <tr><td>KFZ-Steuer</td><td>0 € bzw. ab Ende der Befreiung der eingetragene Jahresbetrag</td><td>Jahressteuer des Vergleichs-{{ kf.fahrzeug_gen }}.</td></tr>
 </table>
 <ul>
-  <li><b>Einstellungen sichern / laden</b> – Export als JSON, wahlweise mit oder ohne Zugangsdaten.</li>
+  <li><b>Fahrzeuge</b> – ein oder mehrere E-Autos, siehe <a href="#fahrzeuge">Mehrere Fahrzeuge</a>.
+    Bei mehreren gelten Berechnungsparameter, Fahrzeugbild und Kilometer-/Batteriesensor für das oben
+    rechts gewählte Fahrzeug.</li>
+  <li><b>Einstellungen sichern / laden</b> – Export als JSON, wahlweise mit oder ohne Zugangsdaten; die
+    Fahrzeuge gehen mit.</li>
   <li><b>Lade-Anbieter</b> – eigene Anbieter anlegen, Grünstrom markieren.</li>
   <li><b>Sensoren</b> – Kilometerstand, PV ins Auto, Netz ins Auto, optional die Kosten Netz ins Auto (dynamischer Tarif), {{ kf.name }}preis 1 und 2 sowie der Batteriestand. Je Sensor eine Entity-ID (HA, PostgreSQL, Prometheus) bzw. ein Friendly Name (InfluxDB).</li>
   <li><b>Keine Zähler für „PV ins Auto“ / „Netz ins Auto“?</b> Liefert die Wallbox nur die gesamte Ladeleistung, erzeugen die <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen" target="_blank" rel="noopener">Vorlagen</a> beide Zähler – als Node-RED-Flow (<a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen/node-red" target="_blank" rel="noopener">Import-Anleitung</a> – importiert wird nur <code>ev_pv_anteil_flow.json</code>, nicht die <code>.js</code>-Dateien) oder als Home-Assistant-Paket. Regel: Haus zuerst, das Auto bekommt den Überschuss (Netz ins Auto = min(Netzbezug, Wallbox-Leistung), der Rest ist PV; ein Hausakku zählt als PV). Danach <code>sensor.ev_ladung_pv</code> und <code>sensor.ev_ladung_netz</code> hier eintragen.</li>
   <li><b>Dynamischer Stromtarif?</b> Optional den Kostenzähler <code>sensor.ev_ladung_netz_kosten</code> unter „Kosten Netz ins Auto (€)“ eintragen – siehe <a href="#dynamisch">Dynamischer Stromtarif</a>.</li>
 </ul>
 <div class="hb-info"><b>Token bleiben gespeichert:</b> Lässt du das Token- oder Passwortfeld leer, wird der gespeicherte Wert beibehalten und nicht überschrieben.</div>
+
+<h2 id="fahrzeuge">Mehrere Fahrzeuge <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<p class="hint">Einstellungen → <b>„🚗 Fahrzeuge“</b> – Standard ist „Ein Fahrzeug“: dann sieht alles aus wie immer.</p>
+<ul>
+  <li><b>Einschalten</b>: „Mehrere Fahrzeuge“ wählen und bestätigen. Vorher wird die Datenbank als
+    <code>vor_mehrere_fahrzeuge_….db</code> gesichert, danach werden zwei Tabellen so umgestellt, dass
+    jedes Fahrzeug eigene Monate hat. Die Werte ändern sich dabei nicht.</li>
+  <li><b>Je Fahrzeug</b>: Name, Bild, Vergleichs-Verbrenner (Kraftstoff, Verbrauch, CO2), KFZ-Steuer
+    (Verbrenner und E-Auto), Akkugröße, Kilometerstand- und Batteriesensor, gefahrene km, Ladungen,
+    THG, Instandhaltung und Versicherung. <b>Gemeinsam</b> bleiben Stromtarif, Kraftstoffpreise,
+    PV-Preis, Lade-Anbieter, Mail und Datenquelle.</li>
+  <li><b>Umschalter</b> oben rechts: ein Fahrzeug oder <b>„Alle Fahrzeuge“</b>. Die Gesamtsicht rechnet
+    jedes Fahrzeug mit seinen eigenen Vergleichswerten und addiert; Verbrauch, ct/kWh und Werte je
+    100 km werden aus den Summen gebildet – nie als Mittelwert. Eine Tabelle zeigt jedes Fahrzeug.</li>
+  <li><b>Erfassen in der Gesamtsicht</b>: Formulare fragen, zu welchem Fahrzeug der Eintrag gehört.
+    Beim Bearbeiten einer Ladung lässt sie sich einem anderen Fahrzeug zuordnen.</li>
+  <li><b>KFZ-Steuer</b> zählt je Fahrzeug nur für dessen eigene Monate – ein später gekauftes Auto
+    bekommt keine Ersparnis für die Zeit davor.</li>
+</ul>
+<table>
+  <tr><th style="width:30%">Heimladung</th><th>So wird gezählt</th></tr>
+  <tr><td>Gemeinsame Wallbox – Aufteilung nach km</td><td>Die Zähler unter „Sensoren“ gehören allen
+    Fahrzeugen damit. Die Monatssumme wird nach den gefahrenen km des Monats verteilt (ohne km zu
+    gleichen Teilen) – eine <b>Schätzung</b>, die Notiz nennt den Anteil.</td></tr>
+  <tr><td>Gemeinsame Wallbox – Einzelladungen per Push</td><td>Home Assistant schickt jede Ladung mit
+    Fahrzeug-Kennung (Blueprint „EV Tracker – Ladung senden“ bzw. Vorlage, Feld <code>fahrzeug</code>:
+    id oder Name). Nur der Rest ohne Einzelladung wird nach km verteilt.</td></tr>
+  <tr><td>Gemeinsame Wallbox – Zuordnung über den Akkustand</td><td>Der EV Tracker legt die Stundenwerte
+    der Wallbox neben den Akkustand jedes Autos (Batteriesensor). Steigt in einer Stunde genau bei
+    einem Auto der Akku (± 2 Stunden Spielraum, weil viele Hersteller-Clouds den Akkustand verspätet
+    melden), gehört die Energie diesem Auto. Laden beide gleichzeitig oder fehlt der Akkustand, kommt
+    die Stunde in den Rest – der wird nach km verteilt. Die Notiz zeigt beides, z.B. „86 % über
+    Akkustand, Rest 62 % nach km“. Keine Einrichtung in Home Assistant nötig.</td></tr>
+  <tr><td>Eigene Zähler</td><td>Das Fahrzeug hat eigene kWh-Zähler (eigene Wallbox). Sie stehen unter
+    „Sensoren“, wenn dieses Fahrzeug oben gewählt ist.</td></tr>
+</table>
+<div class="hb-formel"><span class="lbl">Anteil</span>Anteil Fahrzeug [%] = km Fahrzeug im Monat ÷ km aller Fahrzeuge mit gemeinsamer Wallbox × 100</div>
+<div class="hb-info"><b>Welches Auto lädt gerade?</b> Am zuverlässigsten weiß es die Wallbox: eine
+  <b>RFID-Karte je Auto</b> (go-e, Easee, Wallbox u. a.) oder <b>evcc</b> mit Fahrzeugerkennung. Deren
+  Sensor im Blueprint unter „Lädt dieses Auto?“ eintragen (Zustand = Karten-ID bzw. Fahrzeugname).
+  Ladestatus oder Stecker der Fahrzeug-Integration gehen auch, kommen aber über die Hersteller-Cloud
+  oft 15–60 Minuten zu spät – dann ist die Zuordnung über den Akkustand die bessere Wahl.</div>
+<p>Die <b>Grundgebühr</b> eines Ladetarifs gehört einem Fahrzeug oder allen („gemeinsam“) – dann wird sie
+  ebenso nach km verteilt.</p>
+<div class="hb-info"><b>Zurück auf ein Fahrzeug – es wird nichts gelöscht.</b> Du wählst, welches
+  Fahrzeug weiter angezeigt wird; die anderen werden nur ausgeblendet. Ihre Daten bleiben in der
+  Datenbank, in Backups und Exporten und sind nach dem Zurückschalten sofort wieder da. Für
+  ausgeblendete Fahrzeuge wird nichts importiert; Push-Ladungen für sie werden abgelehnt (statt beim
+  falschen Auto zu landen). Löschen ist eine eigene Aktion in der Fahrzeugliste: nur nach Eingabe des
+  Namens, vorher wird gesichert (<code>vor_fahrzeug_loeschen_….db</code>).</div>
+<div class="hb-warn"><b>Ältere Add-on-Version:</b> Nach dem Umschalten auf „Mehrere“ kann eine Version vor
+  3.0 die Datenbank nur noch lesen (Banner „Nur lesbar“). Zurück geht es über die Sicherung
+  <code>vor_mehrere_fahrzeuge_….db</code> unter <a href="#backup">Backup</a>. Wer bei einem Fahrzeug
+  bleibt, ist davon nicht betroffen.</div>
 
 <h2 id="formeln">Alle Formeln auf einen Blick <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <table>
@@ -454,12 +513,17 @@
 <p>Zuerst ins Protokoll auf der Seite HA Import schauen: Steht dort bei „gelesen" überall <code>—</code>, kommt nichts an. Dann Verbindung in den Einstellungen testen und die Sensor-Diagnose aufrufen. Häufigste Ursachen: falsche Entity-ID oder fehlende Langzeitstatistik.</p>
 <h3>Ich habe den {{ kf.fahrzeug }}-Verbrauch geändert – warum ändern sich alte Werte?</h3>
 <p>{{ kf.name }}-Äquivalent und CO2 werden nie gespeichert, sondern bei jeder Anzeige neu gerechnet. Der Parameter wirkt deshalb auf die gesamte Historie.</p>
+<h3>Wir haben zwei E-Autos – geht das?</h3>
+<p>Ja, unter Einstellungen → Fahrzeuge auf „Mehrere Fahrzeuge“ umschalten, siehe <a href="#fahrzeuge">Mehrere Fahrzeuge</a>. Teilen sich beide eine Wallbox, wird die Heimladung nach km verteilt – genauer wird es mit Einzelladungen per Push oder eigenen Zählern.</p>
 <h3>Wo liegen meine Daten?</h3>
 <p>In einer SQLite-Datei im Datenverzeichnis des Containers, gesichert per Cronjob nach OneDrive. Über die Seite Backup lässt sie sich jederzeit herunterladen.</p>
 
 <h2 id="unterstuetzen">Unterstützen <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p>Der EV Tracker ist kostenlos und bleibt es auch. Wer die Weiterentwicklung unterstützen möchte, kann das freiwillig über Ko-fi tun – danke!</p>
 <a class="hb-kofi" href="https://ko-fi.com/daniel71292" target="_blank" rel="noopener">☕ Auf Ko-fi unterstützen</a>
+<p><b>Kontakt:</b> Fragen, Rückmeldungen oder Musterrechnungen für den Rechnungsimport an
+  <a href="mailto:ev-tracker@email.de">ev-tracker@email.de</a>. Fehler und Ideen gerne auch als
+  <a href="https://github.com/HasenbeinMH/ev-tracker-ha/issues" target="_blank" rel="noopener">Issue auf GitHub</a>.</p>
 
 <h2 id="changelog">Änderungslog <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Installierte Version: <b>v{{ VERSION }}</b> – die Nummer steht auch rechts in der Navigationsleiste.</p>

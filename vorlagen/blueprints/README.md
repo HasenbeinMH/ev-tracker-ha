@@ -46,6 +46,20 @@ ein Sensor mit der Ladeleistung der Wallbox (W oder kW).
 | Text-Helfer | der Helfer aus Schritt 2 |
 | Ladeerkennung (eingeklappt) | ab 50 W, Beginn nach 1 min, Ende nach 15 min ohne Leistung |
 
+## Mehrere Fahrzeuge
+
+Erfasst der EV Tracker mehrere E-Autos (Einstellungen → Fahrzeuge), legst du **je Fahrzeug eine
+Automation** aus dem Blueprint an, jede mit eigenem Text-Helfer. Im eingeklappten Abschnitt
+„Mehrere Fahrzeuge“:
+
+| Feld | Inhalt |
+|------|--------|
+| Fahrzeug im EV Tracker | id oder Name des Fahrzeugs (leer = Hauptfahrzeug) |
+| Lädt dieses Auto? | Bei gemeinsamer Wallbox ein Sensor der Fahrzeug-Integration, der beim Laden dieses Autos einen bestimmten Zustand hat (z.B. Ladestatus `charging` oder Stecker `on`) |
+| Zustand beim Laden | ein oder mehrere Zustände, mit Komma getrennt |
+
+Was nicht als Einzelladung ankommt, verteilt der EV Tracker als Rest nach km.
+
 ## Verhalten
 
 - Eine Ladung beginnt, wenn die Wallbox die Schwelle 1 Minute lang überschreitet, und

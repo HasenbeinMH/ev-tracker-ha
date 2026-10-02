@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block titel %}Instandhaltung{% endblock %}
 {% block inhalt %}
+{% from "_fahrzeug.html" import fahrzeug_feld, fahrzeug_name_von with context %}
 <h1>🔧 Instandhaltung</h1>
 <p class="hint">Werkstatt, Reifen, Verschleiß und HU – ein Eintrag je Rechnung. Umgerechnet auf
   € pro 100 km mit den km von der Seite <a href="fahrten">Fahrten</a>.</p>
@@ -46,6 +47,7 @@
     <label class="feld">Notiz
       <input name="notiz" id="i-notiz" placeholder="optional">
     </label>
+    {{ fahrzeug_feld(id="i-fahrzeug_id") }}
     <button type="submit" id="i-senden">➕ Hinzufügen</button>
     <button type="button" class="secondary" id="i-abbrechen" style="display:none"
             onclick="location.reload()">✕ Abbrechen</button>
@@ -54,10 +56,11 @@
 
 <h2>Einträge</h2>
 <div class="tabelle-scroll"><table>
-  <tr><th>Datum</th><th>Kategorie</th><th>Beschreibung</th><th>Werkstatt</th><th>km-Stand</th>
+  <tr>{% if gesamtsicht %}<th>Fahrzeug</th>{% endif %}<th>Datum</th><th>Kategorie</th><th>Beschreibung</th><th>Werkstatt</th><th>km-Stand</th>
       <th>Betrag</th><th>Notiz</th><th></th></tr>
   {% for e in d.eintraege %}
   <tr>
+    {% if gesamtsicht %}<td>{{ fahrzeug_name_von(e.fahrzeug_id) }}</td>{% endif %}
     <td style="white-space:nowrap">{{ e.datum }}</td>
     <td>{{ e.kategorie }}</td>
     <td>{{ e.beschreibung or "" }}</td>
@@ -76,7 +79,7 @@
     </td>
   </tr>
   {% else %}
-  <tr><td colspan="8" class="muted">Noch keine Instandhaltungskosten erfasst.</td></tr>
+  <tr><td colspan="{{ 9 if gesamtsicht else 8 }}" class="muted">Noch keine Instandhaltungskosten erfasst.</td></tr>
   {% endfor %}
 </table></div>
 
