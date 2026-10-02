@@ -167,6 +167,7 @@ def _laden_einzeln() -> dict:
         "kfz_steuer": db.get_einstellung("kfz_steuer_benziner") or 0.0,
         "kfz_steuer_eauto": db.get_einstellung("kfz_steuer_eauto") or 0.0,
         "kfz_steuer_eauto_ab": db.get_einstellung_str("kfz_steuer_eauto_ab") or "",
+        "anschaffung": anschaffung(),
         "fahrzeug_id": db.aktuelles_fahrzeug(),
         "nur_eigene_monate": (db.mehrere_fahrzeuge() and db.aktuelles_fahrzeug() is not None
                               and len(db.sichtbare_ids()) > 1),
@@ -280,6 +281,122 @@ def steuer_eauto(mon: list, daten: dict) -> float:
         return 0.0
     ab = (daten.get("kfz_steuer_eauto_ab") or "")[:7]
     return betrag * len([m for m in mon if m >= ab]) / 12
+
+
+# ── Amortisation: wann hat sich der Mehrpreis des E-Autos bezahlt gemacht? ─────
+
+PROGNOSE_BASIS_MONATE = 12      # Ø-Ersparnis der letzten abgeschlossenen Monate
+PROGNOSE_MAX_MONATE = 15 * 12   # weiter wird nicht hochgerechnet
+
+
+def anschaffung() -> dict | None:
+    """Kaufpreise des aktuellen Fahrzeugs – None, solange kein Preis des E-Autos
+    eingetragen ist. Mehrpreis = E-Auto − vergleichbarer Verbrenner − Foerderung."""
+    eauto = db.get_einstellung("anschaffung_eauto") or 0.0
+    if eauto <= 0:
+        return None
+    verbrenner = db.get_einstellung("anschaffung_verbrenner") or 0.0
+    foerderung = db.get_einstellung("anschaffung_foerderung") or 0.0
+    return {"eauto": eauto, "verbrenner": verbrenner, "foerderung": foerderung,
+            "mehrpreis": eauto - verbrenner - foerderung}
+
+
+def ersparnis_je_monat(daten: dict) -> dict:
+    """Gesamt-Ersparnis (Kraftstoff + KFZ-Steuer + THG) je Monat ueber den ganzen
+    Datenbestand. Die Summe ist genau die Gesamt-Ersparnis im Zeitraum "Gesamt"."""
+    cfg = daten["cfg"]
+    ersatz = berechnung.durchschnitt_benzinpreis(daten["benzin"])
+    preise = {b["monat"][:7]: b["preis_liter"] for b in daten["benzin"]}
+    werte = {m: daten["kfz_steuer"] / 12 - steuer_eauto([m], daten)
+             for m in monate(aufloesen(ALLES), daten)}
+
+    def dazu(m, betrag):
+        werte[m] = werte.get(m, 0.0) + betrag
+
+    for f in daten["fahrten"]:
+        m = f["datum"][:7]
+        dazu(m, berechnung.benzin_liter(f["km"], cfg["benziner_verbrauch"])
+             * preise.get(m, ersatz))
+    for l in daten["lade"]:
+        dazu(l["datum"][:7], -l["gesamtpreis"])
+    for t in daten["thg"]:
+        dazu(t["datum"][:7], t["betrag"])
+    return werte
+
+
+def _monat_plus(monat: str, n: int) -> str:
+    i = int(monat[:4]) * 12 + int(monat[5:7]) - 1 + n
+    return f"{i // 12}-{i % 12 + 1:02d}"
+
+
+def amortisation(daten: dict) -> dict | None:
+    """Mehrpreis gegen die aufsummierte Gesamt-Ersparnis, unabhaengig vom gewaehlten
+    Zeitraum. `daten` aus laden(). In der Gesamtsicht zaehlen nur Fahrzeuge mit
+    eingetragenem Kaufpreis – Preise und Ersparnis werden addiert.
+    None, solange kein Kaufpreis eingetragen ist."""
+    namen, ohne = None, []
+    if daten.get("fahrzeuge"):
+        teile = [(fz, d) for fz, d in daten["fahrzeuge"] if d.get("anschaffung")]
+        if not teile:
+            return None
+        namen = [fz["name"] for fz, _d in teile]
+        ohne = [fz["name"] for fz, d in daten["fahrzeuge"] if not d.get("anschaffung")]
+        a = {k: sum(d["anschaffung"][k] for _f, d in teile)
+             for k in ("eauto", "verbrenner", "foerderung", "mehrpreis")}
+        reihe = {}
+        for _f, d in teile:
+            for m, v in ersparnis_je_monat(d).items():
+                reihe[m] = reihe.get(m, 0.0) + v
+    else:
+        a = daten.get("anschaffung")
+        if not a:
+            return None
+        reihe = ersparnis_je_monat(daten)
+
+    mehrpreis = a["mehrpreis"]
+    folge = sorted(reihe)
+    kumuliert, summe, erreicht = [], 0.0, None
+    for m in folge:
+        summe += reihe[m]
+        kumuliert.append(round(summe, 2))
+        if erreicht is None and summe >= mehrpreis:
+            erreicht = m
+    if summe < mehrpreis:
+        erreicht = None             # zwischendurch erreicht, aktuell wieder darunter
+
+    # Prognose aus dem Durchschnitt der letzten abgeschlossenen Monate (der laufende
+    # Monat ist meist noch unvollstaendig und wuerde den Schnitt druecken)
+    heute = date.today().strftime("%Y-%m")
+    basis = [m for m in folge if m < heute][-PROGNOSE_BASIS_MONATE:] or folge[-PROGNOSE_BASIS_MONATE:]
+    je_monat = sum(reihe[m] for m in basis) / len(basis) if basis else 0.0
+    prognose, prognose_monate, zu_weit = None, None, False
+    rest = max(mehrpreis - summe, 0.0)
+    if erreicht is None and folge and je_monat > 0:
+        n = -(-rest // je_monat)            # aufrunden
+        if n > PROGNOSE_MAX_MONATE:
+            zu_weit = True
+        else:
+            prognose_monate = int(n)
+            prognose = _monat_plus(folge[-1], prognose_monate)
+
+    return {
+        **a,
+        "erspart": summe,
+        "anteil": summe / mehrpreis * 100 if mehrpreis > 0 else None,
+        "rest": rest,
+        "ueberschuss": summe - mehrpreis if summe >= mehrpreis else None,
+        "erreicht": erreicht,
+        "kein_mehrpreis": mehrpreis <= 0,
+        "je_monat": je_monat,
+        "basis_monate": len(basis),
+        "prognose": prognose,
+        "prognose_monate": prognose_monate,
+        "zu_weit": zu_weit,
+        "monate": folge,
+        "kumuliert": kumuliert,
+        "fahrzeuge": namen,
+        "ohne": ohne,
+    }
 
 
 def _ersetzt(gesamt: dict, einzeln: dict) -> list:

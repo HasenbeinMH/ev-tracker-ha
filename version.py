@@ -19,10 +19,23 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "3.1.0"
+VERSION = "3.2.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.2.0",
+        "datum": "2026-10-02",
+        "titel": "Amortisation des Mehrpreises",
+        "aenderungen": [
+            "Neu: Einstellungen → Anschaffung – Amortisation: Kaufpreis des E-Autos, Preis eines vergleichbaren Verbrenners und Foerderung; daraus der Mehrpreis. Je Fahrzeug; ohne Kaufpreis bleibt alles wie bisher",
+            "Dashboard: Abschnitt \"Amortisation des Mehrpreises\" – wie viel Prozent die Gesamt-Ersparnis (Kraftstoff, KFZ-Steuer, THG) schon hereingeholt hat, Fortschrittsbalken und Kurve der aufsummierten Ersparnis gegen den Mehrpreis",
+            "Prognose aus der durchschnittlichen Ersparnis der letzten 12 abgeschlossenen Monate: voraussichtlicher Monat der Amortisation, gestrichelt im Diagramm; nach Erreichen \"Amortisiert seit\" mit dem Betrag im Plus",
+            "Immer ueber den gesamten Zeitraum, unabhaengig von der Zeitraumauswahl; bei mehreren Fahrzeugen in der Gesamtsicht die Summe aller Fahrzeuge mit Kaufpreis",
+            "Hilfe: neuer Abschnitt Amortisation mit Formeln und Beispiel (Deutsch und Englisch)",
+            "Neuer Test amortisation_test.py",
+        ],
+    },
     {
         "version": "3.1.0",
         "datum": "2026-10-02",

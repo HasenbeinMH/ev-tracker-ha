@@ -315,6 +315,7 @@ FAHRZEUG_SCHLUESSEL = {
     "fahrzeug_name", "auto_bild_datei", "auto_bild_galerie",
     "kraftstoff", "benziner_verbrauch", "ev_verbrauch_default", "co2_faktor_benzin",
     "kfz_steuer_benziner", "kfz_steuer_eauto", "kfz_steuer_eauto_ab",
+    "anschaffung_eauto", "anschaffung_verbrenner", "anschaffung_foerderung",
     "akku_kapazitaet_kwh", "lade_min_anstieg", "heimladung",
     "ha_odometer", "ha_ev_battery", "ha_ev_range", "fn_odometer", "fn_ev_battery",
 }

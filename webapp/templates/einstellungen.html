@@ -152,6 +152,27 @@
   </form>
 </div>
 
+<h2 id="anschaffung">{{ _("💰 Anschaffung – Amortisation") }}{% if mehrere and fahrzeuge | length > 1 %} · {{ fahrzeug_name or _("Fahrzeug") }}{% endif %}</h2>
+<div class="card">
+  <p class="hint" style="margin-top:0">{{ _("Wann hat sich der Mehrpreis des E-Autos bezahlt gemacht? Mehrpreis = Kaufpreis E-Auto − Preis eines vergleichbaren Verbrenners − Förderung. Die Gesamt-Ersparnis (Kraftstoff, KFZ-Steuer, THG) wird Monat für Monat aufsummiert; das Dashboard zeigt, wie viel davon schon hereingeholt ist und wann der Rest voraussichtlich erreicht wird. Ohne Kaufpreis des E-Autos bleibt die Amortisation ausgeblendet.") }}</p>
+  <form class="inline" method="post" action="einstellungen/anschaffung">
+    {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ einstellungs_fahrzeug }}">{% endif %}
+    <label class="feld">{{ _("Kaufpreis E-Auto €") }}
+      <input name="eauto" value="{{ anschaffung.eauto | de(0) if anschaffung.eauto else '' }}" placeholder="{{ _t("z.B. 42.000") }}" inputmode="decimal" style="width:110px">
+    </label>
+    <label class="feld">{{ _("Vergleichbarer Verbrenner €") }}
+      <input name="verbrenner" value="{{ anschaffung.verbrenner | de(0) if anschaffung.verbrenner else '' }}" placeholder="{{ _t("z.B. 32.000") }}" inputmode="decimal" style="width:110px">
+    </label>
+    <label class="feld">{{ _("Förderung / Prämien €") }}
+      <input name="foerderung" value="{{ anschaffung.foerderung | de(0) if anschaffung.foerderung else '' }}" placeholder="{{ _t("z.B. 3.000") }}" inputmode="decimal" style="width:110px">
+    </label>
+    <button type="submit">{{ _("💾 Speichern") }}</button>
+  </form>
+  {% if anschaffung.eauto %}
+  <p class="hint">{{ _("Mehrpreis: {0} €", (anschaffung.eauto - anschaffung.verbrenner - anschaffung.foerderung) | de(0)) }}</p>
+  {% endif %}
+</div>
+
 <h2 id="simulation">{{ _("🧪 Simulationsmodus – noch kein E-Auto") }}</h2>
 <div class="card">
   <p class="hint" style="margin-top:0">

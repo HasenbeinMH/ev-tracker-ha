@@ -121,6 +121,7 @@
   <tr><td>Tax savings</td><td>Vehicle tax of the {{ kf.fahrzeug_gen }} (annual amount), pro rata by months in the period; minus the EV's vehicle tax once its exemption ends.</td></tr>
   <tr><td>GHG income</td><td>Sum of the GHG payouts in the period.</td></tr>
   <tr><td>CO2 saved</td><td>{{ kf.name }} equivalent in litres × CO2 factor.</td></tr>
+  <tr><td>Payback of the extra cost</td><td>Only if a purchase price is entered under Settings: how much of the EV's extra cost the total savings have already recovered, with a curve and a forecast. Always over the entire period – see <a href="#amortisation">Payback</a>.</td></tr>
 </table>
 <h3 id="zeitraum">Choosing a period</h3>
 <p>The selection field below the header limits <b>all key figures and charts</b> to one period: entire period, a calendar year, a quarter of the current or last year, or a summer or winter half-year. The choice is remembered in the browser and still applies next time; “✕ Entire period” resets it. The sliders in the individual charts narrow it down further within the selected period.</p>
@@ -344,6 +345,7 @@
   <tr><td>PV price</td><td>13 ct/kWh</td><td>Value of PV self-consumption.</td></tr>
   <tr><td>CO2 factor</td><td>2,37 kg/L (diesel 2,65, LPG 1,64)</td><td>Combustion plus upstream emissions per litre. When the fuel changes, the default value changes with it; your own value stays.</td></tr>
   <tr><td>Vehicle tax</td><td>0 € or, from the end of the exemption, the annual amount entered</td><td>Annual tax of the comparison {{ kf.fahrzeug_gen }}.</td></tr>
+  <tr><td>Purchase – payback</td><td>empty (hidden)</td><td>Purchase price of the EV, price of a comparable {{ kf.fahrzeug_gen }} and subsidies (environmental bonus, grants). This gives the extra cost for the <a href="#amortisation">payback</a> on the dashboard. Per vehicle; an empty purchase price hides the payback.</td></tr>
   <tr><td>Sprache / Language</td><td>Deutsch</td><td>German or English for the interface, help and e-mail reports – also via <b>DE | EN</b> at the top right. Applies to all vehicles and users. Numbers and dates stay in German format; names stored in your data (providers, notes), the import log and the changelog are not translated.</td></tr>
 </table>
 <ul>
@@ -425,6 +427,9 @@
   <tr><td>Tax savings</td><td><code>vehicle tax {{ kf.fahrzeug }} × months ÷ 12 − EV vehicle tax × taxable months ÷ 12</code></td></tr>
   <tr><td>GHG income</td><td><code>Σ GHG amounts</code></td></tr>
   <tr><td><b>Total savings</b></td><td><code>fuel + tax + GHG</code></td></tr>
+  <tr><td>Extra cost</td><td><code>purchase price EV − comparable {{ kf.fahrzeug }} − subsidies</code></td></tr>
+  <tr><td>Recovered</td><td><code>total savings (entire period) ÷ extra cost × 100</code></td></tr>
+  <tr><td>Payback forecast</td><td><code>(extra cost − total savings) ÷ average total savings per month (last 12 completed months)</code></td></tr>
   <tr><td>Consumption per month</td><td><code>kWh (month) ÷ km (month) × 100</code></td></tr>
   <tr><td>Ø consumption (weighted)</td><td><code>Σ kWh ÷ Σ km × 100</code></td></tr>
   <tr><td>Costs per 100 km</td><td><code>electricity costs ÷ km × 100</code></td></tr>
@@ -446,7 +451,18 @@
 <div class="hb-warn"><b>As long as charging costs are missing, the savings are too high.</b> They then equal the full {{ kf.name }} costs. Only with recorded charging does the value become realistic.</div>
 <h3>Total savings</h3>
 <div class="hb-formel"><span class="lbl">Total</span>Total savings = fuel savings + vehicle tax + GHG income</div>
-<p>Not included: purchase, insurance, servicing, tyres, depreciation. Only <b>energy and tax costs</b> are compared.</p>
+<p>Not included: insurance, servicing, tyres, depreciation. Only <b>energy and tax costs</b> are compared; the purchase is handled separately in the <a href="#amortisation">payback</a>.</p>
+<h3 id="amortisation">Payback of the extra cost</h3>
+<p>An EV usually costs more to buy than a comparable {{ kf.fahrzeug }}. The payback shows how much of this extra cost the ongoing total savings have already recovered – and when the rest is likely to follow. Enter the prices under <b>Settings → Purchase – payback</b>; without a purchase price for the EV it stays hidden.</p>
+<div class="hb-formel"><span class="lbl">Extra cost</span>Extra cost = purchase price EV − price of a comparable {{ kf.fahrzeug }} − subsidies</div>
+<div class="hb-formel"><span class="lbl">Status</span>Recovered [%] = total savings so far ÷ extra cost × 100 · paid off in the first month in which the cumulative total savings reach the extra cost</div>
+<div class="hb-formel"><span class="lbl">Forecast</span>Months until payback = (extra cost − total savings so far) ÷ average total savings per month, rounded up</div>
+<div class="hb-bsp"><b>Example</b> – purchase price 44.990 €, comparable {{ kf.fahrzeug }} 36.000 €, subsidies 3.000 €:
+  <span class="rechnung">Extra cost: 44.990 − 36.000 − 3.000 = 5.990 €</span>
+  <span class="rechnung">Total savings so far 2.641 € → 2.641 ÷ 5.990 = <span class="erg">44 %</span>, 3.349 € to go</span>
+  <span class="rechnung">Average 115 € per month → 3.349 ÷ 115 = 29,1 → <span class="erg">30 months</span></span></div>
+<div class="hb-info"><b>Always over the entire period:</b> the period selection at the top of the dashboard does not change the payback. The forecast uses the average of the last 12 completed months – the current month is usually still incomplete. It does not project beyond 15 years. With <b>several vehicles</b> the overall view shows the total of all vehicles with a purchase price.</div>
+<div class="hb-warn"><b>Not included:</b> depreciation, servicing, insurance and financing costs. An EV with a higher resale value therefore pays off earlier, one with higher depreciation later than the curve shows.</div>
 <h3>CO2 savings</h3>
 <div class="hb-formel"><span class="lbl">Avoided CO2</span>CO2 [kg] = km ÷ 100 × {{ kf.fahrzeug }} consumption × CO2 factor [kg/L]</div>
 <div class="hb-warn"><b>Gross value:</b> what is calculated is what the {{ kf.fahrzeug }} would have emitted. The emissions of the electricity charged are <b>not deducted</b> – the real advantage is therefore lower, unless only PV electricity was charged.</div>

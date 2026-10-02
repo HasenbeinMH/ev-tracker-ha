@@ -345,7 +345,11 @@ def dashboard(request: Request, zeitraum: str | None = None):
         "anbieter": charts.chart_anbieter_verteilung(f["lade"]),
         "thg": charts.chart_thg(f["thg"]),
     }
-    antwort = render(request, "dashboard.html", kz=kz, charts=charts_html,
+    # Amortisation immer ueber den ganzen Datenbestand, unabhaengig vom Zeitraum
+    amo = zeitraum_mod.amortisation(daten)
+    if amo:
+        charts_html["amortisation"] = charts.chart_amortisation(amo)
+    antwort = render(request, "dashboard.html", kz=kz, charts=charts_html, amo=amo,
                      zeitraum=z, zeitraum_optionen=zeitraum_mod.optionen(daten),
                      fahrzeug_name=(_("Alle Fahrzeuge") if gesamt else
                                     db.get_einstellung_str("fahrzeug_name") or "Mein Elektroauto"),
@@ -2157,6 +2161,8 @@ def einstellungen(request: Request, meldung: str = ""):
                   cfg=db.get_config(),
                   fahrzeug_name=db.get_einstellung_str("fahrzeug_name") or "",
                   kfz=db.get_einstellung("kfz_steuer_benziner") or 0.0,
+                  anschaffung={k: db.get_einstellung(f"anschaffung_{k}") or 0.0
+                               for k in ("eauto", "verbrenner", "foerderung")},
                   kraftstoffe=berechnung.kraftstoffe(),
                   galerie=galerie.bilder(),
                   galerie_aktiv=auto_bild_galerie(),
@@ -2200,6 +2206,19 @@ def einstellungen_parameter(benziner_verbrauch: str = Form(...),
             db.set_einstellung(key, v)
     db.set_einstellung("fahrzeug_name", fahrzeug_name.strip())
     return RedirectResponse("../einstellungen", status_code=303)
+
+
+@app.post("/einstellungen/anschaffung")
+@mit_fahrzeug
+def einstellungen_anschaffung(eauto: str = Form(""), verbrenner: str = Form(""),
+                              foerderung: str = Form("")):
+    """Kaufpreise fuer die Amortisation; ein leerer Preis des E-Autos blendet sie aus."""
+    for key, raw in [("anschaffung_eauto", eauto), ("anschaffung_verbrenner", verbrenner),
+                     ("anschaffung_foerderung", foerderung)]:
+        v = parse_de(raw, tausender=True) if raw.strip() else 0.0
+        if v is not None and v >= 0:
+            db.set_einstellung(key, v)
+    return RedirectResponse("../einstellungen#anschaffung", status_code=303)
 
 
 @app.post("/einstellungen/sprache")

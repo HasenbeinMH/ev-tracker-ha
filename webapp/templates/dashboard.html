@@ -106,6 +106,47 @@
   {% endfor %}
 </div>
 
+{% if amo %}
+{# Amortisation des Mehrpreises – immer ueber den ganzen Datenbestand, nicht ueber den Zeitraum #}
+<div class="card amortisation" id="amortisation">
+  <h2 style="margin-top:0">{{ _("💰 Amortisation des Mehrpreises") }}</h2>
+  <div class="amo-kopf">
+    {% if amo.kein_mehrpreis %}
+    <div class="amo-wert gruen">{{ _("Kein Mehrpreis – nach Abzug der Förderung war das E-Auto nicht teurer als der Verbrenner.") }}</div>
+    {% elif amo.erreicht %}
+    <div class="amo-wert gruen">{{ _("✅ Amortisiert seit {0}", amo.erreicht[5:7] ~ "/" ~ amo.erreicht[:4]) }} · {{ _("{0} € im Plus", amo.ueberschuss | de(0)) }}</div>
+    {% else %}
+    <div class="amo-wert">{{ _("{0} % hereingeholt", amo.anteil | de(0)) }} · {{ _("noch {0} €", amo.rest | de(0)) }}</div>
+    {% endif %}
+    {% if amo.anteil is not none %}
+    <div class="amo-balken" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ [amo.anteil, 100] | min | round(0) }}"><span style="width: {{ [[amo.anteil, 100] | min, 0] | max }}%"></span></div>
+    {% endif %}
+    <div class="hint" style="margin:6px 0 0">
+      {{ _("Gesamt-Ersparnis bisher {0} € von {1} € Mehrpreis.", amo.erspart | de(0), amo.mehrpreis | de(0)) }}
+      {% if amo.prognose %}
+        {% if amo.prognose_monate == 1 %}{{ _("Voraussichtlich amortisiert: {0} (im nächsten Monat)", amo.prognose[5:7] ~ "/" ~ amo.prognose[:4]) }}{% else %}{{ _("Voraussichtlich amortisiert: {0} (in {1} Monaten)", amo.prognose[5:7] ~ "/" ~ amo.prognose[:4], amo.prognose_monate) }}{% endif %}
+        {{ _("bei Ø {0} € Ersparnis je Monat.", amo.je_monat | de(0)) }}
+      {% elif amo.zu_weit %}
+        {{ _("Bei Ø {0} € Ersparnis je Monat dauert es mehr als 15 Jahre.", amo.je_monat | de(0)) }}
+      {% elif not amo.erreicht and not amo.kein_mehrpreis %}
+        {{ _("Keine Prognose – die Ersparnis der letzten Monate ist nicht positiv.") }}
+      {% endif %}
+    </div>
+  </div>
+  <div class="chart" style="margin-top:12px">
+    <div class="echart" data-echart="opt-amortisation"></div>
+    <script type="application/json" id="opt-amortisation">{{ charts.amortisation | tojson }}</script>
+  </div>
+  <p class="hint">
+    {{ _("Mehrpreis = Kaufpreis E-Auto ({0} €) − vergleichbarer Verbrenner ({1} €) − Förderung ({2} €).", amo.eauto | de(0), amo.verbrenner | de(0), amo.foerderung | de(0)) }}
+    {{ _("Immer über den gesamten Zeitraum, unabhängig von der Auswahl oben. Prognose aus der durchschnittlichen Ersparnis der letzten 12 abgeschlossenen Monate. Nicht enthalten: Wertverlust, Wartung, Versicherung.") }}
+    {% if amo.fahrzeuge %}{{ _("Enthalten: {0}.", amo.fahrzeuge | join(", ")) }}{% endif %}
+    {% if amo.ohne %}{{ _("Ohne Kaufpreis, nicht enthalten: {0}.", amo.ohne | join(", ")) }}{% endif %}
+    <a href="einstellungen#anschaffung">{{ _("Kaufpreise ändern") }}</a>
+  </p>
+</div>
+{% endif %}
+
 {% if kz.je_fahrzeug %}
 {# Gesamtsicht: jedes Fahrzeug mit eigenem Vergleichs-Verbrenner, darunter die Summe #}
 <div class="card je-fahrzeug">

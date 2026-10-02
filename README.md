@@ -37,7 +37,7 @@ nicht auf ein bestimmtes Modell festgelegt. Oberfläche, Hilfe und Berichte gibt
 <tr>
 <td><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-bericht.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-bericht.png" alt="Monatsbericht per Mail" width="70%"></a>
 <br><b>Monatsbericht per Mail</b> – kommt automatisch, sobald der Monat vollständig ist.</td>
-<td valign="top"><br><b>Und außerdem:</b> Import aus Home Assistant oder einer Datenbank (InfluxDB 1.x/2.x/3.x, PostgreSQL/TimescaleDB, Prometheus/VictoriaMetrics), jede Nacht automatisch · Rechnungs-PDFs einlesen ([Musterrechnungen gesucht](#-rechnungsimport-musterrechnungen-gesucht)) · Ladeerkennung am Akkustand (meldet Ladungen unterwegs ohne Beleg) · THG-Quote und KFZ-Steuer · Instandhaltung und Versicherung · mehrere E-Autos (je Auto oder als Summe) · Oberfläche, Hilfe und Mail-Berichte auf Deutsch oder Englisch · Backup und Wiederherstellen</td>
+<td valign="top"><br><b>Und außerdem:</b> Import aus Home Assistant oder einer Datenbank (InfluxDB 1.x/2.x/3.x, PostgreSQL/TimescaleDB, Prometheus/VictoriaMetrics), jede Nacht automatisch · Rechnungs-PDFs einlesen ([Musterrechnungen gesucht](#-rechnungsimport-musterrechnungen-gesucht)) · Ladeerkennung am Akkustand (meldet Ladungen unterwegs ohne Beleg) · THG-Quote und KFZ-Steuer · Amortisation des Mehrpreises mit Prognose · Instandhaltung und Versicherung · mehrere E-Autos (je Auto oder als Summe) · Oberfläche, Hilfe und Mail-Berichte auf Deutsch oder Englisch · Backup und Wiederherstellen</td>
 </tr>
 </table>
 
@@ -102,7 +102,7 @@ Danach holt der nächtliche Abruf km, kWh und Kraftstoffpreis jeden Monat von se
 
 | Seite | Beschreibung |
 |-------|-------------|
-| 📊 Dashboard | Gesamtübersicht, Kennzahlen, alle Charts – je Fahrzeug oder für alle zusammen |
+| 📊 Dashboard | Gesamtübersicht, Kennzahlen, alle Charts, Amortisation des Mehrpreises – je Fahrzeug oder für alle zusammen |
 | 🚗 Fahrten | km erfassen, Kraftstoff-Äquivalent, Verbrauch kWh/100 km |
 | 🔌 Laden | Ladevorgänge mit kWh, Preis, Anbieter, AC/DC, Blockiergebühr |
 | 🔋 Ladetarife | Eigene Lade-Abos mit Preisverlauf |
@@ -114,7 +114,7 @@ Danach holt der nächtliche Abruf km, kWh und Kraftstoffpreis jeden Monat von se
 | 📥 HA Import | Nächtlicher Abruf aus Home Assistant, mit Protokoll |
 | 🧾 Rechnungen | PDF-Rechnungen einlesen |
 | 📄 Berichte | Monatsbericht als PDF, optional per Mail |
-| ⚙️ Einstellungen | Fahrzeuge (eins oder mehrere), Sensoren, Vergleichsfahrzeug, Sprache, Simulationsmodus |
+| ⚙️ Einstellungen | Fahrzeuge (eins oder mehrere), Sensoren, Vergleichsfahrzeug, Kaufpreise, Sprache, Simulationsmodus |
 | 💾 Backup | Datenbank sichern und zurückspielen |
 | ❓ Hilfe | Handbuch, Herleitung jeder Kennzahl, Änderungslog (Deutsch und Englisch) |
 
@@ -237,6 +237,7 @@ suchen, wenn unklar ist, wo genau sich beide Wege unterscheiden.
 | `tests/vorlagen_test.py` | Test der Vorlagen (Node.js + Jinja2): `python tests/vorlagen_test.py` |
 | `tests/migrationstest.py` | Datenbanken der letzten Versionen (per `git worktree`) mit dem aktuellen Code öffnen und Kennzahlen, Berichte und Tabellensummen vergleichen: `python tests/migrationstest.py` |
 | `tests/fahrzeuge_test.py` | Mehrere Fahrzeuge: Umschalten, Gesamtsicht, Verteilung der Wallbox, Push, Ausblenden/Löschen, Abbruch des Umbaus, Vergleich mit 2.16: `python tests/fahrzeuge_test.py` |
+| `tests/amortisation_test.py` | Amortisation: Mehrpreis, Monatsreihe = Gesamt-Ersparnis, Prognose, amortisiert, kein Mehrpreis, über 15 Jahre, Englisch, Gesamtsicht: `python tests/amortisation_test.py` |
 | `tests/i18n_test.py` | Sprachumschaltung: jeder Text übersetzt, alle Seiten in Deutsch und Englisch, JavaScript gültig, Deutsch unverändert, keine deutschen Wörter in Englisch, Bericht auf Englisch (braucht Node.js): `python tests/i18n_test.py` |
 | `tests/oberflaeche_test.py` | Alle Seiten im echten Browser (Playwright/Chromium), JS-Fehler, Formular, Zustand „Nur lesbar“; optional Screenshots: `python tests/oberflaeche_test.py [ordner]` |
 | `tests/datenquellen_docker_test.py` | Dieselben Anbindungen gegen echte Server in Docker (InfluxDB 1.8/2.7, TimescaleDB, VictoriaMetrics, Prometheus): `python tests/datenquellen_docker_test.py` |

@@ -667,3 +667,42 @@ def chart_thg(thg_daten):
     opt["tooltip"]["axisPointer"] = {"type": "shadow",
                                      "shadowStyle": {"color": "rgba(255,255,255,0.03)"}}
     return _bedienung(opt, len(thg_daten))
+
+
+def chart_amortisation(a):
+    """Aufsummierte Gesamt-Ersparnis gegen den Mehrpreis des E-Autos (zeitraum.amortisation),
+    dazu gestrichelt die Prognose bis zum Monat, in dem der Mehrpreis erreicht ist."""
+    if not a or not a["monate"]:
+        return _leer(_("Keine Fahrtdaten"))
+    monate, kum = list(a["monate"]), a["kumuliert"]
+    prognose = []
+    if a["prognose_monate"]:
+        prognose = [round(kum[-1] + a["je_monat"] * i, 2)
+                    for i in range(1, a["prognose_monate"] + 1)]
+        letzter = monate[-1]
+        j, m = int(letzter[:4]), int(letzter[5:7])
+        for _i in prognose:
+            j, m = (j, m + 1) if m < 12 else (j + 1, 1)
+            monate.append(f"{j}-{m:02d}")
+    leer = [None] * len(prognose)
+
+    serien = [
+        _linie(_("Ersparnis"), "green", kum + leer, "fn:euro2", flaeche=True, z=3),
+        _linie(_("Mehrpreis"), "red", [round(a["mehrpreis"], 2)] * len(monate), "fn:euro2",
+               showSymbol=False, lineStyle={"width": 2, "type": "dashed",
+                                            "color": COLORS["red"]}),
+    ]
+    if prognose:
+        serien.append(_linie(_("Prognose"), "orange",
+                             [None] * (len(kum) - 1) + [kum[-1]] + prognose, "fn:euro2",
+                             showSymbol=False,
+                             lineStyle={"width": 2, "type": "dashed",
+                                        "color": COLORS["orange"]}))
+    opt = _basis(
+        xAxis=_achse_kategorie(monate),
+        yAxis=_achse_wert(axisLabel={"color": COLORS["subtext"], "fontSize": 10,
+                                     "formatter": "fn:euro0"}),
+        series=serien,
+    )
+    opt["legend"]["show"] = True
+    return _bedienung(opt, len(monate), umschalten=False)

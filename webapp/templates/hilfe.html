@@ -118,6 +118,7 @@
   <tr><td>Steuer-Ersparnis</td><td>KFZ-Steuer des {{ kf.fahrzeug_gen }} (Jahresbetrag), anteilig nach Monaten im Zeitraum; abzüglich der KFZ-Steuer des E-Autos, sobald dessen Befreiung endet.</td></tr>
   <tr><td>THG-Ertrag</td><td>Summe der THG-Auszahlungen im Zeitraum.</td></tr>
   <tr><td>CO2 gespart</td><td>{{ kf.name }}-Äquivalent in Litern × CO2-Faktor.</td></tr>
+  <tr><td>Amortisation des Mehrpreises</td><td>Nur wenn unter Einstellungen ein Kaufpreis eingetragen ist: wie viel vom Mehrpreis des E-Autos die Gesamt-Ersparnis schon hereingeholt hat, mit Kurve und Prognose. Immer über den gesamten Zeitraum – siehe <a href="#amortisation">Amortisation</a>.</td></tr>
 </table>
 <h3 id="zeitraum">Zeitraum wählen</h3>
 <p>Das Auswahlfeld unter der Kopfzeile schränkt <b>alle Kennzahlen und Diagramme</b> auf einen Zeitraum ein: gesamter Zeitraum, ein Kalenderjahr, ein Quartal des laufenden oder letzten Jahres, oder ein Sommer- bzw. Winterhalbjahr. Die Wahl wird im Browser gemerkt und gilt beim nächsten Aufruf weiter; „✕ Gesamter Zeitraum“ setzt zurück. Die Schieberegler in den einzelnen Diagrammen grenzen innerhalb des gewählten Zeitraums weiter ein.</p>
@@ -340,6 +341,7 @@
   <tr><td>PV-Preis</td><td>13 ct/kWh</td><td>Bewertung des PV-Eigenverbrauchs.</td></tr>
   <tr><td>CO2-Faktor</td><td>2,37 kg/L (Diesel 2,65, Autogas 1,64)</td><td>Verbrennungs- plus Vorkettenemission je Liter. Beim Wechsel des Kraftstoffs springt der Standardwert mit um; ein eigener Wert bleibt stehen.</td></tr>
   <tr><td>KFZ-Steuer</td><td>0 € bzw. ab Ende der Befreiung der eingetragene Jahresbetrag</td><td>Jahressteuer des Vergleichs-{{ kf.fahrzeug_gen }}.</td></tr>
+  <tr><td>Anschaffung – Amortisation</td><td>leer (ausgeblendet)</td><td>Kaufpreis des E-Autos, Preis eines vergleichbaren {{ kf.fahrzeug_gen }} und Förderung (Umweltbonus, Prämien). Daraus der Mehrpreis für die <a href="#amortisation">Amortisation</a> im Dashboard. Je Fahrzeug; ein leerer Kaufpreis blendet die Amortisation aus.</td></tr>
   <tr><td>Sprache / Language</td><td>Deutsch</td><td>Deutsch oder Englisch für Oberfläche, Hilfe und Mail-Berichte – auch über <b>DE | EN</b> oben rechts. Gilt für alle Fahrzeuge und Nutzer. Zahlen und Datum bleiben im deutschen Format; gespeicherte Namen (Anbieter, Notizen), das Importprotokoll und das Änderungslog werden nicht übersetzt.</td></tr>
 </table>
 <ul>
@@ -421,6 +423,9 @@
   <tr><td>Steuer-Ersparnis</td><td><code>KFZ-Steuer {{ kf.fahrzeug }} × Monate ÷ 12 − KFZ-Steuer E-Auto × steuerpflichtige Monate ÷ 12</code></td></tr>
   <tr><td>THG-Ertrag</td><td><code>Σ THG-Beträge</code></td></tr>
   <tr><td><b>Gesamt-Ersparnis</b></td><td><code>Kraftstoff + Steuer + THG</code></td></tr>
+  <tr><td>Mehrpreis</td><td><code>Kaufpreis E-Auto − vergleichbarer {{ kf.fahrzeug }} − Förderung</code></td></tr>
+  <tr><td>Amortisiert zu</td><td><code>Gesamt-Ersparnis (gesamter Zeitraum) ÷ Mehrpreis × 100</code></td></tr>
+  <tr><td>Prognose Amortisation</td><td><code>(Mehrpreis − Gesamt-Ersparnis) ÷ Ø Gesamt-Ersparnis je Monat (letzte 12 abgeschlossene Monate)</code></td></tr>
   <tr><td>Verbrauch je Monat</td><td><code>kWh (Monat) ÷ km (Monat) × 100</code></td></tr>
   <tr><td>Ø Verbrauch (gewichtet)</td><td><code>Σ kWh ÷ Σ km × 100</code></td></tr>
   <tr><td>Kosten je 100 km</td><td><code>Stromkosten ÷ km × 100</code></td></tr>
@@ -442,7 +447,18 @@
 <div class="hb-warn"><b>Solange Ladekosten fehlen, ist die Ersparnis zu hoch.</b> Sie entspricht dann den vollen {{ kf.name }}kosten. Erst mit erfassten Ladungen wird der Wert realistisch.</div>
 <h3>Gesamt-Ersparnis</h3>
 <div class="hb-formel"><span class="lbl">Gesamt</span>Gesamt-Ersparnis = Kraftstoff-Ersparnis + KFZ-Steuer + THG-Ertrag</div>
-<p>Nicht enthalten: Anschaffung, Versicherung, Wartung, Reifen, Wertverlust. Verglichen werden ausschließlich <b>Energie- und Steuerkosten</b>.</p>
+<p>Nicht enthalten: Versicherung, Wartung, Reifen, Wertverlust. Verglichen werden ausschließlich <b>Energie- und Steuerkosten</b>; die Anschaffung steht für sich in der <a href="#amortisation">Amortisation</a>.</p>
+<h3 id="amortisation">Amortisation des Mehrpreises</h3>
+<p>Ein E-Auto kostet in der Anschaffung meist mehr als ein vergleichbarer {{ kf.fahrzeug }}. Die Amortisation zeigt, wie viel dieses Mehrpreises die laufende Gesamt-Ersparnis schon hereingeholt hat – und wann voraussichtlich der Rest. Eingabe unter <b>Einstellungen → Anschaffung – Amortisation</b>; ohne Kaufpreis des E-Autos bleibt sie ausgeblendet.</p>
+<div class="hb-formel"><span class="lbl">Mehrpreis</span>Mehrpreis = Kaufpreis E-Auto − Preis vergleichbarer {{ kf.fahrzeug }} − Förderung</div>
+<div class="hb-formel"><span class="lbl">Stand</span>Amortisiert zu [%] = Gesamt-Ersparnis bisher ÷ Mehrpreis × 100 · amortisiert im ersten Monat, in dem die aufsummierte Gesamt-Ersparnis den Mehrpreis erreicht</div>
+<div class="hb-formel"><span class="lbl">Prognose</span>Monate bis zur Amortisation = (Mehrpreis − Gesamt-Ersparnis bisher) ÷ Ø Gesamt-Ersparnis je Monat, aufgerundet</div>
+<div class="hb-bsp"><b>Beispiel</b> – Kaufpreis 44.990 €, vergleichbarer {{ kf.fahrzeug }} 36.000 €, Förderung 3.000 €:
+  <span class="rechnung">Mehrpreis: 44.990 − 36.000 − 3.000 = 5.990 €</span>
+  <span class="rechnung">Gesamt-Ersparnis bisher 2.641 € → 2.641 ÷ 5.990 = <span class="erg">44 %</span>, noch 3.349 €</span>
+  <span class="rechnung">Ø 115 € je Monat → 3.349 ÷ 115 = 29,1 → <span class="erg">30 Monate</span></span></div>
+<div class="hb-info"><b>Immer über den gesamten Zeitraum:</b> Die Zeitraumauswahl oben im Dashboard ändert die Amortisation nicht. Die Prognose nutzt den Durchschnitt der letzten 12 abgeschlossenen Monate – der laufende Monat ist meist noch unvollständig. Über 15 Jahre wird nicht hochgerechnet. Bei <b>mehreren Fahrzeugen</b> zeigt die Gesamtsicht die Summe aller Fahrzeuge mit eingetragenem Kaufpreis.</div>
+<div class="hb-warn"><b>Nicht enthalten:</b> Wertverlust, Wartung, Versicherung und Finanzierungskosten. Ein E-Auto mit höherem Wiederverkaufswert amortisiert sich also früher, eines mit höherem Wertverlust später, als die Kurve zeigt.</div>
 <h3>CO2-Ersparnis</h3>
 <div class="hb-formel"><span class="lbl">Vermiedenes CO2</span>CO2 [kg] = km ÷ 100 × {{ kf.fahrzeug }}-Verbrauch × CO2-Faktor [kg/L]</div>
 <div class="hb-warn"><b>Bruttowert:</b> Gerechnet wird, was der {{ kf.fahrzeug }} ausgestoßen hätte. Die Emissionen des geladenen Stroms werden <b>nicht abgezogen</b> – der reale Vorteil liegt also niedriger, sofern nicht ausschließlich PV-Strom geladen wurde.</div>

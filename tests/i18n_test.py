@@ -51,7 +51,9 @@ def sichtbar(h):
 
 # Gewollt neu in 3.1 (Sprachwahl) – fuer den Vergleich mit dem Stand vor der Umstellung entfernt
 NEU_IN_3_1 = [r'<form class="sprachwahl".*?</form>', r'<form[^>]*id="sprache".*?</form>',
-              r'<p>🌐.*?</p>', r'<a href="hilfe#changelog" class="version".*?</a>']
+              r'<p>🌐.*?</p>', r'<a href="hilfe#changelog" class="version".*?</a>',
+              # 3.2: Einstellungen → Anschaffung (Amortisation)
+              r'<h2 id="anschaffung">.*?(?=<h2 id="simulation">)']
 
 
 def ohne_neues(h):
