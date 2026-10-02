@@ -1,26 +1,25 @@
 {% extends "base.html" %}
-{% block titel %}Rechnungen{% endblock %}
+{% block titel %}{{ _("Rechnungen") }}{% endblock %}
 {% block inhalt %}
 {% from "_fahrzeug.html" import fahrzeug_feld with context %}
-<h1>📄 Rechnungsimport</h1>
-<p class="hint">PDF-Laderechnung (EWE go, EnBW, medl, Charge myHyundai / DCS, Shell Recharge, vaylens, reev, Tesla Supercharger) hochladen oder Rechnungstext einfügen.
-  Erkannte Vorgänge erscheinen als editierbare Vorschau.</p>
+<h1>{{ _("📄 Rechnungsimport") }}</h1>
+<p class="hint">{{ _("PDF-Laderechnung (EWE go, EnBW, medl, Charge myHyundai / DCS, Shell Recharge, vaylens, reev, Tesla Supercharger) hochladen oder Rechnungstext einfügen. Erkannte Vorgänge erscheinen als editierbare Vorschau.") }}</p>
 
 <div class="card">
   <form class="inline" id="pdf-form">
-    <label class="feld">PDF-Datei
+    <label class="feld">{{ _("PDF-Datei") }}
       <input type="file" name="pdf" accept=".pdf" required>
     </label>
-    <button type="submit">🔍 Auslesen</button>
+    <button type="submit">{{ _("🔍 Auslesen") }}</button>
   </form>
 </div>
 
 <div class="card">
   <form id="text-form">
-    <label class="feld" style="width:100%">Rechnungstext (z.B. aus E-Mail)
+    <label class="feld" style="width:100%">{{ _("Rechnungstext (z.B. aus E-Mail)") }}
       <textarea name="text" rows="4" style="width:100%"></textarea>
     </label>
-    <button type="submit" style="margin-top:8px">🔍 Text auslesen</button>
+    <button type="submit" style="margin-top:8px">{{ _("🔍 Text auslesen") }}</button>
   </form>
 </div>
 
@@ -28,12 +27,12 @@
   <h2 id="anbieter-info"></h2>
   <ul class="hinweisbox" id="hinweise" style="display:none"></ul>
   <div class="tabelle-scroll"><table id="vorschau-tabelle">
-    <tr><th>Datum</th><th>kWh</th><th>ct/kWh</th><th>Gesamt €</th><th>Anbieter</th><th>kW</th><th>Typ</th><th>Notiz</th><th></th></tr>
+    <tr><th>{{ _("Datum") }}</th><th>{{ _("kWh") }}</th><th>{{ _("ct/kWh") }}</th><th>{{ _("Gesamt €") }}</th><th>{{ _("Anbieter") }}</th><th>{{ _("kW") }}</th><th>{{ _("Typ") }}</th><th>{{ _("Notiz") }}</th><th></th></tr>
   </table></div>
   <div style="margin-top:12px; display:flex; gap:10px">
-    <button id="btn-add-row" class="secondary">➕ Zeile hinzufügen</button>
+    <button id="btn-add-row" class="secondary">{{ _("➕ Zeile hinzufügen") }}</button>
     <span id="r-fahrzeug" class="inline" style="display:inline-flex">{{ fahrzeug_feld() }}</span>
-    <button id="btn-apply" style="background:#3a7a3a">✓ Alle Zeilen übernehmen</button>
+    <button id="btn-apply" style="background:#3a7a3a">{{ _("✓ Alle Zeilen übernehmen") }}</button>
   </div>
 </div>
 
@@ -48,8 +47,8 @@ async function parseRequest(formData) {
   const data = await resp.json();
   if (data.error) { zeigeFehler(data.error); return; }
   document.getElementById("anbieter-info").textContent =
-    data.anbieter !== "Unbekannt" ? "✓ Anbieter erkannt: " + data.anbieter
-                                  : "⚠ Anbieter nicht eindeutig erkannt";
+    data.anbieter !== "Unbekannt" ? {{ _t("✓ Anbieter erkannt:") | tojson }} + " " + data.anbieter
+                                  : {{ _t("⚠ Anbieter nicht eindeutig erkannt") | tojson }};
   const box = document.getElementById("hinweise");
   box.innerHTML = (data.hinweise || []).map(h => `<li>⚠ ${esc(h)}</li>`).join("");
   box.style.display = data.hinweise && data.hinweise.length ? "block" : "none";
@@ -117,7 +116,7 @@ document.getElementById("btn-add-row").addEventListener("click", () => {
 
 document.getElementById("btn-apply").addEventListener("click", async () => {
   const fz = document.querySelector("#r-fahrzeug [name=fahrzeug_id]");
-  if (fz && !fz.value) { alert("Bitte zuerst das Fahrzeug wählen."); fz.focus(); return; }
+  if (fz && !fz.value) { alert({{ _t("Bitte zuerst das Fahrzeug wählen.") | tojson }}); fz.focus(); return; }
   const rows = [];
   document.querySelectorAll("#vorschau-tabelle tr.vorgang").forEach(tr => {
     const r = {};
@@ -132,7 +131,7 @@ document.getElementById("btn-apply").addEventListener("click", async () => {
   });
   const data = await resp.json();
   const log = document.getElementById("log");
-  log.textContent = data.log.join("\n") || "Nichts übernommen.";
+  log.textContent = data.log.join("\n") || {{ _t("Nichts übernommen.") | tojson }};
   log.style.display = "block";
   if (data.fehler.length) zeigeFehler(data.fehler.join("\n"));
   else document.getElementById("vorschau").style.display = "none";

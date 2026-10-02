@@ -1,0 +1,552 @@
+{% extends "base.html" %}
+{# Englische Hilfe: gleiche Abschnitte und Anker wie hilfe.html – Aenderungen bitte in beiden pflegen #}
+{% block titel %}Help{% endblock %}
+{% block inhalt %}
+<style>
+  .hb-toc{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
+  .hb-toc a{background:var(--card);border:1px solid var(--border2);border-radius:20px;
+            padding:4px 12px;font-size:12px;color:var(--blau-hell);text-decoration:none}
+  .hb-toc a:hover{background:#232734;color:var(--text)}
+  .hb h2{scroll-margin-top:12px;border-bottom:1px solid var(--border);padding-bottom:6px;
+         margin-top:30px}
+  .hb h3{font-size:13px;color:var(--text);margin:18px 0 7px}
+  .hb p,.hb li{font-size:13px;line-height:1.65}
+  .hb ul,.hb ol{padding-left:20px;margin:0 0 12px}
+  .hb li{margin-bottom:4px}
+  .hb code{background:#232734;border:1px solid var(--border2);border-radius:4px;
+           padding:1px 5px;font-family:Consolas,monospace;font-size:12px;color:var(--gruen)}
+  .hb-formel{background:#0e1015;border:1px solid var(--border2);border-left:3px solid var(--blau);
+             border-radius:6px;padding:11px 14px;margin:10px 0 14px;font-family:Consolas,monospace;
+             font-size:13px;color:var(--gruen);overflow-x:auto;white-space:nowrap}
+  .hb-formel .lbl{display:block;font-family:'Segoe UI',sans-serif;font-size:10px;
+                  letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+                  margin-bottom:5px;font-weight:700}
+  .hb-bsp{border-left:3px solid var(--gelb);background:var(--card);border-radius:0 6px 6px 0;
+          padding:10px 14px;margin:10px 0 14px;font-size:12.5px}
+  .hb-bsp b{color:var(--gelb)}
+  .hb-bsp .rechnung{font-family:Consolas,monospace;display:block;margin-top:4px}
+  .hb-bsp .erg{color:var(--gruen);font-weight:700}
+  .hb-info,.hb-warn{border-radius:6px;padding:9px 13px;margin:10px 0 14px;font-size:12.5px;
+                    border:1px solid}
+  .hb-info{background:#2d6a9f14;border-color:#2d6a9f55}
+  .hb-warn{background:#c4963a12;border-color:#c4963a55}
+  .hb-info b{color:var(--blau-hell)} .hb-warn b{color:var(--gelb)}
+  .hb table{margin:8px 0 16px}
+  .hb td{vertical-align:top;font-size:12.5px}
+  .hb td code{white-space:nowrap}
+  .hb-oben{font-size:11px;color:var(--muted);text-decoration:none;float:right;font-weight:400}
+  .hb-oben:hover{color:var(--blau-hell)}
+  .hb-rel{border-left:2px solid var(--border2);padding-left:16px;margin:0 0 4px}
+  .hb-rel-kopf{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+  .hb-ver{background:var(--blau);color:#fff;border-radius:4px;padding:1px 8px;
+          font-size:11px;font-weight:700;font-family:Consolas,monospace}
+  .hb-ver.alt{background:var(--border2);color:var(--muted)}
+  .hb-rel-titel{font-size:13px;font-weight:600;color:var(--text)}
+  .hb-rel-datum{font-size:11px;color:var(--muted)}
+  .hb-rel ul{margin:0 0 14px;padding-left:18px}
+  .hb-rel li{font-size:12.5px;color:var(--text)}
+  .hb-kofi{display:inline-block;background:#72a4f2;color:#fff;border-radius:6px;padding:7px 16px;
+           font-size:13px;font-weight:600;text-decoration:none;margin:4px 0 14px}
+  .hb-kofi:hover{background:#5a8de0;color:#fff}
+</style>
+
+<div class="hb">
+<h1 id="oben">❓ Manual &amp; calculation basics</h1>
+<p class="hint">How to use every page – and how each displayed value is calculated.</p>
+
+<div class="hb-toc">
+  <a href="#start">Quick start</a>
+  <a href="#konzept">Basic concept</a>
+  <a href="#dashboard">Dashboard</a>
+  <a href="#statistik">Statistics</a>
+  <a href="#fahrten">Trips</a>
+  <a href="#laden">Charging</a>
+  <a href="#ladetarife">Charging tariffs</a>
+  <a href="#benzin">{{ kf.name }}</a>
+  <a href="#stromtarif">Electricity tariff</a>
+  <a href="#steuer">Tax &amp; GHG</a>
+  <a href="#instandhaltung">Maintenance</a>
+  <a href="#versicherung">Insurance</a>
+  <a href="#haimport">HA Import</a>
+  <a href="#rechnungen">Invoices</a>
+  <a href="#berichte">Reports</a>
+  <a href="#backup">Backup</a>
+  <a href="#einstellungen">Settings</a>
+  <a href="#fahrzeuge">Several vehicles</a>
+  <a href="#formeln">All formulas</a>
+  <a href="#kennzahlen">Key figures in detail</a>
+  <a href="#diagramme">Charts</a>
+  <a href="#sensorwerte">Sensor values from HA</a>
+  <a href="#simulation">Simulation mode</a>
+  <a href="#annahmen">Assumptions &amp; limits</a>
+  <a href="#faq">FAQ</a>
+  <a href="#unterstuetzen">Support</a>
+  <a href="#changelog">Changelog</a>
+</div>
+
+<div class="hb-info"><b>About this English version:</b> numbers and dates keep the German format (1.234,56 · 31.12.2026). Names stored in your data – providers, notes such as “Privat – PV” or “Rest ohne Einzelladung” – stay as they are, as do the import log and the changelog at the end of this page.</div>
+
+<h2 id="start">Quick start <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p>The page <a href="einrichtung"><b>🚀 Setup</b></a> guides you step by step through the basic settings and shows for each step whether it is already done. In short:</p>
+<ol>
+  <li><b>Settings → Vehicle picture</b>: choose a picture from the gallery or upload your own – instructions and a prompt for image AIs under <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/fahrzeugbilder" target="_blank" rel="noopener">vehicle pictures</a>.</li>
+  <li><b>Settings → Calculation parameters</b>: vehicle name, comparison with a petrol, diesel or LPG car, its consumption, PV price and vehicle tax. The language (German/English) is set here as well.</li>
+  <li><b>Connection to Home Assistant</b>: automatic in the add-on, otherwise URL and long-lived token.</li>
+  <li><b>Sensors</b>: odometer, PV and grid into car (kWh), {{ kf.name }} price, optionally battery level – easiest via the search.</li>
+  <li><b>Database</b> (optional): only if it goes back further than HA.</li>
+  <li>Create an <b>electricity tariff</b>, then fetch the past months under <b>HA Import</b>.</li>
+  <li><b>Charging</b> or <b>Invoices</b>: add charging on the road; <b>Tax &amp; GHG</b> and <b>Reports</b> as needed.</li>
+</ol>
+<div class="hb-warn"><b>Save first, then test:</b> the connection test and the database search use the <b>saved</b> credentials. So after entering them, first click “Save all settings” – otherwise the old values are tested.</div>
+<div class="hb-info"><b>After that it largely runs by itself:</b> the nightly fetch automatically collects km, PV/grid kWh and {{ kf.name }} price for the current and the previous month.</div>
+
+<h2 id="konzept">Basic concept <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p>EV Tracker compares your <b>actual</b> electricity costs with the <b>extrapolated</b> costs of an imaginary {{ kf.fahrzeug_gen }} that would have driven the same kilometres. The difference is the saving.</p>
+<table>
+  <tr><th style="width:26%">Side</th><th>Data source</th></tr>
+  <tr><td><b>EV (real)</b></td><td>Sum of all recorded charging sessions – from HA import, invoice import or manual entry.</td></tr>
+  <tr><td><b>{{ kf.fahrzeug[:1] | upper }}{{ kf.fahrzeug[1:] }} (notional)</b></td><td>km driven per month × {{ kf.fahrzeug }} consumption × {{ kf.name }} price of the month, added up.</td></tr>
+</table>
+<p>Plus two bonus items: the <b>vehicle tax</b> you no longer pay and the <b>GHG quota</b> (German “THG-Quote”, a yearly premium for EV owners). The avoided <b>CO2</b> is shown as well.</p>
+<div class="hb-warn"><b>Monthly grid:</b> kilometres and {{ kf.name }} prices are kept <b>per month</b> – one value per month, no individual trips. Charging sessions, on the other hand, have a <b>day date</b>. Automatically imported charging is therefore booked on the <b>first day of the month</b>.</div>
+
+<h2 id="dashboard">Dashboard <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p class="hint">Heading: <b>“Overview”</b> · the only input is the period selection.</p>
+<table>
+  <tr><th style="width:25%">Card</th><th>Calculation</th></tr>
+  <tr><td>Total savings (header)</td><td>Fuel + tax + GHG (without CO2 – that is not a monetary value).</td></tr>
+  <tr><td>Total distance</td><td>Sum of the monthly km in the period.</td></tr>
+  <tr><td>Energy charged</td><td>Sum of the kWh of all charging sessions in the period.</td></tr>
+  <tr><td>Fuel savings</td><td>Extrapolated {{ kf.name }} costs − actual electricity costs.</td></tr>
+  <tr><td>Tax savings</td><td>Vehicle tax of the {{ kf.fahrzeug_gen }} (annual amount), pro rata by months in the period; minus the EV's vehicle tax once its exemption ends.</td></tr>
+  <tr><td>GHG income</td><td>Sum of the GHG payouts in the period.</td></tr>
+  <tr><td>CO2 saved</td><td>{{ kf.name }} equivalent in litres × CO2 factor.</td></tr>
+</table>
+<h3 id="zeitraum">Choosing a period</h3>
+<p>The selection field below the header limits <b>all key figures and charts</b> to one period: entire period, a calendar year, a quarter of the current or last year, or a summer or winter half-year. The choice is remembered in the browser and still applies next time; “✕ Entire period” resets it. The sliders in the individual charts narrow it down further within the selected period.</p>
+<table>
+  <tr><th style="width:25%">Period</th><th>Months</th></tr>
+  <tr><td>Year</td><td>January to December, in the current year up to the current month.</td></tr>
+  <tr><td>Quarter</td><td>Q1 Jan–Mar, Q2 Apr–Jun, Q3 Jul–Sep, Q4 Oct–Dec.</td></tr>
+  <tr><td>Summer</td><td>April to September.</td></tr>
+  <tr><td>Winter</td><td>October to March of the following year – “Winter 2025/26” is Oct 2025 to Mar 2026.</td></tr>
+</table>
+<div class="hb-formel"><span class="lbl">Vehicle tax</span>Tax savings = vehicle tax [€/year] × months in period ÷ 12 − EV vehicle tax [€/year] × taxable months ÷ 12</div>
+<div class="hb-info"><b>Why pro rata?</b> Vehicle tax is an annual amount. Otherwise every quarter would be credited with a whole year's tax – and several years only once. For the entire period, the months from the first to the last month with data count. From the start of the period, the electricity tariff history shows the tariff valid then, even if it was entered earlier; tariff changes within the period appear as a step.</div>
+
+<h2 id="statistik">Statistics <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p>Compares two periods side by side – e.g. a year with the previous year or <b>summer against winter</b>. The quick selection at the top offers the most common pairs; “⇄ swap” switches the sides.</p>
+<p><b>Table:</b> all key figures of both periods, plus the difference (first minus second period) absolute and in per cent. Green means better, orange worse: for consumption, costs, electricity price and grid and public share a minus is good, for savings, PV share, GHG income and avoided CO<sub>2</sub> a plus. Values without better or worse stay without colour, e.g. km, kWh charged or the {{ kf.name }} price. Shares (PV, grid, public) are compared in percentage points.</p>
+<div class="hb-warn"><b>Totals depend on the length:</b> a year has more km and higher costs than a quarter. For fair comparisons of periods of different length use consumption, costs per 100 km and Ø electricity price.</div>
+<p><b>Month by month:</b> chart with a selectable key figure. The first month of one period is shown next to the first month of the other; for summer against winter, April next to October (“Apr · Oct”).</p>
+<p><b>Consumption from the battery level per month:</b> the same pairing as a table with the figures behind it – per month and period the counted km, the kWh from the battery and the consumption. The total row is weighted via Σ kWh ÷ Σ km and matches the row “Consumption from battery” in the table above.</p>
+<div class="hb-warn"><b>Different km than in the chart:</b> this table only counts the km of the counted trip segments, not the monthly recorded total kilometres – otherwise km, kWh and consumption in one row would not match. Which segments are left out is explained under <a href="#akkuverbrauch">Consumption from the battery level</a>.</div>
+
+<h2 id="fahrten">Trips <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p class="hint">Heading: <b>“🚗 Kilometres driven (monthly)”</b></p>
+<ul>
+  <li><b>One</b> km value per month. Saving the same month again overwrites the old value.</li>
+  <li>Normally comes automatically from HA (difference of the odometer) – adding it manually is possible at any time.</li>
+  <li>Comma and point are both allowed as decimal separator. For km and euro amounts a thousands point is recognised (“1.234” = 1234 km, “1.234,50” €).</li>
+</ul>
+<div class="hb-formel"><span class="lbl">{{ kf.name }} equivalent</span>Litres = km ÷ 100 × {{ kf.fahrzeug }} consumption [L/100km]</div>
+<div class="hb-formel"><span class="lbl">CO2</span>CO2 [kg] = litres × CO2 factor [kg/L]</div>
+<div class="hb-bsp"><b>Example</b> – 791 km at 7,0 L/100 km and 2,37 kg/L:
+  <span class="rechnung">791 ÷ 100 × 7,0 = 55,37 L</span>
+  <span class="rechnung">55,37 × 2,37 = <span class="erg">131,2 kg CO2</span></span></div>
+<h3>Consumption analysis (kWh/100 km)</h3>
+<p>Shows the lowest, highest and average monthly consumption. Only months with <b>both</b> km <b>and</b> charging sessions are taken into account.</p>
+<div class="hb-formel"><span class="lbl">Consumption per month</span>Consumption = kWh (month) ÷ km (month) × 100</div>
+<div class="hb-formel"><span class="lbl">Average – weighted</span>Ø = Σ kWh (all months) ÷ Σ km (all months) × 100</div>
+<div class="hb-info"><b>Weighted, not the mean of the monthly values:</b> a month with 2.000 km counts more than one with 200 km. Otherwise a short winter month would distort the average heavily.</div>
+<h3 id="akkuverbrauch">Consumption from the battery level</h3>
+<p>A second, independent view of consumption: the hourly battery level from Home Assistant is split into <b>trip segments between two charges</b>. A segment starts at the highest level after a charge and ends at the lowest level before the next one; the km come from the odometer at these times. Month by month, the figures are shown on the <a href="#statistik">Statistics</a> page.</p>
+<div class="hb-info"><b>What counts as a charge:</b> a rise by the <b>minimum charging rise</b> (settings, default 5 percentage points) – measured from the lowest level, not from hour to hour. An AC charge creeping along overnight thus counts as one single charge, and the noise of the hourly average no longer splits a segment into one-per-cent snippets. Smaller top-ups do not split the segment, but they are not included in its kWh either – the consumption is then slightly too low.</div>
+<div class="hb-formel"><span class="lbl">Energy per segment</span>kWh = (battery start − battery end) [%] ÷ 100 × battery capacity [kWh]</div>
+<div class="hb-formel"><span class="lbl">Consumption per segment</span>Consumption = kWh ÷ (km end − km start) × 100</div>
+<div class="hb-bsp"><b>Example</b> – battery from 80 % to 42 %, odometer from 12.310 to 12.455, 58,3 kWh battery:
+  <span class="rechnung">(80 − 42) ÷ 100 × 58,3 = 22,15 kWh</span>
+  <span class="rechnung">22,15 ÷ 145 × 100 = <span class="erg">15,3 kWh/100 km</span></span></div>
+<div class="hb-info"><b>Without charging losses:</b> what counts is what came out of the battery – not what flowed at the wallbox or charging station. The value is therefore below the consumption from charging; the difference roughly equals the charging losses. Standby consumption between trips (pre-conditioning, 12 V battery) is included.</div>
+<div class="hb-warn"><b>Accuracy:</b> HA provides the battery level as an hourly average – per segment this is about ±1 % (±0,6 kWh) inaccurate. Segments under 5 km therefore do not count in the monthly values. If the battery consumption is <b>above</b> the one from charging, charging sessions are probably missing (charged away from home, no receipt recorded).</div>
+<p>Update: every night for the last 45 days. The entire history can be recalculated with a button on the Trips page. Requires the sensors <b>battery level</b> and <b>odometer</b> in the settings; the battery capacity (default 58,3 kWh) can also be set there.</p>
+
+<h2 id="laden">Charging <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p class="hint">Heading: <b>“🔌 Charging sessions”</b> · individual sessions with day date.</p>
+<div class="hb-formel"><span class="lbl">Total price</span>Total price [€] = amount [kWh] × price [ct/kWh] ÷ 100 + blocking fee [€]</div>
+<p>If you leave the total field empty, it is calculated from kWh, ct/kWh and blocking fee. If you enter an amount, <b>that one</b> applies – important for discounts. The <b>blocking fee</b> is included in the total price; its own field only shows it separately.</p>
+<table>
+  <tr><th style="width:28%">Provider</th><th>Price suggestion</th></tr>
+  <tr><td><b>Privat – Netzbezug</b> (home, grid)</td><td>Latest electricity tariff from the Electricity tariff page.</td></tr>
+  <tr><td><b>Privat – PV</b> (home, solar)</td><td>The PV price from the settings (default 13 ct/kWh).</td></tr>
+  <tr><td>medl, EnBW, Ionity, ARAL Pulse, your own</td><td>The current price from the <a href="#ladetarife">Charging tariffs</a> page (AC or DC depending on type). No tariff, no suggestion.</td></tr>
+</table>
+<div class="hb-info"><b>Charging power and AC/DC</b> are for documentation only and are not used in any calculation.</div>
+
+<h2 id="ladetarife">Charging tariffs <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p class="hint">Heading: <b>“🏷️ Charging tariffs”</b> · your subscriptions for public charging, e.g. EnBW M.</p>
+<ul>
+  <li>Per tariff: ct/kWh AC and DC, base fee per month, blocking fee (ct/min, after how many minutes, cap), prices in third-party networks (roaming) and the charging card.</li>
+  <li><b>Price change = new entry</b> with a new “valid from”. The table shows the change compared with the previous entry, the chart the history next to your home electricity price.</li>
+  <li>Only fill in “valid until” if you have cancelled the subscription.</li>
+  <li><b>Base fee:</b> counts in every month in which the tariff applies – even without charging. If the tariff starts or ends during the month, it is calculated pro rata by days (e.g. from the 16th of a 30-day month: 15/30 of the fee).</li>
+  <li>Charging sessions are assigned to the tariff via the <b>provider name</b> and the date.</li>
+</ul>
+<div class="hb-formel"><span class="lbl">Effective price</span>effective [ct/kWh] = (Σ charging costs of the month + base fee) ÷ Σ kWh × 100</div>
+<div class="hb-info"><b>Base fee in the costs:</b> it is included in the electricity costs, the Ø electricity price and the savings on the dashboard, statistics and in the reports – as an entry without kWh that does not count as a charging session. With few charges in a month, the effective price is clearly above the tariff price – then a smaller tariff may be worthwhile.</div>
+
+<h2 id="benzin">{{ kf.name }} <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p class="hint">Heading: <b>“⛽ {{ kf.name }} prices (monthly average)”</b></p>
+<ul>
+  <li>One price in €/L per month – the reference for the entire savings calculation.</li>
+  <li>Normally comes automatically from HA (Tankerkönig monthly average), but can be overwritten.</li>
+</ul>
+<div class="hb-formel"><span class="lbl">Ø {{ kf.name }} price (dashboard)</span>Ø = Σ of all monthly prices ÷ number of months</div>
+<div class="hb-warn"><b>Unweighted:</b> every recorded month counts the same, regardless of the distance driven. If <b>no</b> price has been recorded yet, the app uses <b>1,80 €/L</b> instead.</div>
+<div class="hb-info"><b>Different in reports:</b> there, only the months of the report period are averaged – a monthly report therefore uses exactly the price of that month.</div>
+
+<h2 id="stromtarif">Electricity tariff <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p class="hint">Heading: <b>“⚡ Electricity tariff history”</b></p>
+<ul>
+  <li>With every tariff change, add a new entry with “valid from”; old ones are kept as history.</li>
+  <li>The entry with the <b>latest</b> date is the current tariff.</li>
+  <li>This price is used for grid charging – also with the automatic import.</li>
+</ul>
+<div class="hb-warn"><b>What a tariff entry recalculates:</b> imported monthly grid totals are revalued with the tariff of their month as soon as a tariff is added or deleted. Manually recorded charging sessions and months with a dynamic tariff (below) keep their price. If there is no tariff at all, <b>30 ct/kWh</b> is used for the import.</div>
+<h3 id="dynamisch">Dynamic electricity tariff (Tibber, aWATTar, Octopus …)</h3>
+<p>With a tariff whose price changes (hourly or every quarter of an hour) no fixed value fits. For this there is the optional sensor <b>“Grid cost into car (€)”</b>: a running counter in Home Assistant that adds the price <b>at that moment</b> to every kWh charged from the grid. The <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen" target="_blank" rel="noopener">template</a> <code>ev_netzkosten.yaml</code> creates it as <code>sensor.ev_ladung_netz_kosten</code>.</p>
+<div class="hb-formel"><span class="lbl">Price of the month</span>Price [ct/kWh] = costs of the month [€] ÷ grid into car [kWh] × 100</div>
+<ul>
+  <li>The monthly total gets the note <b>“dynamischer Tarif”</b> and the actual costs as total price.</li>
+  <li>If the cost value for a month is missing (sensor created mid-month, gap) or gives an implausible price (above 150 ct/kWh or not above 0), the electricity tariff of this page applies – the import log names the reason.</li>
+  <li>The electricity tariff still makes sense: for months before the cost meter, the price suggestion for manual charging and the simulation.</li>
+</ul>
+
+<h3 id="push">Individual charging sessions from Home Assistant</h3>
+<p>Instead of just a monthly total, Home Assistant can send each charging session at home <b>individually</b> – with date, time, kWh from grid and PV and (with a cost meter) the costs. Switch it on under <a href="einstellungen#ladung-senden">Settings → Receive charging sessions from Home Assistant</a>; the <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen" target="_blank" rel="noopener">template</a> <code>ev_ladung_senden.yaml</code> remembers the meter readings at the start of charging and sends the differences at the end.</p>
+<div class="hb-formel"><span class="lbl">Monthly total</span>Remainder [kWh] = meter value of the month − Σ single sessions of the month</div>
+<ul>
+  <li>The single sessions carry the note <b>“HA-Ladung 22:10–05:30”</b>. Grid is valued with the costs sent, otherwise with the electricity tariff of the day; PV with the PV price.</li>
+  <li>The nightly fetch only creates the <b>remainder</b> as a monthly total (note “Rest ohne Einzelladung”). If it is less than 0,5 kWh, the monthly total is dropped.</li>
+  <li>If a session did not arrive (add-on just restarted), it is included in the remainder – nothing is missing, only the date is then the first of the month.</li>
+  <li>The same session may arrive several times; its ID is the start of charging. The template splits a session across the turn of the month at midnight.</li>
+</ul>
+
+<h2 id="steuer">Tax &amp; GHG <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p class="hint">Heading: <b>“💶 Vehicle tax &amp; GHG quota”</b></p>
+<div class="hb-formel"><span class="lbl">Tax savings</span>Savings [€] = vehicle tax {{ kf.fahrzeug }} × months ÷ 12 − EV vehicle tax × taxable months ÷ 12</div>
+<p>Both amounts are annual values and are calculated pro rata by months in the period. As long as the EV is tax-exempt, its tax stays at 0 €.</p>
+<div class="hb-info"><b>End of the tax exemption:</b> under “EV vehicle tax” enter the annual amount from the tax notice and the first taxable month. It is deducted only from that month – earlier periods stay unchanged. If the amount changes later, the new value applies to all months from the month entered.</div>
+<div class="hb-formel"><span class="lbl">GHG income</span>GHG income [€] = Σ of all recorded amounts</div>
+<p>Each payout as its own entry with date – so it ends up in the right monthly and annual report.</p>
+
+<h2 id="instandhaltung">Maintenance <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p class="hint">Heading: <b>“🔧 Maintenance”</b> – in the menu under Costs</p>
+<p>One entry per invoice: inspection, tyres, brakes, wear parts, repair, MOT/emissions test, care or other. The odometer reading is optional and only serves as an overview.</p>
+<div class="hb-formel"><span class="lbl">€ per 100 km</span>Maintenance [€/100 km] = Σ costs ÷ km driven × 100</div>
+<p>The km come from the monthly values of the <a href="#fahrten">Trips</a> page, per year or in total. There is deliberately no comparison with a {{ kf.fahrzeug }} – realistic reference data is missing for that.</p>
+<div class="hb-warn"><b>km of the previous car:</b> if the Trips page still contains km of the old car, the value is too low. When changing vehicles, clear the trips via “Reset measurements” (Backup). Maintenance and insurance are not included in the savings on the dashboard.</div>
+
+<h2 id="versicherung">Insurance <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p class="hint">Heading: <b>“🛡️ Car insurance”</b> – in the menu under Costs</p>
+<p>One entry per insurance year with vehicle, insurer, cover, no-claims classes, excess, annual mileage, base premium and add-ons. If something changes, add a new entry with a new “valid from” – the table then shows the change compared with the previous year of the same vehicle.</p>
+<div class="hb-formel"><span class="lbl">Annual premium</span>Total [€/year] = base premium + driver protection + approved repairer + cover abroad + breakdown cover + other</div>
+<p>Add-ons: empty = not booked, 0 = included in the tariff, negative = discount (typical for the approved-repairer option).</p>
+<div class="hb-formel"><span class="lbl">Mileage</span>driven [km/year] = Σ km of the last 12 completed months (fewer months: extrapolated)</div>
+<p>If the value is above the agreed annual mileage, a red warning appears – then notify the insurer, otherwise you may have to pay extra in the event of a claim.</p>
+
+<h2 id="haimport">HA Import <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p class="hint">Heading: <b>“📥 Data import – Home Assistant / database”</b></p>
+<h3>Nightly fetch</h3>
+<p>Runs automatically at the set time (default <b>00:00</b>, can be changed under Reports) and fetches the <b>current and the previous month</b> – so the previous month is still completed if data arrives late. <b>“Run now”</b> triggers it manually.</p>
+<table>
+  <tr><th style="width:24%">Value</th><th style="width:30%">Target</th><th>Behaviour</th></tr>
+  <tr><td>Kilometres</td><td>Monthly km</td><td>Overwrites the monthly value</td></tr>
+  <tr><td>{{ kf.name }} price</td><td>Monthly price</td><td>Overwrites the monthly value</td></tr>
+  <tr><td>PV kWh</td><td>Charging session “Privat – PV”</td><td>Creates or updates</td></tr>
+  <tr><td>Grid kWh</td><td>Charging session “Privat – Netzbezug”</td><td>Creates or updates</td></tr>
+</table>
+<div class="hb-info"><b>Manual entries stay untouched:</b> the automatic fetch only updates its own bookings on the first day of the month.</div>
+<h3>Log</h3>
+<p>Every fetch is recorded with a time stamp – automatic and manual. For each month there are two lines:</p>
+<ul>
+  <li><b>gelesen</b> (read) – what the sensors returned. A <code>—</code> means: no value received.</li>
+  <li><b>übernommen</b> (applied) – what was actually written to the database.</li>
+</ul>
+<p>This lets you tell whether a sensor returns nothing or the value was just not applied. The log is shortened automatically when it gets too long. It is always written in German.</p>
+<h3>Retroactive fetch</h3>
+<p>Any months can be loaded via the period selection. The values first appear in a <b>preview</b> where they can be edited; an empty field is not applied. When applying, charging sessions that already exist are skipped as duplicates.</p>
+<h3>Data sources</h3>
+<p>The default is the <b>Home Assistant API</b> (long-term statistics). If you also collect your sensor data in a database, you can choose it as a source – each value is then looked up there first; if it returns nothing, the HA API steps in automatically. This is worthwhile above all if the database goes back further than HA.</p>
+<table>
+  <tr><th style="width:30%">Database</th><th style="width:22%">HA integration</th><th>Sensor assignment</th></tr>
+  <tr><td>InfluxDB 1.x</td><td>InfluxDB (api_version 1)</td><td>Friendly name (or another tag, e.g. <code>entity_id</code> without “sensor.”) in the measurement of the unit</td></tr>
+  <tr><td>InfluxDB 2.x</td><td>InfluxDB (api_version 2)</td><td>as 1.x; connection via URL, organisation, bucket and API token</td></tr>
+  <tr><td>InfluxDB 3.x (Core/Enterprise)</td><td>InfluxDB (api_version 2)</td><td>as 1.x; connection via URL, database (= bucket from the HA configuration) and token, queried via SQL. Core only reads a limited number of files per query (about 72 hours) – the app queries in windows of at most 48 hours, the search finds sensors with values from the last two days, and the measurement is found via the name</td></tr>
+  <tr><td>PostgreSQL / TimescaleDB</td><td>LTSS</td><td>Entity ID as with HA; the table <code>ltss</code> is read</td></tr>
+  <tr><td>Prometheus / VictoriaMetrics</td><td>Prometheus</td><td>Entity ID as with HA (label <code>entity</code>); retention must be long enough for monthly values</td></tr>
+</table>
+<p><b>Finding a sensor in the database:</b> in the settings under “Sensors” enter a search term (e.g. “odometer” or “kilometer”) and click <b>“Search in database”</b>. The search uses the <em>saved</em> connection – so after entering the credentials, save first. The results show name or entity ID, unit and – except for Prometheus – from when to when data exists. This also shows whether a gap in the import already exists in the database. “Apply” enters the result in the selected row; then save.</p>
+<p><b>Sensor renamed?</b> If the name of a sensor has changed (e.g. after switching the vehicle integration), enter both names separated by <code>|</code>, the old one first: <code>Ceed Kilometerstand | New name</code>. The values of both names are merged – for the odometer, the month of the rename is then correct as well (reading under the new name minus reading under the old name). This works in both columns; for the HA API, with several entity IDs the first one that returns values applies.</p>
+<p><b>Where does a value come from?</b> The import preview marks each value with <b>DB</b> (database) or <b>HA</b> (Home Assistant). If the database returns nothing, the reason is shown below in grey – e.g. “no values in the month”, “no value before the month” (the difference needs the reading before), “gap” (the last reading before is more than 45 days ago – the difference would be the distance of several months; then the HA API steps in, otherwise spread the km of the gap over the months by hand) or the error message of the database. The same is shown in the import log.</p>
+<div class="hb-warn"><b>New since 2.1.0:</b> InfluxDB 2.x, InfluxDB 3.x (since 2.5.0), PostgreSQL/TimescaleDB and Prometheus/VictoriaMetrics are tested, but not yet with many real installations. If something does not fit, the “… test” button in the settings shows the error message of the database – please report it with this message as an issue on GitHub.</div>
+<div class="hb-info"><b>How it is calculated:</b> km and kWh as the difference of the meter reading (last value in the month minus last value before, up to a year back); if that returns nothing, for kWh the sum of the daily maximums (for meters reset daily). {{ kf.name }} price as the mean of all values above 0. Battery level and odometer for the battery consumption as hourly values.</div>
+
+<h2 id="rechnungen">Invoices <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p class="hint">Heading: <b>“📄 Invoice import”</b> · for charging away from home.</p>
+<ul>
+  <li>Upload a PDF or paste text – the sessions are recognised and shown as a preview.</li>
+  <li>All rows can be checked and corrected before applying.</li>
+  <li>If the price per kWh is missing, it is added from <code>total price ÷ kWh × 100</code>.</li>
+  <li>Sessions already recorded (same date, same kWh, same provider) are skipped.</li>
+  <li>The parsers know German invoices (EWE go, EnBW, medl, Charge myHyundai / DCS, Shell Recharge, vaylens, reev, Tesla Supercharger).</li>
+</ul>
+
+<h2 id="berichte">Reports <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p class="hint">Heading: <b>“📊 Reports by e-mail”</b> · the reports are sent in the language set in the settings.</p>
+<h3>Month-end check</h3>
+<p><b>“Check month”</b> reports whether the month can be evaluated. It checks: are kilometres recorded, is a {{ kf.name }} price entered, are there charging sessions – and are there charges detected from the battery history <b>without</b> a matching receipt?</p>
+<div class="hb-info"><b>Charge detection:</b> a rise of the battery level by at least 5 percentage points counts as a charging session. The app estimates the energy as <code>rise [%] ÷ 100 × battery capacity</code> (default 58,3 kWh). First, receipts from the road are matched via the date (± 1 day). The remaining charges are offset against the kWh charged at home in the month – these come from HA only as a monthly total (+5 % margin for the estimate). A missing charge therefore only shows up when it is larger than the charging losses at home in the month (about 10 % of home charging). Whatever is left was probably a charge away from home – the receipt is still missing.</div>
+<h3>Contents of the reports</h3>
+<p>Monthly and annual reports contain key figures with a comparison to the previous period, the breakdown by provider and – for the annual report – the monthly history.</p>
+<div class="hb-formel"><span class="lbl">Costs per 100 km</span>Costs [€/100km] = electricity costs ÷ km × 100</div>
+<h3>Automatic sending</h3>
+<ul>
+  <li>The <b>monthly report</b> goes out from the 1st of the following month, the <b>annual report</b> from 1 January – each once.</li>
+  <li>If “Only send when the month is complete” is active, the app waits up to the set number of days. After that the report goes out anyway with a note on the gaps.</li>
+</ul>
+
+<h2 id="backup">Backup <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p class="hint">Heading: <b>“💾 Backup &amp; restore”</b></p>
+<ul>
+  <li>A cron job on the Docker host backs up the database daily to OneDrive via rclone.</li>
+  <li><b>“Trigger backup now”</b> only creates a marker – the cron job starts within a few minutes.</li>
+  <li>The status counts as up to date as long as the last backup is <b>less than 26 hours</b> old.</li>
+  <li><b>“Download database”</b> provides a consistent copy, even while the app is writing.</li>
+</ul>
+<div class="hb-warn"><b>Restoring replaces the running database.</b> The previous one is first backed up automatically as <code>vor_restore_….db</code>. The uploaded file is checked – only real EV Tracker databases are accepted.</div>
+<div class="hb-info"><b>“Read-only” after a downgrade:</b> the database remembers its structure level. If it comes from a newer version of EV Tracker (e.g. after going back to an older add-on version), the app opens it read-only: all pages are visible, but nothing is saved, imported or sent by e-mail – an orange banner points this out. Otherwise the older version could write the newer structure incorrectly (e.g. kilometres twice). Remedy: install the new version again or restore a backup from the older version here – restoring stays allowed.</div>
+<p class="hint"><b>Reset measurements</b> – for a change of vehicle or to remove test data:</p>
+<ul>
+  <li>Each area can be selected individually: kilometres driven, charging sessions, {{ kf.name }} prices, battery segments, GHG entries. Empty areas cannot be ticked.</li>
+  <li>The button does not delete anything yet – it opens a <b>confirmation</b> that lists each area with the exact number. Only <b>“Yes, delete permanently”</b> carries it out.</li>
+  <li>Settings, electricity tariffs, charging providers and the HA configuration are always kept.</li>
+  <li>The database is first backed up as <code>vor_reset_….db</code> in the data folder.</li>
+</ul>
+<div class="hb-warn">The <b>nightly fetch</b> rewrites kilometres, {{ kf.name }} prices and battery segments from Home Assistant. After the reset, first switch the sensors in the settings to the new vehicle – otherwise the old values will be back the next morning.</div>
+
+<h2 id="einstellungen">Settings <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<table>
+  <tr><th style="width:26%">Parameter</th><th style="width:18%">Default</th><th>Effect</th></tr>
+  <tr><td>Compare with</td><td>Petrol car</td><td>Petrol, diesel or LPG. The calculation is the same (litres × price); the labels and the default CO2 factor change. Choose the matching fuel as price sensor – diesel e.g. from Tankerkönig. Tankerkönig does not know LPG; then enter the LPG price by hand for each month or use your own sensor.</td></tr>
+  <tr><td>{{ kf.fahrzeug[:1] | upper }}{{ kf.fahrzeug[1:] }} consumption</td><td>7,0 L/100 km</td><td>Basis of every savings and CO2 calculation. Applies retroactively.</td></tr>
+  <tr><td>EV reference</td><td>15,0 kWh/100 km</td><td>Only a target line in the consumption chart – no effect on costs.</td></tr>
+  <tr><td>PV price</td><td>13 ct/kWh</td><td>Value of PV self-consumption.</td></tr>
+  <tr><td>CO2 factor</td><td>2,37 kg/L (diesel 2,65, LPG 1,64)</td><td>Combustion plus upstream emissions per litre. When the fuel changes, the default value changes with it; your own value stays.</td></tr>
+  <tr><td>Vehicle tax</td><td>0 € or, from the end of the exemption, the annual amount entered</td><td>Annual tax of the comparison {{ kf.fahrzeug_gen }}.</td></tr>
+  <tr><td>Sprache / Language</td><td>Deutsch</td><td>German or English for the interface, help and e-mail reports – also via <b>DE | EN</b> at the top right. Applies to all vehicles and users. Numbers and dates stay in German format; names stored in your data (providers, notes), the import log and the changelog are not translated.</td></tr>
+</table>
+<ul>
+  <li><b>Vehicles</b> – one or several EVs, see <a href="#fahrzeuge">Several vehicles</a>.
+    With several vehicles, calculation parameters, vehicle picture and odometer/battery sensor apply to the
+    vehicle selected at the top right.</li>
+  <li><b>Save / load settings</b> – export as JSON, with or without credentials; the
+    vehicles are included.</li>
+  <li><b>Charging providers</b> – create your own providers, mark green electricity.</li>
+  <li><b>Sensors</b> – odometer, PV into car, grid into car, optionally grid cost into car (dynamic tariff), {{ kf.name }} price 1 and 2 and the battery level. Per sensor an entity ID (HA, PostgreSQL, Prometheus) or a friendly name (InfluxDB).</li>
+  <li><b>No meters for “PV into car” / “grid into car”?</b> If the wallbox only provides the total charging power, the <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen" target="_blank" rel="noopener">templates</a> create both meters – as a Node-RED flow (<a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/vorlagen/node-red" target="_blank" rel="noopener">import instructions</a> – only <code>ev_pv_anteil_flow.json</code> is imported, not the <code>.js</code> files) or as a Home Assistant package. Rule: house first, the car gets the surplus (grid into car = min(grid supply, wallbox power), the rest is PV; a home battery counts as PV). Then enter <code>sensor.ev_ladung_pv</code> and <code>sensor.ev_ladung_netz</code> here.</li>
+  <li><b>Dynamic electricity tariff?</b> Optionally enter the cost meter <code>sensor.ev_ladung_netz_kosten</code> under “Grid cost into car (€)” – see <a href="#dynamisch">Dynamic electricity tariff</a>.</li>
+</ul>
+<div class="hb-info"><b>Tokens stay saved:</b> if you leave the token or password field empty, the saved value is kept and not overwritten.</div>
+
+<h2 id="fahrzeuge">Several vehicles <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p class="hint">Settings → <b>“🚗 Vehicles”</b> – the default is “One vehicle”: then everything looks as always.</p>
+<ul>
+  <li><b>Switching on</b>: choose “Several vehicles” and confirm. First the database is backed up as
+    <code>vor_mehrere_fahrzeuge_….db</code>, then two tables are converted so that
+    each vehicle has its own months. The values do not change.</li>
+  <li><b>Per vehicle</b>: name, picture, comparison combustion car (fuel, consumption, CO2), vehicle tax
+    (combustion car and EV), battery size, odometer and battery sensor, km driven, charging sessions,
+    GHG, maintenance and insurance. <b>Shared</b> remain electricity tariff, fuel prices,
+    PV price, charging providers, mail and data source.</li>
+  <li><b>Switcher</b> at the top right: one vehicle or <b>“All vehicles”</b>. The total view calculates
+    each vehicle with its own comparison values and adds them up; consumption, ct/kWh and values per
+    100 km are formed from the totals – never as an average. A table shows each vehicle.</li>
+  <li><b>Recording in the total view</b>: forms ask which vehicle the entry belongs to.
+    When editing a charging session, it can be assigned to another vehicle.</li>
+  <li><b>Vehicle tax</b> counts for each vehicle only for its own months – a car bought later
+    gets no savings for the time before.</li>
+</ul>
+<table>
+  <tr><th style="width:30%">Home charging</th><th>How it is counted</th></tr>
+  <tr><td>Shared wallbox – split by km</td><td>The meters under “Sensors” belong to all
+    vehicles using it. The monthly total is split by the km driven in the month (without km in
+    equal parts) – an <b>estimate</b>, the note names the share.</td></tr>
+  <tr><td>Shared wallbox – single sessions via push</td><td>Home Assistant sends each charging session with a
+    vehicle ID (blueprint “EV Tracker – Ladung senden” or template, field <code>fahrzeug</code>:
+    id or name). Only the remainder without single sessions is split by km.</td></tr>
+  <tr><td>Shared wallbox – assignment via battery level</td><td>EV Tracker places the hourly values
+    of the wallbox next to the battery level of each car (battery sensor). If in an hour the battery rises
+    for exactly one car (± 2 hours margin, because many manufacturer clouds report the battery level late),
+    the energy belongs to this car. If both charge at the same time or the battery level is missing,
+    the hour goes into the remainder – which is split by km. The note shows both, e.g. “86 % über
+    Akkustand, Rest 62 % nach km” (86 % via battery level, remainder 62 % by km). No setup in Home Assistant needed.</td></tr>
+  <tr><td>Own meters</td><td>The vehicle has its own kWh meters (own wallbox). They are shown under
+    “Sensors” when this vehicle is selected at the top.</td></tr>
+</table>
+<div class="hb-formel"><span class="lbl">Share</span>Vehicle share [%] = km of the vehicle in the month ÷ km of all vehicles using the shared wallbox × 100</div>
+<div class="hb-info"><b>Which car is charging right now?</b> The wallbox knows best: one
+  <b>RFID card per car</b> (go-e, Easee, Wallbox and others) or <b>evcc</b> with vehicle detection. Enter its
+  sensor in the blueprint under “Lädt dieses Auto?” (is this car charging; state = card ID or vehicle name).
+  Charging status or plug of the vehicle integration also work, but via the manufacturer cloud they often
+  arrive 15–60 minutes late – then assignment via the battery level is the better choice.</div>
+<p>The <b>base fee</b> of a charging tariff belongs to one vehicle or to all (“shared”) – then it is
+  also split by km.</p>
+<div class="hb-info"><b>Back to one vehicle – nothing is deleted.</b> You choose which
+  vehicle stays visible; the others are only hidden. Their data stays in the
+  database, in backups and exports and is back immediately after switching back.
+  Nothing is imported for hidden vehicles; push sessions for them are rejected (instead of ending up
+  with the wrong car). Deleting is a separate action in the vehicle list: only after entering the
+  name, a backup is made first (<code>vor_fahrzeug_loeschen_….db</code>).</div>
+<div class="hb-warn"><b>Older add-on version:</b> after switching to “Several”, a version before
+  3.0 can only read the database (banner “Read-only”). Going back is possible via the backup
+  <code>vor_mehrere_fahrzeuge_….db</code> under <a href="#backup">Backup</a>. If you stay with
+  one vehicle, you are not affected.</div>
+
+<h2 id="formeln">All formulas at a glance <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<table>
+  <tr><th style="width:34%">Value</th><th>Formula</th></tr>
+  <tr><td>{{ kf.name }} equivalent</td><td><code>km ÷ 100 × {{ kf.fahrzeug }} consumption</code></td></tr>
+  <tr><td>CO2 saved</td><td><code>litres × CO2 factor</code></td></tr>
+  <tr><td>Charging costs per session</td><td><code>kWh × ct/kWh ÷ 100</code></td></tr>
+  <tr><td>{{ kf.name }} costs extrapolated</td><td><code>Σ month: km ÷ 100 × consumption × monthly price</code></td></tr>
+  <tr><td>Ø {{ kf.name }} price (km-weighted)</td><td><code>{{ kf.name }} costs ÷ litres</code></td></tr>
+  <tr><td>Fuel savings</td><td><code>{{ kf.name }} costs − Σ charging costs</code></td></tr>
+  <tr><td>Tax savings</td><td><code>vehicle tax {{ kf.fahrzeug }} × months ÷ 12 − EV vehicle tax × taxable months ÷ 12</code></td></tr>
+  <tr><td>GHG income</td><td><code>Σ GHG amounts</code></td></tr>
+  <tr><td><b>Total savings</b></td><td><code>fuel + tax + GHG</code></td></tr>
+  <tr><td>Consumption per month</td><td><code>kWh (month) ÷ km (month) × 100</code></td></tr>
+  <tr><td>Ø consumption (weighted)</td><td><code>Σ kWh ÷ Σ km × 100</code></td></tr>
+  <tr><td>Costs per 100 km</td><td><code>electricity costs ÷ km × 100</code></td></tr>
+  <tr><td>Monthly savings</td><td><code>{{ kf.name }} costs (month) − charging costs (month)</code></td></tr>
+  <tr><td>Detected amount charged</td><td><code>battery rise [%] ÷ 100 × battery capacity</code></td></tr>
+  <tr><td>Consumption from battery</td><td><code>battery drop [%] ÷ 100 × battery capacity ÷ km × 100</code></td></tr>
+  <tr><td>Share of power source</td><td><code>kWh of the source ÷ Σ kWh charged</code></td></tr>
+</table>
+
+<h2 id="kennzahlen">Key figures in detail <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<h3>Fuel savings</h3>
+<div class="hb-formel"><span class="lbl">Step 1 – notional {{ kf.name }} costs</span>{{ kf.name }} costs = Σ per month ( km ÷ 100 × consumption × {{ kf.name }} price of the month )</div>
+<div class="hb-formel"><span class="lbl">Step 2 – savings</span>Fuel savings = {{ kf.name }} costs − Σ of all charging costs</div>
+<div class="hb-bsp"><b>Example</b> – two months, 7,0 L/100 km, no charging costs recorded yet:
+  <span class="rechnung">Month 1: 1.500 ÷ 100 × 7,0 = 105,00 L × 1,80 €/L = 189,00 €</span>
+  <span class="rechnung">Month 2: 1.788 ÷ 100 × 7,0 = 125,16 L × 1,75 €/L = 219,03 €</span>
+  <span class="rechnung">189,00 + 219,03 − 0,00 = <span class="erg">408,03 €</span></span></div>
+<div class="hb-info"><b>Ø {{ kf.name }} price</b> is therefore km-weighted: {{ kf.name }} costs ÷ litres (in the example 408,03 ÷ 230,16 = 1,773 €/L). A month with 3.000 km counts more than one with 100 km. Months without a recorded price get the average of all recorded monthly prices.</div>
+<div class="hb-warn"><b>As long as charging costs are missing, the savings are too high.</b> They then equal the full {{ kf.name }} costs. Only with recorded charging does the value become realistic.</div>
+<h3>Total savings</h3>
+<div class="hb-formel"><span class="lbl">Total</span>Total savings = fuel savings + vehicle tax + GHG income</div>
+<p>Not included: purchase, insurance, servicing, tyres, depreciation. Only <b>energy and tax costs</b> are compared.</p>
+<h3>CO2 savings</h3>
+<div class="hb-formel"><span class="lbl">Avoided CO2</span>CO2 [kg] = km ÷ 100 × {{ kf.fahrzeug }} consumption × CO2 factor [kg/L]</div>
+<div class="hb-warn"><b>Gross value:</b> what is calculated is what the {{ kf.fahrzeug }} would have emitted. The emissions of the electricity charged are <b>not deducted</b> – the real advantage is therefore lower, unless only PV electricity was charged.</div>
+<h3>Consumption kWh/100 km</h3>
+<div class="hb-warn"><b>Charging losses included:</b> the calculation uses the energy charged at the charging point, not at the battery – the value is typically 5–15 % above the on-board computer display. As imported charging is booked on the first of the month, individual months can also look distorted; over several months this evens out.</div>
+
+<h2 id="diagramme">Charts <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p class="hint">Order as on the dashboard. Below the history charts the period can be narrowed with the slider (from three months); at the top right one icon switches between bars and line, another resets the view.</p>
+<table>
+  <tr><th style="width:28%">Chart</th><th>Content</th></tr>
+  <tr><td>Monthly costs &amp; savings</td><td>Bars {{ kf.fahrzeug }} and electricity per month, line (right axis) the difference. Months without a {{ kf.name }} price are calculated with the Ø of all recorded prices; the sum of the line gives the card “Fuel savings”.</td></tr>
+  <tr><td>Fuel cost comparison</td><td>Two horizontal bars over the entire period: {{ kf.fahrzeug }} extrapolated against EV actual.</td></tr>
+  <tr><td>CO2 savings</td><td>Bars per month plus cumulative line.</td></tr>
+  <tr><td>Consumption kWh/100km</td><td>Two lines: <b>from charging</b> (kWh charged ÷ km, incl. charging losses) and <b>from battery</b> (from the battery level, see <a href="#akkuverbrauch">Consumption from the battery level</a>). Dashed: the reference from the settings.</td></tr>
+  <tr><td>{{ kf.name }} price trend</td><td>History of the recorded monthly prices.</td></tr>
+  <tr><td>Electricity tariff history</td><td>Step curve – a tariff applies until the next entry, the last one until today.</td></tr>
+  <tr><td>Charging costs by provider</td><td>Ring chart of the costs in €, not the kWh.</td></tr>
+  <tr><td>kWh charged by power source</td><td>Ring chart of the <b>kWh</b> charged: PV electricity (provider “Privat – PV”), grid at home (“Privat – Netzbezug”) and public (all other providers).</td></tr>
+  <tr><td>GHG quota income</td><td>Bar per payout.</td></tr>
+</table>
+<div class="hb-info"><b>Only a note instead of a chart?</b> Then the necessary data is missing – usually the {{ kf.name }} price or the charging sessions of the month concerned.</div>
+
+<h2 id="sensorwerte">Sensor values from HA <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p>How a sensor becomes a monthly value – this explains most deviations in the import.</p>
+<table>
+  <tr><th style="width:22%">Value</th><th style="width:18%">Method</th><th>Meaning</th></tr>
+  <tr><td>Odometer</td><td><b>Difference</b></td><td>Last reading of the month minus last reading of the previous month.</td></tr>
+  <tr><td>PV into car</td><td><b>Sum</b></td><td>For meters reset daily; otherwise also difference.</td></tr>
+  <tr><td>Grid into car</td><td><b>Difference</b></td><td>As with the odometer.</td></tr>
+  <tr><td>{{ kf.name }} price</td><td><b>Average</b></td><td>Monthly mean; zero values (petrol station closed) are ignored. With two sensors averaged over both.</td></tr>
+</table>
+<div class="hb-info"><b>Two routes per value:</b> first the long-term statistics are read (accurate, but only available if the sensor keeps them). If they return nothing, the history API steps in and looks for the last value before the start of the month – up to twelve months back. This is necessary for sensors that rarely update.</div>
+<div class="hb-warn"><b>If a value stays empty:</b> usually the entity ID is wrong, the sensor keeps no long-term statistics, or the history does not go back far enough. The log on the HA Import page shows which values were read; the diagnosis in the settings checks a sensor over three months.</div>
+
+<h2 id="simulation">Simulation mode <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p>For everyone who still drives a {{ kf.fahrzeug }}: the app shows live what an EV would save with the same kilometres. Switch it on under <a href="einstellungen#simulation">Settings → Simulation mode</a>.</p>
+<table>
+  <tr><th style="width:26%">Value</th><th>Source</th></tr>
+  <tr><td>Kilometres</td><td>real – odometer of the current car, as usual from Home Assistant or the database</td></tr>
+  <tr><td>{{ kf.name }} price</td><td>real – e.g. Tankerkönig; so the {{ kf.name }} costs are no longer an extrapolation but the actual ones</td></tr>
+  <tr><td>Electricity demand</td><td>simulated – km ÷ 100 × EV reference (kWh/100 km) × (1 + charging losses)</td></tr>
+  <tr><td>Electricity costs</td><td>simulated – split by the shares PV (PV price), grid (electricity tariff of the month) and public (ct/kWh price set)</td></tr>
+</table>
+<div class="hb-formel"><span class="lbl">Simulated charging per month</span>kWh = km ÷ 100 × EV consumption × (1 + charging losses) · costs = Σ kWh × share × price</div>
+<p>Dashboard, statistics, charts and e-mail report calculate with it as with real charging; there is a note at the top of every page, and the e-mail report carries “(simulation)” in the title. <b>Nothing is stored</b> – the list under Charging stays empty or only shows real charging sessions.</p>
+<div class="hb-info"><b>After the purchase:</b> switch off the simulation. From then on the real charging sessions count. The statistics additionally show <b>“Forecast vs. actual”</b>: what the simulation would have predicted for the same km, next to the real values – so you can see how good the assumptions were.</div>
+<div class="hb-warn"><b>Assumptions:</b> the EV consumption is constant over the year – in winter it is really 20–30 % higher. If you let the simulation run through summer and winter, you still get a good annual picture if the value set matches the annual average.</div>
+
+<h2 id="annahmen">Assumptions &amp; limits <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<table>
+  <tr><th style="width:34%">Assumption</th><th>Consequence</th></tr>
+  <tr><td>Missing {{ kf.name }} price</td><td>Months without a recorded price are calculated with the average of all recorded monthly prices.</td></tr>
+  <tr><td>Vehicle tax pro rata</td><td>The annual amount is spread over the months – for the entire period from the first to the last month with data, in years up to the current month.</td></tr>
+  <tr><td>CO2 without electricity emissions</td><td>The gross advantage over the {{ kf.fahrzeug }} is shown.</td></tr>
+  <tr><td>Constant {{ kf.fahrzeug }} consumption</td><td>No summer/winter or route dependency for the comparison vehicle.</td></tr>
+  <tr><td>Only energy and tax costs</td><td>Servicing, insurance, depreciation are left out.</td></tr>
+  <tr><td>Imported charging on the first of the month</td><td>The monthly total is right, the distribution over days is not.</td></tr>
+  <tr><td>Charging away from home not automatic</td><td>Only home charging comes from HA – other charging sessions must be added, otherwise the savings appear too high.</td></tr>
+  <tr><td>German formats and German calculation basis</td><td>Numbers and dates stay German in the English version as well; vehicle tax, GHG quota and the invoice parsers are designed for Germany.</td></tr>
+</table>
+
+<h2 id="faq">FAQ <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<h3>The fuel savings seem too high.</h3>
+<p>Charging costs are probably missing. As long as no charging is recorded, the savings equal the full {{ kf.name }} costs. Check the HA import and add charging away from home.</p>
+<h3>A month is missing in the monthly chart.</h3>
+<p>The {{ kf.name }} price or the kilometres are missing for this month. The chart only shows months that occur in both data sets.</p>
+<h3>The consumption is higher than on the on-board computer.</h3>
+<p>Correct – the calculation uses the energy charged including charging losses.</p>
+<h3>The nightly fetch returns no values.</h3>
+<p>First look at the log on the HA Import page: if “gelesen” (read) shows <code>—</code> everywhere, nothing arrives. Then test the connection in the settings and open the sensor diagnosis. Most common causes: wrong entity ID or missing long-term statistics.</p>
+<h3>I changed the {{ kf.fahrzeug }} consumption – why do old values change?</h3>
+<p>{{ kf.name }} equivalent and CO2 are never stored but recalculated with every display. The parameter therefore affects the entire history.</p>
+<h3>We have two EVs – does that work?</h3>
+<p>Yes, switch to “Several vehicles” under Settings → Vehicles, see <a href="#fahrzeuge">Several vehicles</a>. If both share a wallbox, home charging is split by km – it gets more accurate with single sessions via push, assignment via battery level or own meters.</p>
+<h3>Can I switch the language back?</h3>
+<p>Yes, at any time with <b>DE | EN</b> at the top right or under Settings → Calculation parameters. Nothing in your data changes.</p>
+<h3>Where is my data stored?</h3>
+<p>In an SQLite file in the container's data directory, backed up to OneDrive via cron job. It can be downloaded at any time via the Backup page.</p>
+
+<h2 id="unterstuetzen">Support <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p>EV Tracker is free and will stay free. If you would like to support further development, you can do so voluntarily via Ko-fi – thank you!</p>
+<a class="hb-kofi" href="https://ko-fi.com/daniel71292" target="_blank" rel="noopener">☕ Support on Ko-fi</a>
+<p><b>Contact:</b> questions, feedback or sample invoices for the invoice import to
+  <a href="mailto:ev-tracker@email.de">ev-tracker@email.de</a>. Bugs and ideas are also welcome as an
+  <a href="https://github.com/HasenbeinMH/ev-tracker-ha/issues" target="_blank" rel="noopener">issue on GitHub</a> (English or German).</p>
+
+<h2 id="changelog">Changelog <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p class="hint">Installed version: <b>v{{ VERSION }}</b> – the number is also shown on the right of the navigation bar. The changelog is only available in German.</p>
+{% for rel in changelog %}
+<div class="hb-rel" lang="de">
+  <div class="hb-rel-kopf">
+    <span class="hb-ver {{ '' if loop.first else 'alt' }}">v{{ rel.version }}</span>
+    <span class="hb-rel-titel">{{ rel.titel }}</span>
+    <span class="hb-rel-datum">{{ rel.datum }}{{ ' · current' if loop.first else '' }}</span>
+  </div>
+  <ul>
+    {% for a in rel.aenderungen %}<li>{{ a }}</li>{% endfor %}
+  </ul>
+</div>
+{% endfor %}
+<div class="hb-info"><b>Numbering:</b> the first digit stands for major rebuilds, the second for new features, the third for bug fixes. The numbers up to v1.3.0 were derived afterwards from the Git history – before that there was no numbering.</div>
+</div>
+{% endblock %}

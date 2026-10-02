@@ -14,6 +14,8 @@ RUN pip install --no-cache-dir -r requirements-web.txt
 COPY *.py ./
 # Web-App
 COPY webapp/ ./webapp/
+# Uebersetzungen (Sprachumschaltung Deutsch/Englisch, siehe i18n.py)
+COPY i18n/ ./i18n/
 # Galerie der Fahrzeugbilder (Einstellungen → Fahrzeugbild); final/ ist Arbeitsordner
 COPY fahrzeugbilder/ ./fahrzeugbilder/
 

@@ -7,10 +7,16 @@ import calendar
 from datetime import date
 
 import database as db
+from i18n import _, N_
 import berechnung
 
-MONATE = ["Januar", "Februar", "März", "April", "Mai", "Juni",
-          "Juli", "August", "September", "Oktober", "November", "Dezember"]
+MONATE = [N_("Januar"), N_("Februar"), N_("März"), N_("April"), N_("Mai"), N_("Juni"),
+          N_("Juli"), N_("August"), N_("September"), N_("Oktober"), N_("November"), N_("Dezember")]
+
+
+def monatsname(monat: int) -> str:
+    """Monatsname (1–12) in der eingestellten Sprache."""
+    return _(MONATE[monat - 1])
 
 
 # ── Formatierung ─────────────────────────────────────────────────────────────
@@ -34,7 +40,7 @@ def _delta_text(aktuell, vorher, nachkommastellen=0, einheit="", besser=None):
         return ""
     diff = aktuell - vorher
     if abs(diff) < 10 ** -nachkommastellen / 2:
-        return "→ unverändert"
+        return _("→ unverändert")
     pfeil = "▲" if diff > 0 else "▼"
     prozent = diff / abs(vorher) * 100
     text = f"{pfeil} {fmt(abs(diff), nachkommastellen, einheit)} ({prozent:+.0f} %)"
@@ -55,7 +61,7 @@ def _zeitraum_kennzahlen(von: str, bis: str, monate: list) -> dict:
         for fz in db.fahrzeuge():
             with db.fahrzeug_kontext(fz["id"]):
                 je.append((fz, _zeitraum_kennzahlen(von, bis, monate)))
-        return _summe([k for _, k in je], je)
+        return _summe([k for _f, k in je], je)
     cfg = db.get_config()
     lade = berechnung.ladevorgaenge(von, bis)
     thg = db.get_thg_zeitraum(von, bis)
@@ -132,10 +138,10 @@ def _summe(liste: list, je: list) -> dict:
 def _sim_zusatz() -> str:
     """Im Simulationsmodus steht das im Titel – auch im Betreff der Mail. Bei mehreren
     Fahrzeugen der Name des gewaehlten bzw. "alle Fahrzeuge"."""
-    zusatz = " (Simulation)" if db.get_config()["simulation"] else ""
+    zusatz = _(" (Simulation)") if db.get_config()["simulation"] else ""
     if db.mehrere_fahrzeuge() and len(db.sichtbare_ids()) > 1:
         fid = db.aktuelles_fahrzeug()
-        name = ("alle Fahrzeuge" if fid is None
+        name = (_("alle Fahrzeuge") if fid is None
                 else next((f["name"] for f in db.fahrzeuge() if f["id"] == fid), ""))
         zusatz += f" – {name}"
     return zusatz
@@ -154,10 +160,10 @@ def monatsbericht(jahr: int, monat: int) -> dict:
     vormonat = _zeitraum_kennzahlen(f"{v_schluessel}-01",
                                     f"{v_schluessel}-{v_letzter:02d}", [v_schluessel])
 
-    return {"typ": "monat", "titel": f"{MONATE[monat-1]} {jahr}" + _sim_zusatz(),
+    return {"typ": "monat", "titel": f"{monatsname(monat)} {jahr}" + _sim_zusatz(),
             "jahr": jahr, "monat": monat,
             "daten": daten, "vergleich": vormonat,
-            "vergleich_titel": f"{MONATE[v_monat-1]} {v_jahr}"}
+            "vergleich_titel": f"{monatsname(v_monat)} {v_jahr}"}
 
 
 def jahresbericht(jahr: int) -> dict:
@@ -174,9 +180,9 @@ def jahresbericht(jahr: int) -> dict:
         werte = _zeitraum_kennzahlen(f"{schluessel}-01",
                                      f"{schluessel}-{letzter:02d}", [schluessel])
         if werte["km"] or werte["kwh"]:
-            monatsliste.append(dict(name=MONATE[m-1], **werte))
+            monatsliste.append(dict(name=monatsname(m), **werte))
 
-    return {"typ": "jahr", "titel": f"Jahresbericht {jahr}" + _sim_zusatz(), "jahr": jahr,
+    return {"typ": "jahr", "titel": _("Jahresbericht {0}", jahr) + _sim_zusatz(), "jahr": jahr,
             "daten": daten, "vergleich": vorjahr,
             "vergleich_titel": str(jahr - 1), "monate": monatsliste}
 
@@ -219,31 +225,31 @@ def als_html(bericht: dict) -> str:
     kf = berechnung.kraftstoff()
 
     kacheln = (
-        _kachel(fmt(d["km"], 0, "km"), "Gefahrene Strecke")
-        + _kachel(fmt(d["kwh"], 1, "kWh"), "Geladene Energie")
-        + _kachel(fmt(d["strom_kosten"], 2, "&euro;"), "Stromkosten")
-        + _kachel(fmt(d["ersparnis"], 2, "&euro;"), f"Ersparnis vs. {kf['fahrzeug']}",
+        _kachel(fmt(d["km"], 0, "km"), _("Gefahrene Strecke"))
+        + _kachel(fmt(d["kwh"], 1, "kWh"), _("Geladene Energie"))
+        + _kachel(fmt(d["strom_kosten"], 2, "&euro;"), _("Stromkosten"))
+        + _kachel(fmt(d["ersparnis"], 2, "&euro;"), _("Ersparnis vs. {0}", kf['fahrzeug']),
                   "#2f7d4f" if d["ersparnis"] >= 0 else "#aa3333")
     )
 
     verbrauch = fmt(d["verbrauch"], 1, "kWh/100km") if d["verbrauch"] else "–"
     pro100 = fmt(d["kosten_pro_100km"], 2, "&euro;") if d["kosten_pro_100km"] else "–"
     zeilen = [
-        ("Gefahrene Strecke", fmt(d["km"], 0, "km"),
+        (_("Gefahrene Strecke"), fmt(d["km"], 0, "km"),
          _delta_text(d["km"], v["km"], 0, "km")),
-        ("Geladene Energie", fmt(d["kwh"], 1, "kWh"),
+        (_("Geladene Energie"), fmt(d["kwh"], 1, "kWh"),
          _delta_text(d["kwh"], v["kwh"], 1, "kWh")),
-        ("Ladevorgänge", str(d["ladevorgaenge"]), ""),
-        ("Verbrauch", verbrauch, ""),
-        ("Stromkosten", fmt(d["strom_kosten"], 2, "&euro;"),
+        (_("Ladevorgänge"), str(d["ladevorgaenge"]), ""),
+        (_("Verbrauch"), verbrauch, ""),
+        (_("Stromkosten"), fmt(d["strom_kosten"], 2, "&euro;"),
          _delta_text(d["strom_kosten"], v["strom_kosten"], 2, "&euro;", "niedrig")),
-        ("Kosten je 100 km", pro100, ""),
-        (f"{kf['fahrzeug']} hätte gekostet", fmt(d["benzin_kosten"], 2, "&euro;"),
-         "bei &Oslash; " + fmt(d["avg_benzin"], 3, "&euro;/L")),
-        ("Ersparnis", fmt(d["ersparnis"], 2, "&euro;"),
+        (_("Kosten je 100 km"), pro100, ""),
+        (_("{0} hätte gekostet", kf['fahrzeug']), fmt(d["benzin_kosten"], 2, "&euro;"),
+         _("bei &Oslash; {0}", fmt(d["avg_benzin"], 3, "&euro;/L"))),
+        (_("Ersparnis"), fmt(d["ersparnis"], 2, "&euro;"),
          _delta_text(d["ersparnis"], v["ersparnis"], 2, "&euro;", "hoch")),
-        ("THG-Ertrag", fmt(d["thg"], 2, "&euro;"), ""),
-        ("CO&#8322; gespart",fmt(d["co2"], 1, "kg"),
+        (_("THG-Ertrag"), fmt(d["thg"], 2, "&euro;"), ""),
+        (_("CO&#8322; gespart"), fmt(d["co2"], 1, "kg"),
          _delta_text(d["co2"], v["co2"], 1, "kg", "hoch")),
     ]
     tabelle = "".join(
@@ -259,9 +265,9 @@ def als_html(bericht: dict) -> str:
             f'<td class="z">{fmt(a["kosten"], 2, "&euro;")}</td></tr>'
             for name, a in sorted(d["nach_anbieter"].items(),
                                   key=lambda x: -x[1]["kosten"]))
-        anbieter_html = ('<h2>Ladevorgänge nach Anbieter</h2><table>'
-                         '<tr><th>Anbieter</th><th class="z">Anzahl</th>'
-                         '<th class="z">Energie</th><th class="z">Kosten</th></tr>'
+        anbieter_html = (f'<h2>{_("Ladevorgänge nach Anbieter")}</h2><table>'
+                         f'<tr><th>{_("Anbieter")}</th><th class="z">{_("Anzahl")}</th>'
+                         f'<th class="z">{_("Energie")}</th><th class="z">{_("Kosten")}</th></tr>'
                          + reihen + '</table>')
 
     fahrzeug_html = ""
@@ -273,10 +279,10 @@ def als_html(bericht: dict) -> str:
             f'<td class="z {"gruen" if x["ersparnis"] >= 0 else "rot"}">'
             f'{fmt(x["ersparnis"], 2)}</td></tr>'
             for x in d["je_fahrzeug"])
-        fahrzeug_html = ('<h2>Je Fahrzeug</h2><table>'
-                         '<tr><th>Fahrzeug</th><th class="z">km</th><th class="z">kWh</th>'
-                         '<th class="z">Kosten &euro;</th>'
-                         '<th class="z">Ersparnis &euro;</th></tr>'
+        fahrzeug_html = (f'<h2>{_("Je Fahrzeug")}</h2><table>'
+                         f'<tr><th>{_("Fahrzeug")}</th><th class="z">km</th><th class="z">kWh</th>'
+                         f'<th class="z">{_("Kosten &euro;")}</th>'
+                         f'<th class="z">{_("Ersparnis &euro;")}</th></tr>'
                          + reihen + '</table>')
 
     monats_html = ""
@@ -288,26 +294,25 @@ def als_html(bericht: dict) -> str:
             f'<td class="z {"gruen" if m["ersparnis"] >= 0 else "rot"}">'
             f'{fmt(m["ersparnis"], 2)}</td></tr>'
             for m in bericht["monate"])
-        monats_html = ('<h2>Monatsverlauf</h2><table>'
-                       '<tr><th>Monat</th><th class="z">km</th><th class="z">kWh</th>'
-                       '<th class="z">Kosten &euro;</th>'
-                       '<th class="z">Ersparnis &euro;</th></tr>'
+        monats_html = (f'<h2>{_("Monatsverlauf")}</h2><table>'
+                       f'<tr><th>{_("Monat")}</th><th class="z">km</th><th class="z">kWh</th>'
+                       f'<th class="z">{_("Kosten &euro;")}</th>'
+                       f'<th class="z">{_("Ersparnis &euro;")}</th></tr>'
                        + reihen + '</table>')
 
     return (
-        '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8">'
+        f'<!DOCTYPE html><html lang="{db.sprache()}"><head><meta charset="utf-8">'
         f'<style>{_STIL}</style></head><body><div class="rahmen">'
         f'<div class="kopf"><h1>&#9889; EV Tracker – {bericht["titel"]}</h1>'
-        f'<div>Vergleich mit {bericht["vergleich_titel"]}</div></div>'
+        f'<div>{_("Vergleich mit {0}", bericht["vergleich_titel"])}</div></div>'
         '<div class="inhalt">'
         + (f'<div style="background:#fff8e1;border:1px solid #e6d9a8;'
            f'border-radius:6px;padding:10px 12px;font-size:12px;margin-bottom:14px">'
            f'&#9888; {bericht["hinweis"]}</div>' if bericht.get("hinweis") else '')
         + f'<div style="margin:0 -1%">{kacheln}</div>'
-        f'<h2>Kennzahlen</h2><table>{tabelle}</table>'
+        f'<h2>{_("Kennzahlen")}</h2><table>{tabelle}</table>'
         f'{fahrzeug_html}{anbieter_html}{monats_html}</div>'
-        f'<div class="fuss">Automatisch erstellt vom EV Tracker am '
-        f'{date.today().strftime("%d.%m.%Y")}.</div>'
+        f'<div class="fuss">{_("Automatisch erstellt vom EV Tracker am {0}.", date.today().strftime("%d.%m.%Y"))}</div>'
         '</div></body></html>')
 
 
@@ -318,12 +323,12 @@ def als_text(bericht: dict) -> str:
     return "\n".join([
         f"EV Tracker – {bericht['titel']}",
         "=" * 40,
-        f"Gefahrene Strecke:  {fmt(d['km'], 0, 'km')}",
-        f"Geladene Energie:   {fmt(d['kwh'], 1, 'kWh')} "
-        f"in {d['ladevorgaenge']} Vorgaengen",
-        f"Stromkosten:        {fmt(d['strom_kosten'], 2, 'EUR')}",
-        f"{(kf['name'] + '-Vergleich:'):<19} {fmt(d['benzin_kosten'], 2, 'EUR')}",
-        f"Ersparnis:          {fmt(d['ersparnis'], 2, 'EUR')}",
-        f"THG-Ertrag:         {fmt(d['thg'], 2, 'EUR')}",
-        f"CO2 gespart:        {fmt(d['co2'], 1, 'kg')}",
+        f"{_('Gefahrene Strecke:'):<19} {fmt(d['km'], 0, 'km')}",
+        f"{_('Geladene Energie:'):<19} {fmt(d['kwh'], 1, 'kWh')} "
+        + _("in {0} Vorgaengen", d['ladevorgaenge']),
+        f"{_('Stromkosten:'):<19} {fmt(d['strom_kosten'], 2, 'EUR')}",
+        f"{_('{0}-Vergleich:', kf['name']):<19} {fmt(d['benzin_kosten'], 2, 'EUR')}",
+        f"{_('Ersparnis:'):<19} {fmt(d['ersparnis'], 2, 'EUR')}",
+        f"{_('THG-Ertrag:'):<19} {fmt(d['thg'], 2, 'EUR')}",
+        f"{_('CO2 gespart:'):<19} {fmt(d['co2'], 1, 'kg')}",
     ])

@@ -31,7 +31,7 @@ nicht auf ein bestimmtes Modell festgelegt.
 <tr>
 <td><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-bericht.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-bericht.png" alt="Monatsbericht per Mail" width="70%"></a>
 <br><b>Monatsbericht per Mail</b> – kommt automatisch, sobald der Monat vollständig ist.</td>
-<td valign="top"><br><b>Und außerdem:</b> Import aus Home Assistant oder einer Datenbank (InfluxDB 1.x/2.x/3.x, PostgreSQL/TimescaleDB, Prometheus/VictoriaMetrics), jede Nacht automatisch · Rechnungs-PDFs einlesen ([Musterrechnungen gesucht](#-rechnungsimport-musterrechnungen-gesucht)) · Ladeerkennung am Akkustand (meldet Ladungen unterwegs ohne Beleg) · THG-Quote und KFZ-Steuer · Instandhaltung und Versicherung · mehrere E-Autos (je Auto oder als Summe) · Backup und Wiederherstellen</td>
+<td valign="top"><br><b>Und außerdem:</b> Import aus Home Assistant oder einer Datenbank (InfluxDB 1.x/2.x/3.x, PostgreSQL/TimescaleDB, Prometheus/VictoriaMetrics), jede Nacht automatisch · Rechnungs-PDFs einlesen ([Musterrechnungen gesucht](#-rechnungsimport-musterrechnungen-gesucht)) · Ladeerkennung am Akkustand (meldet Ladungen unterwegs ohne Beleg) · THG-Quote und KFZ-Steuer · Instandhaltung und Versicherung · mehrere E-Autos (je Auto oder als Summe) · Oberfläche, Hilfe und Mail-Berichte auf Deutsch oder Englisch · Backup und Wiederherstellen</td>
 </tr>
 </table>
 
@@ -107,7 +107,7 @@ Danach holt der nächtliche Abruf km, kWh und Kraftstoffpreis jeden Monat von se
 | 🧾 Rechnungen | PDF-Rechnungen einlesen |
 | 📄 Berichte | Monatsbericht als PDF, optional per Mail |
 | 💾 Backup | Datenbank sichern und zurückspielen |
-| ❓ Hilfe | Handbuch, Herleitung jeder Kennzahl, Änderungslog |
+| ❓ Hilfe | Handbuch, Herleitung jeder Kennzahl, Änderungslog (Deutsch und Englisch) |
 
 ## Daten
 
@@ -219,6 +219,7 @@ suchen, wenn unklar ist, wo genau sich beide Wege unterscheiden.
 | `pdf_parser.py`, `ladeerkennung.py` | Rechnungs-PDFs, Erkennung von Ladevorgängen |
 | `backup_db.py`, `backup.sh` | Sicherung der Datenbank (nur Standalone-Docker) |
 | `settings_tool.py` | Einstellungen als JSON exportieren/importieren |
+| `i18n.py`, `i18n/` | Sprachumschaltung: der deutsche Text ist der Schlüssel, `i18n/en.json` die englische Übersetzung; `i18n/pruefen.py` meldet fehlende Einträge. Neue Texte in Templates mit `{{ _("…") }}`, in Python mit `_("…")` schreiben |
 | `testdaten.py`, `testdaten.bat` | Testdaten anlegen |
 | `tests/funktionstest.py` | Funktions- und Plausibilitätstest mit eigener Test-DB: `python tests/funktionstest.py` (braucht zusätzlich `httpx`) |
 | `tests/datenquellen_test.py` | Test der Datenbank-Anbindungen gegen nachgebaute Server: `python tests/datenquellen_test.py` |
@@ -227,6 +228,7 @@ suchen, wenn unklar ist, wo genau sich beide Wege unterscheiden.
 | `tests/vorlagen_test.py` | Test der Vorlagen (Node.js + Jinja2): `python tests/vorlagen_test.py` |
 | `tests/migrationstest.py` | Datenbanken der letzten Versionen (per `git worktree`) mit dem aktuellen Code öffnen und Kennzahlen, Berichte und Tabellensummen vergleichen: `python tests/migrationstest.py` |
 | `tests/fahrzeuge_test.py` | Mehrere Fahrzeuge: Umschalten, Gesamtsicht, Verteilung der Wallbox, Push, Ausblenden/Löschen, Abbruch des Umbaus, Vergleich mit 2.16: `python tests/fahrzeuge_test.py` |
+| `tests/i18n_test.py` | Sprachumschaltung: jeder Text übersetzt, alle Seiten in Deutsch und Englisch, JavaScript gültig, Deutsch unverändert, keine deutschen Wörter in Englisch, Bericht auf Englisch (braucht Node.js): `python tests/i18n_test.py` |
 | `tests/oberflaeche_test.py` | Alle Seiten im echten Browser (Playwright/Chromium), JS-Fehler, Formular, Zustand „Nur lesbar“; optional Screenshots: `python tests/oberflaeche_test.py [ordner]` |
 | `tests/datenquellen_docker_test.py` | Dieselben Anbindungen gegen echte Server in Docker (InfluxDB 1.8/2.7, TimescaleDB, VictoriaMetrics, Prometheus): `python tests/datenquellen_docker_test.py` |
 | `version.py` | Versionsnummer und Änderungslog |

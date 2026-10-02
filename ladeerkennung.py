@@ -10,6 +10,7 @@ import calendar
 from datetime import datetime
 
 import database as db
+from i18n import _
 
 # Ein Anstieg gilt ab dieser Höhe als Ladevorgang (Prozentpunkte)
 MIN_ANSTIEG = 5.0
@@ -195,7 +196,7 @@ def pruefe_monat(jahr: int, monat: int) -> dict:
     verlauf = batterie_verlauf(jahr, monat)
     if not verlauf:
         return {"status": "unbekannt", "erkannt": [], "fehlend": [],
-                "meldung": "Keine Batteriedaten aus Home Assistant verfügbar."}
+                "meldung": _("Keine Batteriedaten aus Home Assistant verfügbar.")}
 
     erkannt = erkenne_ladungen(verlauf, min_anstieg, kapazitaet)
 
@@ -206,12 +207,12 @@ def pruefe_monat(jahr: int, monat: int) -> dict:
 
     if fehlend:
         summe = sum(f["kwh"] for f in fehlend)
-        meldung = (f"{len(fehlend)} Ladevorgang(e) erkannt, aber nicht erfasst "
-                   f"(~{summe:.0f} kWh) – vermutlich auswärts geladen.")
+        meldung = _("{0} Ladevorgang(e) erkannt, aber nicht erfasst (~{1} kWh) – vermutlich "
+                    "auswärts geladen.", len(fehlend), f"{summe:.0f}")
         status = "fehlend"
     else:
-        meldung = f"Alle {len(erkannt)} erkannten Ladevorgänge sind erfasst"
-        meldung += f" (davon {zuhause} zuhause)." if zuhause else "."
+        meldung = (_("Alle {0} erkannten Ladevorgänge sind erfasst (davon {1} zuhause).", len(erkannt), zuhause)
+                   if zuhause else _("Alle {0} erkannten Ladevorgänge sind erfasst.", len(erkannt)))
         status = "ok"
 
     return {"status": status, "erkannt": erkannt, "fehlend": fehlend,

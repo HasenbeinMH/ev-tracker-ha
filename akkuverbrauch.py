@@ -24,6 +24,7 @@ auch nicht in seine kWh ein; der Verbrauch faellt dann etwas zu niedrig aus.
 from datetime import datetime, timedelta
 
 import database as db
+from i18n import _
 
 # Anstieg, ab dem ein Ladevorgang angenommen wird (Prozentpunkte). Rueckfall,
 # wenn in den Einstellungen nichts steht – dort heisst er "lade_min_anstieg"
@@ -71,7 +72,7 @@ def verlaeufe(start: datetime, ende: datetime, mit_km: bool = True) -> dict:
         dq = datenquellen.aus_einstellungen(cfg)
     except Exception as e:
         dq = None
-        hinweise.append(f"{datenquellen.QUELLEN.get(cfg.get('datasource'))} nicht nutzbar ({e})")
+        hinweise.append(_("{0} nicht nutzbar ({1})", datenquellen.QUELLEN.get(cfg.get('datasource')), e))
     if dq is not None:
         if dq.hat("soc") and (dq.hat("km") or not mit_km):
             try:
@@ -79,33 +80,33 @@ def verlaeufe(start: datetime, ende: datetime, mit_km: bool = True) -> dict:
                 km = dq.stundenwerte("km", start, ende, "last") if mit_km else []
                 if soc and (km or not mit_km):
                     return {"soc": soc, "km": km, "quelle": dq.name, "meldung": ""}
-                hinweise.append(f"{dq.name} lieferte keine Werte für "
-                                + ("Batteriestand" if not soc else "Kilometerstand"))
+                hinweise.append(_("{0} lieferte keine Werte für den Batteriestand", dq.name) if not soc
+                                else _("{0} lieferte keine Werte für den Kilometerstand", dq.name))
             except Exception as e:
-                hinweise.append(f"{dq.name} nicht erreichbar ({e})")
+                hinweise.append(_("{0} nicht erreichbar ({1})", dq.name, e))
         else:
             spalte = "Entity-ID" if dq.nutzt_entity_ids else "Friendly Name"
-            hinweise.append(f"{spalte} für Batteriestand oder Kilometerstand fehlt ({dq.name})")
+            hinweise.append(_("{0} für Batteriestand oder Kilometerstand fehlt ({1})", spalte, dq.name))
 
     from ha_client import HAClient, ha_verbindung
     verbindung = ha_verbindung(cfg)
     if verbindung is None:
-        hinweise.append("Home Assistant ist nicht konfiguriert")
+        hinweise.append(_("Home Assistant ist nicht konfiguriert"))
         return {"soc": [], "km": [], "quelle": None, "meldung": "; ".join(hinweise)}
     # Bei mehreren Entity-IDs ("alt | neu") gilt fuer HA die aktuelle, also die letzte
     soc_entity = (datenquellen.namen_liste(cfg.get("ha_ev_battery")) or [""])[-1]
     km_entity = (datenquellen.namen_liste(cfg.get("ha_odometer")) or [""])[-1]
     if not soc_entity or (mit_km and not km_entity):
-        hinweise.append("Entity-ID für Batteriestand oder Kilometerstand fehlt")
+        hinweise.append(_("Entity-ID für Batteriestand oder Kilometerstand fehlt"))
         return {"soc": [], "km": [], "quelle": None, "meldung": "; ".join(hinweise)}
 
     client = HAClient(**verbindung)
     soc = _stundenwerte(client, soc_entity, start, ende, ("mean", "state"))
     km = _stundenwerte(client, km_entity, start, ende, ("state", "mean")) if mit_km else []
     if not soc:
-        hinweise.append("keine Statistikdaten für den Batteriestand in HA")
+        hinweise.append(_("keine Statistikdaten für den Batteriestand in HA"))
     elif mit_km and not km:
-        hinweise.append("keine Statistikdaten für den Kilometerstand in HA")
+        hinweise.append(_("keine Statistikdaten für den Kilometerstand in HA"))
     return {"soc": soc, "km": km, "quelle": "Home Assistant",
             "meldung": "; ".join(hinweise)}
 
@@ -212,20 +213,20 @@ def aktualisieren(tage: int | None = TAGE_NACHTLAUF) -> str:
 
     v = verlaeufe(start, ende)
     if not v["soc"] or not v["km"]:
-        return "Keine Daten: " + (v["meldung"] or "Batterie- oder Kilometerverlauf leer")
+        return _("Keine Daten: {0}", v["meldung"] or _("Batterie- oder Kilometerverlauf leer"))
 
     abschnitte = berechne_abschnitte(v["soc"], v["km"], kapazitaet, lade_schwelle)
     if tage is not None:
         # Der angeschnittene erste Abschnitt steht vollstaendig schon in der DB
         abschnitte = [a for a in abschnitte if not a["angeschnitten"]]
     if not abschnitte:
-        return f"Keine abgeschlossenen Fahrtabschnitte im Zeitraum (Quelle: {v['quelle']})"
+        return _("Keine abgeschlossenen Fahrtabschnitte im Zeitraum (Quelle: {0})", v['quelle'])
 
     ab = None if tage is None else abschnitte[0]["start"]
     db.ersetze_akku_abschnitte(ab, abschnitte)
     gesamt_km = sum(a["km"] for a in abschnitte)
-    return (f"{len(abschnitte)} Fahrtabschnitt(e) aus dem Akkustand berechnet "
-            f"({gesamt_km:.0f} km, Quelle: {v['quelle']})")
+    return _("{0} Fahrtabschnitt(e) aus dem Akkustand berechnet ({1} km, Quelle: {2})",
+             len(abschnitte), f"{gesamt_km:.0f}", v['quelle'])
 
 
 def pro_monat() -> list:

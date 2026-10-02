@@ -1,79 +1,74 @@
 {% extends "base.html" %}
-{% block titel %}Steuer & THG{% endblock %}
+{% block titel %}{{ _("Steuer & THG") }}{% endblock %}
 {% block inhalt %}
 {% from "_fahrzeug.html" import fahrzeug_feld, fahrzeug_name_von with context %}
-<h1>💶 KFZ-Steuer & THG-Quote</h1>
+<h1>{{ _("💶 KFZ-Steuer & THG-Quote") }}</h1>
 
 <div class="card">
-  <h2 style="margin-top:0">KFZ-Steuer {{ kf.fahrzeug }}</h2>
-  {% if gesamtsicht %}<p class="hint" style="margin-top:0">Gesamtsicht: Steuerwerte des Hauptfahrzeugs –
-    für ein anderes Fahrzeug oben rechts umschalten.</p>{% endif %}
+  <h2 style="margin-top:0">{{ _("KFZ-Steuer {0}", kf.fahrzeug) }}</h2>
+  {% if gesamtsicht %}<p class="hint" style="margin-top:0">{{ _("Gesamtsicht: Steuerwerte des Hauptfahrzeugs – für ein anderes Fahrzeug oben rechts umschalten.") }}</p>{% endif %}
   <form class="inline" method="post" action="steuer/kfz">
     {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ fahrzeug_aktuell or '' }}">{% endif %}
-    <label class="feld">€/Jahr
+    <label class="feld">{{ _("€/Jahr") }}
       <input name="betrag" value="{{ '%.2f'|format(kfz)|replace('.', ',') }}" required>
     </label>
-    <button type="submit">💾 Speichern</button>
+    <button type="submit">{{ _("💾 Speichern") }}</button>
     {% if kfz > 0 %}
     <span class="gruen" style="align-self:center">
-      Ersparnis: {{ "%.2f"|format(kfz - kfz_eauto)|replace(".", ",") }} €/Jahr
-      (E-Auto: {{ "%.2f"|format(kfz_eauto)|replace(".", ",") }} €)
+      {{ _("Ersparnis: {0} €/Jahr (E-Auto: {1} €)", "%.2f"|format(kfz - kfz_eauto)|replace(".", ","), "%.2f"|format(kfz_eauto)|replace(".", ",")) }}
     </span>
     {% endif %}
   </form>
 </div>
 
 <div class="card">
-  <h2 style="margin-top:0">KFZ-Steuer E-Auto</h2>
+  <h2 style="margin-top:0">{{ _("KFZ-Steuer E-Auto") }}</h2>
   <p class="hint" style="margin-top:0">
-    Elektroautos sind in Deutschland zeitlich befristet von der KFZ-Steuer befreit. Endet die
-    Befreiung, hier den Jahresbetrag laut Steuerbescheid und den ersten steuerpflichtigen Monat
-    eintragen. Er wird ab diesem Monat anteilig von der Steuer-Ersparnis abgezogen.
-    0 = steuerfrei.
+    {{ _("Elektroautos sind in Deutschland zeitlich befristet von der KFZ-Steuer befreit. Endet die Befreiung, hier den Jahresbetrag laut Steuerbescheid und den ersten steuerpflichtigen Monat eintragen. Er wird ab diesem Monat anteilig von der Steuer-Ersparnis abgezogen. 0 = steuerfrei.") }}
   </p>
   <form class="inline" method="post" action="steuer/eauto">
     {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ fahrzeug_aktuell or '' }}">{% endif %}
-    <label class="feld">€/Jahr
+    <label class="feld">{{ _("€/Jahr") }}
       <input name="betrag" value="{{ '%.2f'|format(kfz_eauto)|replace('.', ',') }}" required>
     </label>
-    <label class="feld">steuerpflichtig ab
+    <label class="feld">{{ _("steuerpflichtig ab") }}
       <input type="month" name="ab" value="{{ kfz_eauto_ab or heute[:7] }}">
     </label>
-    <button type="submit">💾 Speichern</button>
+    <button type="submit">{{ _("💾 Speichern") }}</button>
     {% if kfz_eauto > 0 %}
     <span class="muted" style="align-self:center">
-      seit {{ kfz_eauto_ab[5:7] }}/{{ kfz_eauto_ab[:4] }} steuerpflichtig
+      {{ _("seit {0}/{1} steuerpflichtig", kfz_eauto_ab[5:7], kfz_eauto_ab[:4]) }}
     </span>
     {% endif %}
   </form>
 </div>
 
-<h2>🌿 THG-Quote Einträge</h2>
+<h2>{{ _("🌿 THG-Quote Einträge") }}</h2>
 <div class="card">
   <form class="inline" method="post" action="steuer/thg">
-    <label class="feld">Datum
+    <label class="feld">{{ _("Datum") }}
       <input type="date" name="datum" value="{{ heute }}" required>
     </label>
-    <label class="feld">Betrag €
-      <input name="betrag" placeholder="z.B. 75,00" required>
+    <label class="feld">{{ _("Betrag €") }}
+      <input name="betrag" placeholder="{{ _t("z.B. 75,00") }}" required>
     </label>
-    <label class="feld">Anbieter
-      <input name="anbieter" placeholder="z.B. ADAC" list="thg-anbieter">
+    <label class="feld">{{ _("Anbieter") }}
+      <input name="anbieter" placeholder="{{ _t("z.B. ADAC") }}" list="thg-anbieter">
       <datalist id="thg-anbieter">
-        <option>ADAC</option><option>Volkswagen Financial Services</option>
-        <option>finn.auto</option><option>zinq</option><option>Sonstige</option>
+        <option>{{ _("ADAC") }}</option><option>{{ _("Volkswagen Financial Services") }}</option>
+        <option>{{ _("finn.auto") }}</option><option>{{ _("zinq") }}</option><option>{{ _("Sonstige") }}</option>
       </datalist>
     </label>
-    <label class="feld">Notiz
-      <input name="notiz" placeholder="optional">
+    <label class="feld">{{ _("Notiz") }}
+      <input name="notiz" placeholder="{{ _t("optional") }}">
     </label>
     {{ fahrzeug_feld() }}
-    <button type="submit">➕ Hinzufügen</button>
+    <button type="submit">{{ _("➕ Hinzufügen") }}</button>
   </form>
 </div>
 
 <div class="tabelle-scroll"><table>
-  <tr>{% if gesamtsicht %}<th>Fahrzeug</th>{% endif %}<th>Datum</th><th>Betrag</th><th>Anbieter</th><th>Notiz</th><th></th></tr>
+  <tr>{% if gesamtsicht %}<th>{{ _("Fahrzeug") }}</th>{% endif %}<th>{{ _("Datum") }}</th><th>{{ _("Betrag") }}</th><th>{{ _("Anbieter") }}</th><th>{{ _("Notiz") }}</th><th></th></tr>
   {% for d in rows %}
   <tr>
     {% if gesamtsicht %}<td>{{ fahrzeug_name_von(d.fahrzeug_id) }}</td>{% endif %}
@@ -83,7 +78,7 @@
     <td class="muted">{{ d.notiz or "" }}</td>
     <td>
       <form method="post" action="steuer/thg/delete"
-            onsubmit="return confirm('THG-Eintrag vom {{ d.datum }} löschen?')">
+            onsubmit="return confirm({{ _t("THG-Eintrag vom {0} löschen?", d.datum) | tojson | forceescape }})">
         <input type="hidden" name="id" value="{{ d.id }}">
         <button class="danger">🗑</button>
       </form>
@@ -91,5 +86,5 @@
   </tr>
   {% endfor %}
 </table></div>
-<p class="gruen" style="font-weight:700">THG Gesamt: {{ "%.2f"|format(thg_gesamt)|replace(".", ",") }} €</p>
+<p class="gruen" style="font-weight:700">{{ _("THG Gesamt: {0} €", "%.2f"|format(thg_gesamt)|replace(".", ",")) }}</p>
 {% endblock %}

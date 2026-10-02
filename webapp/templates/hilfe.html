@@ -87,7 +87,7 @@
 <p>Die Seite <a href="einrichtung"><b>🚀 Einrichtung</b></a> führt Schritt für Schritt durch die Grundeinstellungen und zeigt bei jedem Schritt, ob er schon erledigt ist. Kurzfassung:</p>
 <ol>
   <li><b>Einstellungen → Fahrzeugbild</b>: ein Bild aus der Galerie wählen oder ein eigenes hochladen – Anleitung und Prompt für Bild-KIs unter <a href="https://github.com/HasenbeinMH/ev-tracker-ha/tree/main/fahrzeugbilder" target="_blank" rel="noopener">Fahrzeugbilder</a>.</li>
-  <li><b>Einstellungen → Berechnungsparameter</b>: Fahrzeugname, Vergleich mit Benziner, Diesel oder Autogas, dessen Verbrauch, PV-Preis und KFZ-Steuer.</li>
+  <li><b>Einstellungen → Berechnungsparameter</b>: Fahrzeugname, Vergleich mit Benziner, Diesel oder Autogas, dessen Verbrauch, PV-Preis und KFZ-Steuer. Hier wird auch die Sprache (Deutsch/Englisch) eingestellt.</li>
   <li><b>Verbindung zu Home Assistant</b>: im Add-on automatisch, sonst URL und langlebiges Token.</li>
   <li><b>Sensoren</b>: Kilometerstand, PV und Netz ins Auto (kWh), {{ kf.name }}preis, optional Batteriestand – am einfachsten über die Suche.</li>
   <li><b>Datenbank</b> (optional): nur wenn sie weiter zurückreicht als HA.</li>
@@ -299,7 +299,7 @@
 </ul>
 
 <h2 id="berichte">Berichte <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
-<p class="hint">Überschrift: <b>„📊 Berichte per E-Mail"</b></p>
+<p class="hint">Überschrift: <b>„📊 Berichte per E-Mail"</b> · die Berichte kommen in der Sprache aus den Einstellungen.</p>
 <h3>Monatsabschluss</h3>
 <p><b>„Monat prüfen"</b> meldet, ob der Monat auswertbar ist. Geprüft wird: sind Kilometer erfasst, ist ein {{ kf.name }}preis hinterlegt, sind Ladevorgänge vorhanden – und gibt es am Batterieverlauf erkannte Ladungen <b>ohne</b> passenden Beleg?</p>
 <div class="hb-info"><b>Ladeerkennung:</b> Ein Anstieg des Batteriestands um mindestens 5 Prozentpunkte gilt als Ladevorgang. Die Energiemenge schätzt die App als <code>Anstieg [%] ÷ 100 × Akkukapazität</code> (Standard 58,3 kWh). Zuerst werden Belege von unterwegs über das Datum zugeordnet (± 1 Tag). Die übrigen Ladungen werden gegen die zuhause geladenen kWh des Monats verrechnet – die kommen aus HA nur als Monatssumme (+5 % Spielraum für die Schätzung). Eine fehlende Ladung fällt deshalb erst auf, wenn sie größer ist als die Ladeverluste zuhause im Monat (etwa 10 % der Heimladung).. Was dann noch übrig bleibt, war vermutlich eine auswärtige Ladung – der Beleg fehlt noch.</div>
@@ -340,6 +340,7 @@
   <tr><td>PV-Preis</td><td>13 ct/kWh</td><td>Bewertung des PV-Eigenverbrauchs.</td></tr>
   <tr><td>CO2-Faktor</td><td>2,37 kg/L (Diesel 2,65, Autogas 1,64)</td><td>Verbrennungs- plus Vorkettenemission je Liter. Beim Wechsel des Kraftstoffs springt der Standardwert mit um; ein eigener Wert bleibt stehen.</td></tr>
   <tr><td>KFZ-Steuer</td><td>0 € bzw. ab Ende der Befreiung der eingetragene Jahresbetrag</td><td>Jahressteuer des Vergleichs-{{ kf.fahrzeug_gen }}.</td></tr>
+  <tr><td>Sprache / Language</td><td>Deutsch</td><td>Deutsch oder Englisch für Oberfläche, Hilfe und Mail-Berichte – auch über <b>DE | EN</b> oben rechts. Gilt für alle Fahrzeuge und Nutzer. Zahlen und Datum bleiben im deutschen Format; gespeicherte Namen (Anbieter, Notizen), das Importprotokoll und das Änderungslog werden nicht übersetzt.</td></tr>
 </table>
 <ul>
   <li><b>Fahrzeuge</b> – ein oder mehrere E-Autos, siehe <a href="#fahrzeuge">Mehrere Fahrzeuge</a>.
@@ -515,6 +516,8 @@
 <p>{{ kf.name }}-Äquivalent und CO2 werden nie gespeichert, sondern bei jeder Anzeige neu gerechnet. Der Parameter wirkt deshalb auf die gesamte Historie.</p>
 <h3>Wir haben zwei E-Autos – geht das?</h3>
 <p>Ja, unter Einstellungen → Fahrzeuge auf „Mehrere Fahrzeuge“ umschalten, siehe <a href="#fahrzeuge">Mehrere Fahrzeuge</a>. Teilen sich beide eine Wallbox, wird die Heimladung nach km verteilt – genauer wird es mit Einzelladungen per Push oder eigenen Zählern.</p>
+<h3>Gibt es den EV Tracker auch auf Englisch?</h3>
+<p>Ja – oben rechts <b>DE | EN</b> oder unter Einstellungen → Berechnungsparameter. Die Sprache gilt für Oberfläche, Hilfe und Mail-Berichte; an den Daten ändert sich nichts.</p>
 <h3>Wo liegen meine Daten?</h3>
 <p>In einer SQLite-Datei im Datenverzeichnis des Containers, gesichert per Cronjob nach OneDrive. Über die Seite Backup lässt sie sich jederzeit herunterladen.</p>
 

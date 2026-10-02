@@ -1,104 +1,90 @@
 {% extends "base.html" %}
-{% block titel %}Backup{% endblock %}
+{% block titel %}{{ _("Backup") }}{% endblock %}
 {% block inhalt %}
-<h1>💾 Backup &amp; Wiederherstellung</h1>
+<h1>{{ _("💾 Backup &amp; Wiederherstellung") }}</h1>
 {% if add_on_modus %}
 <p class="hint">
-  Als Home-Assistant-Add-on ist die Datenbank Teil des Add-on-Datenordners und wird automatisch
-  von <b>Home Assistants eigenen Sicherungen</b> mit erfasst (Einstellungen → System →
-  Sicherungen). Ein eigener Cronjob ist hier nicht nötig.
+  {{ _("Als Home-Assistant-Add-on ist die Datenbank Teil des Add-on-Datenordners und wird automatisch von <b>Home Assistants eigenen Sicherungen</b> mit erfasst (Einstellungen → System → Sicherungen). Ein eigener Cronjob ist hier nicht nötig.") }}
 </p>
 
 <div class="card">
   <div class="inline">
-    <a class="btn secondary" href="api/backup" style="text-decoration:none"
-       id="download-link">⬇ Datenbank herunterladen</a>
-    <span class="hint" style="align-self:center; margin:0">Für ein Voll-Backup inkl. Add-on-Konfiguration
-      lieber Einstellungen → System → Sicherungen verwenden.</span>
+    {{ _("<a class=\"btn secondary\" href=\"api/backup\" style=\"text-decoration:none\" id=\"download-link\">⬇ Datenbank herunterladen</a>") }}
+    <span class="hint" style="align-self:center; margin:0">{{ _("Für ein Voll-Backup inkl. Add-on-Konfiguration lieber Einstellungen → System → Sicherungen verwenden.") }}</span>
   </div>
 </div>
 
 {% else %}
 <p class="hint">
-  Ein Cronjob auf dem Docker-PC sichert die Datenbank täglich per rclone nach OneDrive.
-  Hier siehst du den Status, kannst ein Backup anstoßen oder eine Sicherung einspielen.
+  {{ _("Ein Cronjob auf dem Docker-PC sichert die Datenbank täglich per rclone nach OneDrive. Hier siehst du den Status, kannst ein Backup anstoßen oder eine Sicherung einspielen.") }}
 </p>
 
 <div class="statgrid">
-  <div class="stat"><span class="wert" id="stat-status">…</span><div class="label">Letztes Backup</div></div>
-  <div class="stat"><span class="wert" id="stat-alter">…</span><span class="einheit">Std.</span><div class="label">Alter</div></div>
-  <div class="stat"><span class="wert" id="stat-groesse">…</span><span class="einheit">KB</span><div class="label">Datenbank aktuell</div></div>
-  <div class="stat"><span class="wert" id="stat-anzahl">…</span><div class="label">Sicherungen in OneDrive</div></div>
+  <div class="stat"><span class="wert" id="stat-status">…</span><div class="label">{{ _("Letztes Backup") }}</div></div>
+  <div class="stat"><span class="wert" id="stat-alter">…</span><span class="einheit">{{ _("Std.") }}</span><div class="label">{{ _("Alter") }}</div></div>
+  <div class="stat"><span class="wert" id="stat-groesse">…</span><span class="einheit">{{ _("KB") }}</span><div class="label">{{ _("Datenbank aktuell") }}</div></div>
+  <div class="stat"><span class="wert" id="stat-anzahl">…</span><div class="label">{{ _("Sicherungen in OneDrive") }}</div></div>
 </div>
 
 <div class="card">
   <div class="inline">
-    <button type="button" onclick="starteBackup(this)">▶ Backup jetzt anstoßen</button>
-    <button type="button" class="secondary" onclick="ladeStatus(); ladeLog()">🔄 Aktualisieren</button>
-    <a class="btn secondary" href="api/backup?token=" style="text-decoration:none"
-       id="download-link" title="Braucht das Backup-Geheimwort">⬇ Datenbank herunterladen</a>
+    <button type="button" onclick="starteBackup(this)">{{ _("▶ Backup jetzt anstoßen") }}</button>
+    <button type="button" class="secondary" onclick="ladeStatus(); ladeLog()">{{ _("🔄 Aktualisieren") }}</button>
+    <a class="btn secondary" href="api/backup?token=" style="text-decoration:none" id="download-link" title="{{ _t("Braucht das Backup-Geheimwort") }}">{{ _("⬇ Datenbank herunterladen") }}</a>
     <span id="backup-meldung" style="align-self:center; font-size:12px"></span>
   </div>
   <p class="hint" style="margin-bottom:0">
-    Der Anstoß legt eine Markierung an; der Cronjob startet das Backup innerhalb weniger Minuten.
+    {{ _("Der Anstoß legt eine Markierung an; der Cronjob startet das Backup innerhalb weniger Minuten.") }}
   </p>
 </div>
 
-<h2>Protokoll</h2>
+<h2>{{ _("Protokoll") }}</h2>
 <div class="card">
   <pre id="log-inhalt" style="margin:0; max-height:320px; overflow:auto; font-size:11px;
        color:var(--text); white-space:pre-wrap">…</pre>
 </div>
 {% endif %}
 
-<h2>Wiederherstellen</h2>
+<h2>{{ _("Wiederherstellen") }}</h2>
 <div class="card">
   <p class="hint" style="margin-top:0">
-    Eine gesicherte <code>.db</code>-Datei aus OneDrive hochladen. Die aktuelle Datenbank
-    wird vorher automatisch als <code>vor_restore_….db</code> im Datenordner gesichert.
+    {{ _("Eine gesicherte <code>.db</code>-Datei aus OneDrive hochladen. Die aktuelle Datenbank wird vorher automatisch als <code>vor_restore_….db</code> im Datenordner gesichert.") }}
   </p>
   <div class="inline">
-    <label class="feld">Sicherungsdatei
+    <label class="feld">{{ _("Sicherungsdatei") }}
       <input type="file" id="restore-datei" accept=".db">
     </label>
     <button type="button" class="danger" style="padding:8px 16px; font-size:13px"
-            onclick="restore()">⚠ Datenbank ersetzen</button>
+            onclick="restore()">{{ _("⚠ Datenbank ersetzen") }}</button>
     <span id="restore-meldung" style="align-self:center; font-size:12px"></span>
   </div>
 </div>
 
-<h2>Messdaten zurücksetzen{% if mehrere and fahrzeuge | length > 1 %} · {{ "alle sichtbaren Fahrzeuge" if fahrzeug_aktuell is none else fahrzeuge | selectattr("id", "equalto", fahrzeug_aktuell) | map(attribute="name") | first }}{% endif %}</h2>
-{% if mehrere and fahrzeuge | length > 1 %}<p class="hint">Gelöscht werden nur Daten des oben rechts gewählten Fahrzeugs
-  (bei „Alle Fahrzeuge“ aller sichtbaren). Ausgeblendete Fahrzeuge bleiben unberührt; die
-  {{ kf.name }}preise gelten für alle.</p>{% endif %}
+<h2>{{ _("Messdaten zurücksetzen") }}{% if mehrere and fahrzeuge | length > 1 %} · {{ _("alle sichtbaren Fahrzeuge") if fahrzeug_aktuell is none else fahrzeuge | selectattr("id", "equalto", fahrzeug_aktuell) | map(attribute="name") | first }}{% endif %}</h2>
+{% if mehrere and fahrzeuge | length > 1 %}<p class="hint">{{ _("Gelöscht werden nur Daten des oben rechts gewählten Fahrzeugs (bei „Alle Fahrzeuge“ aller sichtbaren). Ausgeblendete Fahrzeuge bleiben unberührt; die {0}preise gelten für alle.", kf.name) }}</p>{% endif %}
 <div class="card">
   <p class="hint" style="margin-top:0">
-    Löscht die erfassten Messwerte – etwa beim Fahrzeugwechsel oder um Testdaten loszuwerden.
-    <b>Einstellungen, Stromtarife, Lade-Anbieter und die Home-Assistant-Konfiguration bleiben
-    erhalten.</b> Die aktuelle Datenbank wird vorher automatisch als
-    <code>vor_reset_….db</code> im Datenordner gesichert.
+    {{ _("Löscht die erfassten Messwerte – etwa beim Fahrzeugwechsel oder um Testdaten loszuwerden. <b>Einstellungen, Stromtarife, Lade-Anbieter und die Home-Assistant-Konfiguration bleiben erhalten.</b> Die aktuelle Datenbank wird vorher automatisch als <code>vor_reset_….db</code> im Datenordner gesichert.") }}
   </p>
   <div id="reset-bereiche">…</div>
   <p class="hint" style="margin-bottom:0">
-    ⚠ Der nächtliche Abruf schreibt Kilometer, {{ kf.name }}preise und Akku-Abschnitte aus Home
-    Assistant neu. Stell die Sensoren unter <a href="einstellungen">Einstellungen</a> vorher
-    auf das neue Fahrzeug um – sonst stehen die alten Werte am nächsten Morgen wieder da.
+    {{ _("⚠ Der nächtliche Abruf schreibt Kilometer, {0}preise und Akku-Abschnitte aus Home Assistant neu. Stell die Sensoren unter <a href=\"einstellungen\">Einstellungen</a> vorher auf das neue Fahrzeug um – sonst stehen die alten Werte am nächsten Morgen wieder da.", kf.name) }}
   </p>
   <div class="inline" style="margin-top:12px">
     <button type="button" class="danger" style="padding:8px 16px; font-size:13px"
-            onclick="resetFragen()">🗑 Messdaten zurücksetzen</button>
+            onclick="resetFragen()">{{ _("🗑 Messdaten zurücksetzen") }}</button>
     <span id="reset-meldung" style="align-self:center; font-size:12px"></span>
   </div>
 
   <div id="reset-rueckfrage" class="card" hidden
        style="margin:14px 0 0; border-color:#aa5a5a; background:rgba(170,90,90,.08)">
-    <p style="margin:0 0 6px"><b>⚠ Wirklich löschen?</b> Endgültig entfernt werden:</p>
+    <p style="margin:0 0 6px">{{ _("<b>⚠ Wirklich löschen?</b> Endgültig entfernt werden:") }}</p>
     <ul id="reset-vorschau" style="margin:0 0 10px 18px; font-size:13px"></ul>
     <div class="inline">
       <button type="button" class="danger" style="padding:8px 16px; font-size:13px"
-              onclick="resetAusfuehren(this)">Ja, endgültig löschen</button>
+              onclick="resetAusfuehren(this)">{{ _("Ja, endgültig löschen") }}</button>
       <button type="button" class="secondary" style="padding:8px 16px; font-size:13px"
-              onclick="resetAbbrechen()">Abbrechen</button>
+              onclick="resetAbbrechen()">{{ _("Abbrechen") }}</button>
     </div>
   </div>
 </div>
@@ -110,19 +96,19 @@ async function ladeStatus() {
   const d = await r.json();
   const s = document.getElementById("stat-status");
   if (d.status === "never") {
-    s.textContent = "nie"; s.style.color = "#c4963a";
+    s.textContent = {{ _t("nie") | tojson }}; s.style.color = "#c4963a";
   } else if (d.status === "ok") {
     s.textContent = (d.last_backup || "").split("_")[0] || "ok";
     s.style.color = d.aktuell ? "#5aaa78" : "#c4963a";
   } else {
-    s.textContent = "Fehler"; s.style.color = "#aa5a5a";
+    s.textContent = {{ _t("Fehler") | tojson }}; s.style.color = "#aa5a5a";
   }
   document.getElementById("stat-alter").textContent =
     d.alter_stunden === null || d.alter_stunden === undefined ? "?" : d.alter_stunden;
   document.getElementById("stat-groesse").textContent = d.db_groesse_kb ?? "?";
   document.getElementById("stat-anzahl").textContent = d.remote_files ?? "?";
   if (d.wartet) {
-    document.getElementById("backup-meldung").textContent = "⏳ Backup ist angefordert und wartet auf den Cronjob";
+    document.getElementById("backup-meldung").textContent = {{ _t("⏳ Backup ist angefordert und wartet auf den Cronjob") | tojson }};
     document.getElementById("backup-meldung").className = "gelb";
   }
 }
@@ -132,13 +118,13 @@ async function ladeLog() {
   const r = await fetch("api/backup/log");
   const d = await r.json();
   document.getElementById("log-inhalt").textContent =
-    d.zeilen && d.zeilen.length ? d.zeilen.join("\n") : (d.meldung || "Kein Protokoll");
+    d.zeilen && d.zeilen.length ? d.zeilen.join("\n") : (d.meldung || {{ _t("Kein Protokoll") | tojson }});
 }
 
 async function starteBackup(btn) {
   btn.disabled = true;
   const m = document.getElementById("backup-meldung");
-  m.textContent = "Wird angefordert …"; m.className = "muted";
+  m.textContent = {{ _t("Wird angefordert …") | tojson }}; m.className = "muted";
   const r = await fetch("api/backup/run", { method: "POST" });
   const d = await r.json();
   m.textContent = d.error ? "✗ " + d.error : "✓ " + d.meldung;
@@ -150,17 +136,17 @@ async function starteBackup(btn) {
 async function restore() {
   const datei = document.getElementById("restore-datei").files[0];
   const m = document.getElementById("restore-meldung");
-  if (!datei) { m.textContent = "Bitte Datei wählen"; m.className = "gelb"; return; }
-  if (!confirm("Die aktuelle Datenbank wird durch '" + datei.name + "' ersetzt. Fortfahren?")) return;
-  if (!confirm("Wirklich sicher? Alle Daten seit dieser Sicherung gehen verloren.")) return;
+  if (!datei) { m.textContent = {{ _t("Bitte Datei wählen") | tojson }}; m.className = "gelb"; return; }
+  if (!confirm(T({{ _t("Die aktuelle Datenbank wird durch '{0}' ersetzt. Fortfahren?") | tojson }}, datei.name))) return;
+  if (!confirm({{ _t("Wirklich sicher? Alle Daten seit dieser Sicherung gehen verloren.") | tojson }})) return;
   const fd = new FormData();
   fd.append("datei", datei);
   fd.append("bestaetigt", "ja");
-  m.textContent = "Stelle wieder her …"; m.className = "muted";
+  m.textContent = {{ _t("Stelle wieder her …") | tojson }}; m.className = "muted";
   const r = await fetch("api/backup/restore", { method: "POST", body: fd });
   const d = await r.json();
   if (d.error) { m.textContent = "✗ " + d.error; m.className = "rot"; return; }
-  m.textContent = "✓ " + d.meldung + " (Sicherung: " + d.sicherung + ")";
+  m.textContent = "✓ " + d.meldung + T({{ _t(" (Sicherung: {0})") | tojson }}, d.sicherung);
   m.className = "gruen";
   setTimeout(() => ladeStatus(), 1500);
 }
@@ -174,7 +160,7 @@ async function ladeReset() {
       <input type="checkbox" value="${b.key}" data-titel="${b.titel}" data-anzahl="${b.anzahl}"
              ${b.anzahl ? "checked" : "disabled"}>
       <span>${b.titel}</span>
-      <span class="muted">${b.anzahl ? b.anzahl + " Einträge" : "leer"}</span>
+      <span class="muted">${b.anzahl ? T({{ _t("{0} Einträge") | tojson }}, b.anzahl) : {{ _t("leer") | tojson }}}</span>
     </label>`).join("");
 }
 
@@ -186,17 +172,17 @@ function resetGewaehlt() {
 function resetFragen() {
   const gewaehlt = resetGewaehlt();
   const m = document.getElementById("reset-meldung");
-  if (!gewaehlt.length) { m.textContent = "Nichts ausgewählt"; m.className = "gelb"; return; }
+  if (!gewaehlt.length) { m.textContent = {{ _t("Nichts ausgewählt") | tojson }}; m.className = "gelb"; return; }
   m.textContent = ""; m.className = "";
   document.getElementById("reset-vorschau").innerHTML = gewaehlt.map(c =>
-    `<li>${c.dataset.titel} – <b>${c.dataset.anzahl}</b> Einträge</li>`).join("");
+    `<li>${c.dataset.titel} – ${T({{ _t("<b>{0}</b> Einträge") | tojson }}, c.dataset.anzahl)}</li>`).join("");
   document.getElementById("reset-rueckfrage").hidden = false;
 }
 
 function resetAbbrechen() {
   document.getElementById("reset-rueckfrage").hidden = true;
   const m = document.getElementById("reset-meldung");
-  m.textContent = "Abgebrochen – es wurde nichts gelöscht."; m.className = "muted";
+  m.textContent = {{ _t("Abgebrochen – es wurde nichts gelöscht.") | tojson }}; m.className = "muted";
 }
 
 // Schritt 2: jetzt wirklich
@@ -204,7 +190,7 @@ async function resetAusfuehren(btn) {
   const gewaehlt = resetGewaehlt();
   const m = document.getElementById("reset-meldung");
   btn.disabled = true;
-  m.textContent = "Lösche …"; m.className = "muted";
+  m.textContent = {{ _t("Lösche …") | tojson }}; m.className = "muted";
   const fd = new FormData();
   fd.append("bereiche", gewaehlt.map(c => c.value).join(","));
   fd.append("bestaetigt", "ja");
@@ -213,7 +199,7 @@ async function resetAusfuehren(btn) {
   btn.disabled = false;
   document.getElementById("reset-rueckfrage").hidden = true;
   if (d.error) { m.textContent = "✗ " + d.error; m.className = "rot"; return; }
-  m.textContent = "✓ " + d.meldung + " · Sicherung: " + d.sicherung;
+  m.textContent = "✓ " + d.meldung + T({{ _t(" · Sicherung: {0}") | tojson }}, d.sicherung);
   m.className = "gruen";
   ladeReset();
   ladeStatus();

@@ -61,6 +61,8 @@ def ohne_intern(k):
 def sichtbarer_text(html):
     """Text ohne Skripte und Tags – fuer "sieht gleich aus"."""
     html = re.sub(r"<script.*?</script>", " ", html, flags=re.S)
+    # Sprachumschalter DE | EN ist gewollt neu (3.1) – kein Unterschied im Sinne dieses Vergleichs
+    html = re.sub(r'<form class="sprachwahl".*?</form>', " ", html, flags=re.S)
     html = re.sub(r"<[^>]+>", " ", html)
     return re.sub(r"\s+", " ", html).strip()
 

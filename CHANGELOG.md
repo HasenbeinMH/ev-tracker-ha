@@ -3,6 +3,16 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [3.1.0] - 2026-10-02
+### Sprachumschaltung Deutsch / Englisch
+- Neue Einstellung "Sprache / Language" (Einstellungen → Berechnungsparameter) und Umschalter DE | EN oben rechts in der Navigationsleiste – eine Sprache fuer die ganze App, gilt fuer alle Fahrzeuge
+- Standard bleibt Deutsch: nach dem Update sieht niemand eine Aenderung
+- Englisch (britisch) fuer Oberflaeche, Menues, Meldungen, Diagramme, Monats- und Jahresbericht per Mail und die Hilfe (eigene englische Hilfeseite mit denselben Abschnitten)
+- Zahlen und Datum bleiben auch auf Englisch im deutschen Format (1.234,56 · 31.12.2026)
+- Nicht uebersetzt werden gespeicherte Texte (Anbieter, Notizen wie "Privat – PV"), das Importprotokoll und dieses Aenderungslog
+- Einrichtung und Hilfe nennen die Sprachwahl; Plural "Monat/Monate" und aehnliche Stellen sauber getrennt
+- Neuer Test i18n_test.py: jeder Text hat eine Uebersetzung, alle Seiten laden in beiden Sprachen, alle Skripte gueltig, Deutsch unveraendert gegenueber 3.0, keine deutschen Woerter in der englischen Oberflaeche, Bericht auf Englisch; Werkzeug i18n/pruefen.py
+
 ## [3.0.0] - 2026-10-02
 ### Mehrere E-Autos
 - Einstellungen → Fahrzeuge: Schalter "Ein Fahrzeug / Mehrere Fahrzeuge". Standard bleibt "Ein Fahrzeug" – dann sieht und rechnet alles genau wie bisher, an Daten und Einstellungen aendert sich nichts

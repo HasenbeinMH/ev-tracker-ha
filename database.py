@@ -1,3 +1,4 @@
+from i18n import N_
 import sqlite3
 import os
 from contextlib import closing, contextmanager
@@ -324,10 +325,10 @@ WALLBOX_SCHLUESSEL = ("ha_pv_production", "ha_wallbox_energy", "ha_wallbox_cost"
 # Heimladung je Fahrzeug: gemeinsame Wallbox (Rest nach km verteilt; "push" = zusaetzlich
 # Einzelladungen aus HA mit Fahrzeug-Kennung; "akku" = Wallbox-Stunden dem Auto zuordnen, dessen
 # Akkustand gleichzeitig stieg, siehe heimladung.akku_anteile) oder eigene Zaehler
-HEIMLADUNG_MODI = {"km": "Gemeinsame Wallbox – Aufteilung nach km",
-                   "push": "Gemeinsame Wallbox – Einzelladungen per Push, Rest nach km",
-                   "akku": "Gemeinsame Wallbox – Zuordnung über den Akkustand, Rest nach km",
-                   "eigen": "Eigene Zähler"}
+HEIMLADUNG_MODI = {"km": N_("Gemeinsame Wallbox – Aufteilung nach km"),
+                   "push": N_("Gemeinsame Wallbox – Einzelladungen per Push, Rest nach km"),
+                   "akku": N_("Gemeinsame Wallbox – Zuordnung über den Akkustand, Rest nach km"),
+                   "eigen": N_("Eigene Zähler")}
 
 ALLE = "alle"
 _fahrzeug = ContextVar("fahrzeug", default=None)   # id, ALLE oder None (= Hauptfahrzeug)
@@ -360,7 +361,7 @@ def _status() -> dict:
     with closing(get_connection()) as conn:
         werte = {r["key"]: r["value"] for r in conn.execute(
             "SELECT key, value FROM einstellungen WHERE key IN "
-            "('mehrere_fahrzeuge', 'hauptfahrzeug', 'schema_version') "
+            "('mehrere_fahrzeuge', 'hauptfahrzeug', 'schema_version', 'sprache') "
             "OR key='fahrzeug_name' OR key LIKE 'fahrzeug_name@%'").fetchall()}
         try:
             rows = [dict(r) for r in conn.execute(
@@ -380,12 +381,18 @@ def _status() -> dict:
                      or f"Fahrzeug {f['id']}")
         f["aktiv"] = bool(f["aktiv"])
     status = {"stand": stand, "haupt": haupt, "fahrzeuge": rows,
+              "sprache": "en" if werte.get("sprache") == "en" else "de",
               # Mehrere nur mit umgebauten Tabellen (Stand 3) – sonst waeren Monate verschiedener
               # Fahrzeuge nicht unterscheidbar (z.B. nach dem Import fremder Einstellungen)
               "mehrere": werte.get("mehrere_fahrzeuge") == "1" and stand >= 3}
     if schluessel_datei is not None:
         _puffer.update(datei=schluessel_datei, status=status)
     return status
+
+
+def sprache() -> str:
+    """Sprache der Oberflaeche und Berichte: "de" (Standard) oder "en" (siehe i18n.py)."""
+    return _status()["sprache"]
 
 
 def mehrere_fahrzeuge() -> bool:
@@ -1257,11 +1264,11 @@ def delete_lade_anbieter(id):
 # Beschriftung). Einstellungen, Stromtarife und Lade-Anbieter stehen bewusst
 # nicht drin – die gelten weiter, auch wenn ein anderes Auto erfasst wird.
 MESSDATEN_BEREICHE = {
-    "fahrten": ("fahrten_monat",  "Gefahrene Kilometer (monatlich)"),
-    "laden":   ("ladevorgang",    "Ladevorgänge"),
-    "benzin":  ("benzinpreis",    "Benzinpreise"),
-    "akku":    ("akku_abschnitt", "Fahrtabschnitte aus dem Akkustand"),
-    "thg":     ("thg_quote",      "THG-Einträge"),
+    "fahrten": ("fahrten_monat",  N_("Gefahrene Kilometer (monatlich)")),
+    "laden":   ("ladevorgang",    N_("Ladevorgänge")),
+    "benzin":  ("benzinpreis",    N_("Benzinpreise")),
+    "akku":    ("akku_abschnitt", N_("Fahrtabschnitte aus dem Akkustand")),
+    "thg":     ("thg_quote",      N_("THG-Einträge")),
 }
 
 

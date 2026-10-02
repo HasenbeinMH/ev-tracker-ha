@@ -162,6 +162,45 @@ def main():
                 handy.screenshot(path=os.path.join(bilder, "mehrere_handy.png"))
             ctx.close()
 
+            # Englisch: Umschalter DE | EN in der Navigation, alle Seiten, Bericht, Handy
+            seite = browser.new_page(viewport={"width": 1280, "height": 900})
+            seite.goto(basis + "statistik?a=2025-S&b=2025-W", wait_until="networkidle")
+            with seite.expect_navigation():
+                seite.click(".sprachwahl button[value=en]")
+            check("Englisch", "Klick auf EN: gleiche Seite, englisch",
+                  "/statistik?a=2025-S" in seite.url and seite.get_attribute("html", "lang") == "en"
+                  and "Statistics" in seite.locator("nav").text_content(), seite.url)
+            seite.close()
+            ctx = browser.new_context(viewport={"width": 1280, "height": 900})
+            ctx.add_cookies([{"name": "fahrzeug", "value": "alle", "url": basis}])
+            class _B:                           # seiten_pruefen erwartet browser.new_page()
+                new_page = staticmethod(lambda **kw: ctx.new_page())
+            seite = seiten_pruefen(_B, basis, "Englisch (alle)", bilder, "en")
+            seite.goto(basis + "hilfe")
+            check("Englisch", "Englische Hilfe", "Manual & calculation basics" in seite.locator("h1").inner_text())
+            if bilder:
+                seite.goto(basis + "api/bericht/vorschau?typ=monat&jahr=2026&monat=7", wait_until="networkidle")
+                seite.screenshot(path=os.path.join(bilder, "en_bericht.png"), full_page=True)
+                seite.goto(basis + "laden", wait_until="networkidle")
+                seite.screenshot(path=os.path.join(bilder, "en_laden.png"), full_page=False)
+            ctx.close()
+            ctx = browser.new_context(viewport={"width": 390, "height": 844})
+            handy = ctx.new_page()
+            handy.goto(basis, wait_until="networkidle")
+            breite = handy.evaluate("document.documentElement.scrollWidth")
+            check("Englisch", "Handy (390 px): DE | EN sichtbar, kein waagrechtes Scrollen",
+                  handy.locator(".sprachwahl").is_visible() and breite <= 390, f"scrollWidth {breite}")
+            if bilder:
+                handy.screenshot(path=os.path.join(bilder, "en_handy.png"))
+            ctx.close()
+            seite = browser.new_page(viewport={"width": 1280, "height": 900})
+            seite.goto(basis + "einstellungen")
+            with seite.expect_navigation():
+                seite.select_option("#sprache select[name=sprache]", "de")
+            check("Englisch", "Zurueck auf Deutsch ueber das Feld in den Einstellungen",
+                  seite.get_attribute("html", "lang") == "de" and "Einstellungen" in seite.locator("nav").text_content())
+            seite.close()
+
             # Nur lesbar: Datenbank aus einer neueren Version
             server.terminate()
             server.wait()

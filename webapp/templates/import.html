@@ -1,35 +1,31 @@
 {% extends "base.html" %}
-{% block titel %}HA Import{% endblock %}
+{% block titel %}{{ _("HA Import") }}{% endblock %}
 {% block inhalt %}
 {% from "_fahrzeug.html" import fahrzeug_feld with context %}
-<h1>📥 Datenimport – Home Assistant / Datenbank</h1>
+<h1>{{ _("📥 Datenimport – Home Assistant / Datenbank") }}</h1>
 <p class="hint">
-  Datenquelle: <strong>{{ quelle_name ~ " (mit HA-API-Fallback)" if quelle_name else "Home Assistant API" }}</strong>
-  – änderbar in den <a href="einstellungen" style="color:#7a9ec4">Einstellungen</a>.
+  {{ _("Datenquelle: <strong>{0}</strong> – änderbar in den <a href=\"einstellungen\" style=\"color:#7a9ec4\">Einstellungen</a>.", quelle_name ~ " (mit HA-API-Fallback)" if quelle_name else "Home Assistant API") }}
 </p>
 
 <div class="card">
   <div class="inline">
-    <strong style="align-self:center; font-size:13px">🌙 Nächtlicher Abruf</strong>
-    <button type="button" class="secondary" onclick="autoImport(this)">▶ Jetzt ausführen</button>
+    {{ _("<strong style=\"align-self:center; font-size:13px\">🌙 Nächtlicher Abruf</strong>") }}
+    <button type="button" class="secondary" onclick="autoImport(this)">{{ _("▶ Jetzt ausführen") }}</button>
     <span id="auto-meldung" style="align-self:center; font-size:12px"></span>
   </div>
   <p class="hint" style="margin-bottom:0">
-    Jede Nacht um 0:00 Uhr holt die App km, geladene kWh und {{ kf.name }}preis für den
-    laufenden Monat und den Vormonat automatisch aus der eingestellten Datenquelle (Home Assistant oder Datenbank) – bereits
-    importierte Werte werden aktualisiert, manuelle Einträge bleiben unberührt.
-    {% if mail.auto_import != "1" %}<br><span class="gelb">Derzeit deaktiviert
-    (Schalter im Reiter Berichte).</span>{% endif %}
-    {% if mail.auto_import_letzter %}<br>Zuletzt: {{ mail.auto_import_letzter }}{% endif %}
+    {{ _("Jede Nacht um 0:00 Uhr holt die App km, geladene kWh und {0}preis für den laufenden Monat und den Vormonat automatisch aus der eingestellten Datenquelle (Home Assistant oder Datenbank) – bereits importierte Werte werden aktualisiert, manuelle Einträge bleiben unberührt.", kf.name) }}
+    {% if mail.auto_import != "1" %}<br><span class="gelb">{{ _("Derzeit deaktiviert (Schalter im Reiter Berichte).") }}</span>{% endif %}
+    {% if mail.auto_import_letzter %}{{ _("<br>Zuletzt: {0}", mail.auto_import_letzter) }}{% endif %}
   </p>
 </div>
 
-<h2>Protokoll</h2>
+<h2>{{ _("Protokoll") }}</h2>
 <div class="card">
   <div class="inline" style="margin-bottom:10px">
-    <button type="button" class="secondary" onclick="ladeImportLog()">🔄 Aktualisieren</button>
+    <button type="button" class="secondary" onclick="ladeImportLog()">{{ _("🔄 Aktualisieren") }}</button>
     <span class="hint" style="align-self:center; margin:0">
-      Jeder Abruf mit Zeitstempel: gelesene Sensorwerte und was davon übernommen wurde.
+      {{ _("Jeder Abruf mit Zeitstempel: gelesene Sensorwerte und was davon übernommen wurde.") }}
     </span>
   </div>
   <pre id="import-log" style="margin:0; max-height:300px; overflow:auto; font-size:11px;
@@ -38,33 +34,31 @@
 
 <div class="card">
   <form class="inline" id="import-form">
-    <label class="feld">Von Monat
+    <label class="feld">{{ _("Von Monat") }}
       <select name="von_monat">
-        {% for m in MONATE %}<option value="{{ loop.index }}" {{ "selected" if loop.index == monat }}>{{ m }}</option>{% endfor %}
+        {% for m in MONATE %}<option value="{{ loop.index }}" {{ "selected" if loop.index == monat }}>{{ _(m) }}</option>{% endfor %}
       </select>
     </label>
-    <label class="feld">Von Jahr
+    <label class="feld">{{ _("Von Jahr") }}
       <select name="von_jahr">
         {% for j in jahre %}<option {{ "selected" if j == jahr }}>{{ j }}</option>{% endfor %}
       </select>
     </label>
-    <label class="feld">Bis Monat
+    <label class="feld">{{ _("Bis Monat") }}
       <select name="bis_monat">
-        {% for m in MONATE %}<option value="{{ loop.index }}" {{ "selected" if loop.index == monat }}>{{ m }}</option>{% endfor %}
+        {% for m in MONATE %}<option value="{{ loop.index }}" {{ "selected" if loop.index == monat }}>{{ _(m) }}</option>{% endfor %}
       </select>
     </label>
-    <label class="feld">Bis Jahr
+    <label class="feld">{{ _("Bis Jahr") }}
       <select name="bis_jahr">
         {% for j in jahre %}<option {{ "selected" if j == jahr }}>{{ j }}</option>{% endfor %}
       </select>
     </label>
     {{ fahrzeug_feld() }}
-    <button type="submit" id="btn-fetch">⬇ Daten abrufen</button>
+    <button type="submit" id="btn-fetch">{{ _("⬇ Daten abrufen") }}</button>
   </form>
   {% if mehrere and fahrzeuge | length > 1 %}
-  <p class="hint">Abgerufen werden Kilometer (und Akkustand) des gewählten Fahrzeugs. Die Ladezähler
-    der gemeinsamen Wallbox werden beim Übernehmen nach den km des Monats auf alle Fahrzeuge mit
-    gemeinsamer Wallbox verteilt – also am besten zuerst die km aller Fahrzeuge importieren.</p>
+  <p class="hint">{{ _("Abgerufen werden Kilometer (und Akkustand) des gewählten Fahrzeugs. Die Ladezähler der gemeinsamen Wallbox werden beim Übernehmen nach den km des Monats auf alle Fahrzeuge mit gemeinsamer Wallbox verteilt – also am besten zuerst die km aller Fahrzeuge importieren.") }}</p>
   {% endif %}
   <div id="progress-bereich" style="display:none; margin-top:12px">
     <progress id="progress" value="0" max="1"></progress>
@@ -73,18 +67,16 @@
 </div>
 
 <div id="vorschau" style="display:none">
-  <h2>Vorschau – alle Werte editierbar, leeres Feld wird nicht übernommen</h2>
+  <h2>{{ _("Vorschau – alle Werte editierbar, leeres Feld wird nicht übernommen") }}</h2>
   <p class="hint">
-    <strong>km</strong> → Monatskilometer · <strong>PV kWh</strong> → Ladevorgang „Privat – PV" (PV-Preis) ·
-    <strong>Wallbox kWh</strong> → Ladevorgang „Privat – Netzbezug" (Stromtarif des Monats) ·
-    <strong>{{ kf.name }} €/L</strong> → Monats-{{ kf.name }}preis
+    {{ _("<strong>km</strong> → Monatskilometer · <strong>PV kWh</strong> → Ladevorgang „Privat – PV\" (PV-Preis) · <strong>Wallbox kWh</strong> → Ladevorgang „Privat – Netzbezug\" (Stromtarif des Monats) · <strong>{0} €/L</strong> → Monats-{1}preis", kf.name, kf.name) }}
   </p>
   <p class="hint" id="vorschau-quelle"></p>
   <div class="tabelle-scroll"><table id="vorschau-tabelle">
-    <tr><th>Monat</th><th>km</th><th>PV kWh</th><th>Wallbox kWh</th>{% if mit_kosten %}<th title="Kostenzähler „Netz ins Auto“ (dynamischer Tarif) – leer = fester Stromtarif">Netz €</th>{% endif %}<th>{{ kf.name }} €/L</th></tr>
+    <tr><th>{{ _("Monat") }}</th><th>{{ _("km") }}</th><th>{{ _("PV kWh") }}</th><th>{{ _("Wallbox kWh") }}</th>{% if mit_kosten %}<th title="{{ _t("Kostenzähler „Netz ins Auto“ (dynamischer Tarif) – leer = fester Stromtarif") }}">{{ _("Netz €") }}</th>{% endif %}<th>{{ _("{0} €/L", kf.name) }}</th></tr>
   </table></div>
   <div style="margin-top:12px">
-    <button id="btn-apply" style="background:#3a7a3a">✓ Alle Werte in DB übernehmen</button>
+    <button id="btn-apply" style="background:#3a7a3a">{{ _("✓ Alle Werte in DB übernehmen") }}</button>
   </div>
 </div>
 
@@ -99,17 +91,17 @@ async function ladeImportLog() {
     const d = await r.json();
     feld.textContent = d.zeilen && d.zeilen.length
       ? d.zeilen.join("\n")
-      : (d.meldung || "Kein Protokoll");
+      : (d.meldung || {{ _t("Kein Protokoll") | tojson }});
     feld.scrollTop = feld.scrollHeight;   // neuester Eintrag sichtbar
   } catch (e) {
-    feld.textContent = "Protokoll nicht abrufbar: " + e;
+    feld.textContent = {{ _t("Protokoll nicht abrufbar:") | tojson }} + " " + e;
   }
 }
 
 async function autoImport(btn) {
   const m = document.getElementById("auto-meldung");
   btn.disabled = true;
-  m.textContent = "Hole Daten …"; m.className = "muted";
+  m.textContent = {{ _t("Hole Daten …") | tojson }}; m.className = "muted";
   try {
     const r = await fetch("api/import/auto", { method: "POST" });
     const d = await r.json();
@@ -147,7 +139,7 @@ async function pollStatus() {
   const job = await resp.json();
   document.getElementById("progress").value = job.progress;
   document.getElementById("progress-text").textContent =
-    job.progress + " / " + job.total + " Monate abgerufen …";
+    T({{ _t("{0} / {1} Monate abgerufen …") | tojson }}, job.progress, job.total);
   if (job.done) {
     clearInterval(pollTimer);
     document.getElementById("btn-fetch").disabled = false;
@@ -184,9 +176,7 @@ function zeigeVorschau(rows, quelle) {
   vorschauRows = rows;
   vorschauQuelle = quelle || "";
   document.getElementById("vorschau-quelle").innerHTML = quelle
-    ? `Abgerufen aus: <strong>${quelle}</strong> · unter jedem Wert steht seine Herkunft: ` +
-      `<span style="color:#7cc896">DB</span> = Datenbank, <span style="color:#6fb0e0">HA</span> = Home Assistant.` +
-      ` Grau darunter: warum die Datenbank für den Wert nichts geliefert hat (Details beim Überfahren mit der Maus).`
+    ? T({{ _t("Abgerufen aus: <strong>{0}</strong> · unter jedem Wert steht seine Herkunft: <span style=\"color:#7cc896\">DB</span> = Datenbank, <span style=\"color:#6fb0e0\">HA</span> = Home Assistant. Grau darunter: warum die Datenbank für den Wert nichts geliefert hat (Details beim Überfahren mit der Maus).") | tojson }}, quelle)
     : "";
   const tabelle = document.getElementById("vorschau-tabelle");
   tabelle.querySelectorAll("tr:not(:first-child)").forEach(tr => tr.remove());
@@ -227,7 +217,7 @@ document.getElementById("btn-apply").addEventListener("click", async () => {
   });
   const data = await resp.json();
   const log = document.getElementById("log");
-  log.textContent = data.log.length ? data.log.join("\n") : "Keine Werte übernommen.";
+  log.textContent = data.log.length ? data.log.join("\n") : {{ _t("Keine Werte übernommen.") | tojson }};
   log.style.display = "block";
   document.getElementById("vorschau").style.display = "none";
   ladeImportLog();

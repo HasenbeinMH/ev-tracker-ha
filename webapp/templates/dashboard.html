@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block titel %}Dashboard{% endblock %}
+{% block titel %}{{ _("Dashboard") }}{% endblock %}
 {% block inhalt %}
 <section class="hero">
   <div class="hero-text">
     <div class="hero-kicker">{{ fahrzeug_name }}</div>
-    <h1>Übersicht</h1>
+    <h1>{{ _("Übersicht") }}</h1>
     <div class="hero-wert">{{ kz.ersparnis_gesamt | de(2) }}<span> €</span></div>
-    <div class="hero-label">Gesamt-Ersparnis gegenüber {% if kz.je_fahrzeug %}den Vergleichs-Verbrennern{% else %}einem {{ kf.fahrzeug }}{% endif %}{% if zeitraum.von %} · {{ zeitraum.titel }}{% endif %}</div>
+    <div class="hero-label">{{ _("Gesamt-Ersparnis gegenüber") }} {% if kz.je_fahrzeug %}{{ _("den Vergleichs-Verbrennern") }}{% else %}{{ _("einem {0}", kf.fahrzeug) }}{% endif %}{% if zeitraum.von %} · {{ zeitraum.titel }}{% endif %}</div>
   </div>
-  <img class="hero-auto" src="api/auto-bild?v={{ bild_v }}{% if fahrzeug_aktuell %}&fz={{ fahrzeug_aktuell }}{% endif %}" alt="Fahrzeugbild"
-       {%- if galerie_aktiv and galerie_aktiv.nachweis %} title="Bild nach einer Vorlage von {{ galerie_aktiv.nachweis.autor }}, {{ galerie_aktiv.nachweis.lizenz }} (Wikimedia Commons)"{% endif %}>
+  <img class="hero-auto" src="api/auto-bild?v={{ bild_v }}{% if fahrzeug_aktuell %}&fz={{ fahrzeug_aktuell }}{% endif %}" alt="{{ _t("Fahrzeugbild") }}"
+       {%- if galerie_aktiv and galerie_aktiv.nachweis %} title="{{ _t('Bild nach einer Vorlage von {0}, {1} (Wikimedia Commons)', galerie_aktiv.nachweis.autor, galerie_aktiv.nachweis.lizenz) }}"{% endif %}>
 </section>
 <script>
 // Akzentfarbe (Farbverlauf + Fahrzeugname) aus dem Fahrzeugbild ableiten,
@@ -58,7 +58,7 @@
 
 {# Zeitraum fuer alle Kennzahlen und Charts; wird per Cookie gemerkt #}
 <form class="zeitraum-leiste" method="get" action=".">
-  <label for="zeitraum-wahl">Zeitraum</label>
+  <label for="zeitraum-wahl">{{ _("Zeitraum") }}</label>
   <select id="zeitraum-wahl" name="zeitraum" onchange="this.form.submit()">
     {% for gruppe, eintraege in zeitraum_optionen %}
       {% if gruppe %}<optgroup label="{{ gruppe }}">{% endif %}
@@ -68,11 +68,11 @@
       {% if gruppe %}</optgroup>{% endif %}
     {% endfor %}
   </select>
-  <noscript><button type="submit" class="secondary">Anzeigen</button></noscript>
+  <noscript><button type="submit" class="secondary">{{ _("Anzeigen") }}</button></noscript>
   {% if zeitraum.von %}
-  <a class="zeitraum-zurueck" href="?zeitraum=alles">✕ Gesamter Zeitraum</a>
+  {{ _("<a class=\"zeitraum-zurueck\" href=\"?zeitraum=alles\">✕ Gesamter Zeitraum</a>") }}
   {% endif %}
-  <span class="hint" style="margin:0">KFZ-Steuer anteilig für {{ kz.monate }} Monat{{ "e" if kz.monate != 1 }}</span>
+  <span class="hint" style="margin:0">{{ _("KFZ-Steuer anteilig für {0} Monat", kz.monate) if kz.monate == 1 else _("KFZ-Steuer anteilig für {0} Monate", kz.monate) }}</span>
 </form>
 
 {# Icon-Vorrat fuer die Kennzahl-Kacheln; wird ueber <use href="#ic-..."> eingebunden #}
@@ -86,12 +86,12 @@
 </svg>
 
 {% set kacheln = [
-    ('ic-strecke',     '#4a90c4', kz.gesamt_km | de(0), 'km', 'Gesamtstrecke'),
-    ('ic-energie',     '#7a6aaa', kz.gesamt_kwh | de(1), 'kWh', 'Geladene Energie'),
-    ('ic-zapfsaeule',  '#5aaa78', kz.ersparnis_kraft | de(2), '€', 'Kraftstoff-Ersparnis'),
-    ('ic-muenzen',     '#c4963a', kz.kfz_steuer | de(2), '€', 'Steuer-Ersparnis'),
-    ('ic-blatt',       '#5aaa78', kz.thg_gesamt | de(2), '€', 'THG-Ertrag'),
-    ('ic-wolke',       '#3a9aaa', kz.co2_gespart | de(0), 'kg', 'CO2 gespart')] %}
+    ('ic-strecke',     '#4a90c4', kz.gesamt_km | de(0), 'km', _t('Gesamtstrecke')),
+    ('ic-energie',     '#7a6aaa', kz.gesamt_kwh | de(1), 'kWh', _t('Geladene Energie')),
+    ('ic-zapfsaeule',  '#5aaa78', kz.ersparnis_kraft | de(2), '€', _t('Kraftstoff-Ersparnis')),
+    ('ic-muenzen',     '#c4963a', kz.kfz_steuer | de(2), '€', _t('Steuer-Ersparnis')),
+    ('ic-blatt',       '#5aaa78', kz.thg_gesamt | de(2), '€', _t('THG-Ertrag')),
+    ('ic-wolke',       '#3a9aaa', kz.co2_gespart | de(0), 'kg', _t('CO2 gespart'))] %}
 {# Die Gesamt-Ersparnis steht nur noch in der Kopfzeile, nicht mehr als Kachel #}
 
 <div class="statgrid">
@@ -109,11 +109,11 @@
 {% if kz.je_fahrzeug %}
 {# Gesamtsicht: jedes Fahrzeug mit eigenem Vergleichs-Verbrenner, darunter die Summe #}
 <div class="card je-fahrzeug">
-  <h2 style="margin-top:0">Je Fahrzeug{% if zeitraum.von %} · {{ zeitraum.titel }}{% endif %}</h2>
+  <h2 style="margin-top:0">{{ _("Je Fahrzeug") }}{% if zeitraum.von %} · {{ zeitraum.titel }}{% endif %}</h2>
   <div class="tabelle-scroll"><table>
-    <tr><th>Fahrzeug</th><th class="z">km</th><th class="z">kWh</th><th class="z">Stromkosten</th>
-        <th class="z">Kraftstoff-Ersparnis</th><th class="z">Steuer</th><th class="z">THG</th>
-        <th class="z">Gesamt-Ersparnis</th><th class="z">kWh/100 km</th></tr>
+    <tr><th>{{ _("Fahrzeug") }}</th><th class="z">{{ _("km") }}</th><th class="z">{{ _("kWh") }}</th><th class="z">{{ _("Stromkosten") }}</th>
+        <th class="z">{{ _("Kraftstoff-Ersparnis") }}</th><th class="z">{{ _("Steuer") }}</th><th class="z">{{ _("THG") }}</th>
+        <th class="z">{{ _("Gesamt-Ersparnis") }}</th><th class="z">{{ _("kWh/100 km") }}</th></tr>
     {% for x in kz.je_fahrzeug %}
     <tr>
       <td><a href="?fahrzeug={{ x.fahrzeug.id }}">{{ x.fahrzeug.name }}</a></td>
@@ -128,7 +128,7 @@
     </tr>
     {% endfor %}
     <tr style="font-weight:700">
-      <td>Summe</td>
+      <td>{{ _("Summe") }}</td>
       <td class="z">{{ kz.gesamt_km | de(0) }}</td>
       <td class="z">{{ kz.gesamt_kwh | de(1) }}</td>
       <td class="z">{{ kz.strom_kosten | de(2) }} €</td>
@@ -139,22 +139,21 @@
       <td class="z">{{ kz.verbrauch | de(1) if kz.verbrauch else "–" }}</td>
     </tr>
   </table></div>
-  <p class="hint">Jedes Fahrzeug wird mit seinem eigenen Vergleichs-Verbrenner (Kraftstoff, Verbrauch,
-    KFZ-Steuer) gerechnet; Verbrauch und Preise der Summe ergeben sich aus den Summen.</p>
+  <p class="hint">{{ _("Jedes Fahrzeug wird mit seinem eigenen Vergleichs-Verbrenner (Kraftstoff, Verbrauch, KFZ-Steuer) gerechnet; Verbrauch und Preise der Summe ergeben sich aus den Summen.") }}</p>
 </div>
 {% endif %}
 
 <div class="chartgrid">
   {% for key, titel in [
-      ('monatlich', 'Monatliche Kosten & Ersparnis'),
-      ('kosten', 'Kraftstoffkosten Vergleich'),
-      ('co2', 'CO2-Ersparnis'),
-      ('verbrauch', 'Verbrauch kWh/100km'),
-      ('benzin', kf.name ~ 'preisentwicklung'),
-      ('strom', 'Stromtarifverlauf'),
-      ('anbieter', 'Ladekosten nach Anbieter'),
-      ('strommix', 'Geladene kWh nach Stromquelle'),
-      ('thg', 'THG-Quote Erträge')] %}
+      ('monatlich', _t('Monatliche Kosten & Ersparnis')),
+      ('kosten', _t('Kraftstoffkosten Vergleich')),
+      ('co2', _t('CO2-Ersparnis')),
+      ('verbrauch', _t('Verbrauch kWh/100km')),
+      ('benzin', _t('{0}preisentwicklung', kf.name)),
+      ('strom', _t('Stromtarifverlauf')),
+      ('anbieter', _t('Ladekosten nach Anbieter')),
+      ('strommix', _t('Geladene kWh nach Stromquelle')),
+      ('thg', _t('THG-Quote Erträge'))] %}
   <div class="chart">
     <div class="titel">{{ titel }}</div>
     <div class="echart" data-echart="opt-{{ key }}"></div>
