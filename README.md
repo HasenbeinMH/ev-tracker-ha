@@ -164,10 +164,17 @@ Schon erkannt werden außerdem medl, Charge myHyundai (Digital Charging Solution
 > Schwärzen-Funktion (z. B. in Adobe Acrobat oder PDF24) oder ein Ausdruck, der danach wieder
 > eingescannt wird.
 
-Schickt mir die Rechnungen gerne per PN in der
+Schickt mir die Rechnungen gerne per Mail an **[ev-tracker@email.de](mailto:ev-tracker@email.de)**
+oder per PN in der
 [simon42-Community (Thread zum EV Tracker)](https://community.simon42.com/t/ev-tracker-was-spart-mein-e-auto-wirklich-tester-gesucht/93110/29).
 Bitte **nicht** als Anhang in einem GitHub-Issue – dort wäre die Rechnung für alle sichtbar.
 Vielen Dank vorab, jede Rechnung hilft!
+
+## Kontakt
+
+Fragen, Rückmeldungen oder Musterrechnungen: **[ev-tracker@email.de](mailto:ev-tracker@email.de)**.
+Fehler und Ideen gerne auch als [Issue auf GitHub](https://github.com/HasenbeinMH/ev-tracker-ha/issues)
+oder im [Thread in der simon42-Community](https://community.simon42.com/t/ev-tracker-was-spart-mein-e-auto-wirklich-tester-gesucht/93110/29).
 
 ## Unterstützen
 
