@@ -79,6 +79,21 @@ eingerichtet hat (`contextStorage` mit `file`), nutzt ihn automatisch.
 3. Vorzeichen prüfen (`netz_bezug_positiv` im Sensor „EV Ladeleistung Netz“).
 4. Home Assistant neu starten.
 
+### Ganz ohne YAML: über Helfer in der Oberfläche
+
+Die einfache Variante (`ev_pv_anteil.yaml`, ohne Energiezähler der Wallbox) lässt sich
+auch komplett unter **Einstellungen → Geräte & Dienste → Helfer** anlegen: drei
+Template-Sensoren für die Leistung und zwei Integral-Helfer für die kWh-Zähler. Gleiche
+Sensoren, gleiche Rechnung – Schritt für Schritt in
+[`oberflaeche/README.md`](oberflaeche/README.md). Die Variante mit Wallbox-Zähler und der
+Kostenzähler brauchen weiter YAML (trigger-basierte Sensoren gibt es nicht als Helfer).
+
+**Warum kein Blueprint für die Sensoren?** Home Assistant kennt Blueprints für
+Template-Sensoren, sie lassen sich aber nur per YAML anlegen, ein Blueprint erzeugt nur
+eine Art von Entität, und Integral-Sensoren gehen damit gar nicht. Die Helfer kommen dagegen
+ohne eine Zeile YAML aus. Die Automation „Ladung senden“ gibt es als
+[Blueprint](blueprints/README.md).
+
 ### Ohne Pakete: direkt in die configuration.yaml
 
 Jede HA-Vorlage gibt es auch als Fassung für die `configuration.yaml` im Ordner

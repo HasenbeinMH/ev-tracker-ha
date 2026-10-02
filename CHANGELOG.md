@@ -10,6 +10,7 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 - Englisch (britisch) fuer Oberflaeche, Menues, Meldungen, Diagramme, Monats- und Jahresbericht per Mail und die Hilfe (eigene englische Hilfeseite mit denselben Abschnitten)
 - Zahlen und Datum bleiben auch auf Englisch im deutschen Format (1.234,56 · 31.12.2026)
 - Nicht uebersetzt werden gespeicherte Texte (Anbieter, Notizen wie "Privat – PV"), das Importprotokoll und dieses Aenderungslog
+- Vorlagen: PV-Anteil jetzt auch ganz ohne YAML ueber Helfer in der Oberflaeche (vorlagen/oberflaeche/README.md: drei Template-Helfer, zwei Integral-Helfer) – gleiche Sensoren wie das Paket; fehlt der Netzwert, zaehlt die Ladung vorsichtig als Netz. Fuer die Sensoren gibt es bewusst keinen Blueprint (Template-Blueprints nur per YAML, Integral nicht moeglich)
 - Einrichtung und Hilfe nennen die Sprachwahl; Plural "Monat/Monate" und aehnliche Stellen sauber getrennt
 - Neuer Test i18n_test.py: jeder Text hat eine Uebersetzung, alle Seiten laden in beiden Sprachen, alle Skripte gueltig, Deutsch unveraendert gegenueber 3.0, keine deutschen Woerter in der englischen Oberflaeche, Bericht auf Englisch; Werkzeug i18n/pruefen.py
 

@@ -223,7 +223,7 @@ suchen, wenn unklar ist, wo genau sich beide Wege unterscheiden.
 | `testdaten.py`, `testdaten.bat` | Testdaten anlegen |
 | `tests/funktionstest.py` | Funktions- und Plausibilitätstest mit eigener Test-DB: `python tests/funktionstest.py` (braucht zusätzlich `httpx`) |
 | `tests/datenquellen_test.py` | Test der Datenbank-Anbindungen gegen nachgebaute Server: `python tests/datenquellen_test.py` |
-| `vorlagen/` | Node-RED-Flow, HA-Pakete, Fassungen für die `configuration.yaml` und Blueprint: PV-/Netz-Anteil beim Laden, Netzkosten, Ladung senden (`node-red/quellen/flow_bauen.py` baut den Flow aus den `.js`-Quellen, `configuration_yaml/quellen/bauen.py` die configuration.yaml-Fassungen aus den Paketen) |
+| `vorlagen/` | Node-RED-Flow, HA-Pakete, Fassungen für die `configuration.yaml`, Anleitung „ohne YAML“ über Helfer (`oberflaeche/`, aus dem Paket gebaut mit `oberflaeche/quellen/bauen.py`) und Blueprint: PV-/Netz-Anteil beim Laden, Netzkosten, Ladung senden (`node-red/quellen/flow_bauen.py` baut den Flow aus den `.js`-Quellen, `configuration_yaml/quellen/bauen.py` die configuration.yaml-Fassungen aus den Paketen) |
 | `fahrzeugbilder/` | Galerie der Fahrzeugbilder (im Add-on enthalten, `galerie.py` liest Namen aus der README und Nachweise aus `CREDITS.md`) und der Prompt für eigene Bilder |
 | `tests/vorlagen_test.py` | Test der Vorlagen (Node.js + Jinja2): `python tests/vorlagen_test.py` |
 | `tests/migrationstest.py` | Datenbanken der letzten Versionen (per `git worktree`) mit dem aktuellen Code öffnen und Kennzahlen, Berichte und Tabellensummen vergleichen: `python tests/migrationstest.py` |

@@ -253,6 +253,58 @@ check("HA-Paket", "Integral-Sensoren: PV/Netz, Methode links, kWh",
       and integ["EV Ladung Netz"]["source"] == "sensor.ev_ladeleistung_netz"
       and all(s["method"] == "left" and s["unit_prefix"] == "k" for s in integ.values()))
 
+# ═══ Helfer in der Oberflaeche (vorlagen/oberflaeche, aus dem Paket gebaut) ══════
+import importlib.util
+_spec = importlib.util.spec_from_file_location(
+    "helfer_bauen", os.path.join(REPO, "vorlagen", "oberflaeche", "quellen", "bauen.py"))
+helfer_bauen = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(helfer_bauen)
+check("Helfer", "Anleitung ist aktuell – sonst vorlagen/oberflaeche/quellen/bauen.py ausführen",
+      open(helfer_bauen.ZIEL, encoding="utf-8").read() == helfer_bauen.readme())
+
+
+def leistung_ui(netz, wb, einheit="W", ersetzen=None, akku=None):
+    """Wie leistung_ha, aber mit den Helfer-Vorlagen: ohne availability, Rueckfall im Zustand."""
+    t = helfer_bauen.helfer_templates()
+    zust = {"sensor.netz": Zustand(netz, {"unit_of_measurement": einheit}),
+            "sensor.wb": Zustand(wb, {"unit_of_measurement": einheit})}
+    if akku is not None:
+        zust["sensor.akku"] = Zustand(akku, {"unit_of_measurement": "W"})
+    env = renderer(zust)
+    for uid in helfer_bauen.SENSOREN:
+        text = t[uid]["state"]
+        for alt, neu in {**ERSETZEN, **(ersetzen or {})}.items():
+            text = text.replace(alt, neu)
+        entity = "sensor." + t[uid]["name"].lower().replace(" ", "_")     # Entity-ID aus dem Namen
+        zust[entity] = Zustand(env.from_string(text).render().strip())
+    return zust["sensor.ev_ladeleistung_pv"].state, zust["sensor.ev_ladeleistung_netz"].state
+
+
+for name, netz, wb, einheit, einst, extra, s_pv, s_netz in FAELLE:
+    ersetzen = {}
+    if einst and einst.get("netz_bezug_positiv") is False:
+        ersetzen["{% set netz_bezug_positiv = true %}"] = "{% set netz_bezug_positiv = false %}"
+    if einst and einst.get("akku_als") == "netz":
+        ersetzen["{% set akku_als_netz = false %}"] = "{% set akku_als_netz = true %}"
+    pv, nz = leistung_ui(netz, wb, einheit, ersetzen, akku=5000 if extra else None)
+    check("Helfer", name, nah(pv, s_pv, 1) and nah(nz, s_netz, 1), f"PV {pv} / Netz {nz}")
+pv, nz = leistung_ui("unavailable", 7000)
+check("Helfer", "Netzsensor nicht verfügbar → alles als Netz (PV 0), nie zu viel PV",
+      nah(pv, 0, 0.5) and nah(nz, 7000, 0.5), f"{pv} / {nz}")
+pv, nz = leistung_ui(3000, "unavailable")
+check("Helfer", "Wallbox nicht verfügbar → PV 0 und Netz 0", nah(pv, 0, 0.5) and nah(nz, 0, 0.5), f"{pv} / {nz}")
+_t = helfer_bauen.helfer_templates()
+check("Helfer", "Namen ergeben die Entity-IDs des Pakets (sensor.ev_ladeleistung_*)",
+      [_t[u]["name"].lower().replace(" ", "_") for u in helfer_bauen.SENSOREN]
+      == ["ev_ladeleistung_wallbox", "ev_ladeleistung_netz", "ev_ladeleistung_pv"])
+check("Helfer", "Integral-Helfer: Eingangssensoren wie im Paket",
+      helfer_bauen.integral() == {"EV Ladung PV": "sensor.ev_ladeleistung_pv",
+                                  "EV Ladung Netz": "sensor.ev_ladeleistung_netz"})
+_md = open(helfer_bauen.ZIEL, encoding="utf-8").read()
+check("Helfer", "Anleitung enthält Platzhalter, Linke Riemann-Summe, Präfix k, Stunden",
+      all(x in _md for x in ("sensor.DEIN_NETZ", "sensor.DEINE_WALLBOX", "Linke Riemann-Summe",
+                             "k (kilo)", "Stunden", "sensor.ev_ladung_pv", "sensor.ev_ladung_netz")))
+
 # Zaehler-Variante: eine Stunde, Zaehler steigt alle 10 s, Leistung 2 kW Netz / 5 kW PV
 for einheit, faktor in (("kWh", 1), ("Wh", 1000)):
     t = templates(PAKET_Z, ERSETZEN)
