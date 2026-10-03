@@ -45,7 +45,7 @@ def preise(eauto="", verbrenner="", foerderung=""):
 # ── Leere Datenbank ──────────────────────────────────────────────────────────
 r = c.get("/")
 check("Leere DB: Dashboard laedt", r.status_code == 200, f"HTTP {r.status_code}")
-check("Leere DB: keine Amortisation ohne Kaufpreis", 'id="amortisation"' not in r.text)
+check("Leere DB: keine Amortisation ohne Kaufpreis", ' id="amortisation"' not in r.text)
 r = c.get("/einstellungen")
 check("Einstellungen: Abschnitt Anschaffung", 'id="anschaffung"' in r.text)
 preise("42.000", "40.000", "1.000")
@@ -99,7 +99,7 @@ check("Diagramm: Prognose erreicht den Mehrpreis",
       opt["series"][2]["data"][-1] >= 1000, str(opt["series"][2]["data"][-1]))
 
 r = c.get("/")
-check("Dashboard: Abschnitt Amortisation", 'id="amortisation"' in r.text)
+check("Dashboard: Abschnitt Amortisation", ' id="amortisation"' in r.text)
 check("Dashboard: 85 % hereingeholt", "85 % hereingeholt" in r.text)
 check("Dashboard: Prognose 03/2026", "03/2026" in r.text)
 check("Dashboard: Diagramm-Daten", 'id="opt-amortisation"' in r.text)
@@ -137,7 +137,7 @@ check("Ungueltige Eingabe aendert nichts",
       and db.get_einstellung("anschaffung_eauto") == 42000)
 preise("", "40.000", "1.000")
 check("Leerer Kaufpreis: ausgeblendet", zeitraum.amortisation(zeitraum.laden()) is None
-      and 'id="amortisation"' not in c.get("/").text)
+      and ' id="amortisation"' not in c.get("/").text)
 
 # ── Englisch ─────────────────────────────────────────────────────────────────
 preise("42.000", "40.000", "1.000")

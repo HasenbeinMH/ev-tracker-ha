@@ -381,3 +381,34 @@ nav .sprachwahl + a.version { margin-left: 6px; }
 .amo-balken { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
 .amo-balken span { display: block; height: 100%; border-radius: 4px;
   background: linear-gradient(90deg, var(--gruen), #7cc896); }
+
+/* Dashboard anpassen (Bearbeiten-Modus) */
+.dash-anpassen { margin-left: auto; padding: 5px 12px; font-size: 12px; }
+.chart.breit { grid-column: 1 / -1; }
+body:not(.dash-bearbeiten) .dash-el.aus,
+body:not(.dash-bearbeiten) .dash-platzhalter { display: none; }
+.dash-platzhalter { color: var(--muted); font-size: 13px; border-style: dashed; }
+.dash-werkzeug { display: none; }
+.dash-bearbeiten .dash-el { position: relative; outline: 1px dashed var(--border2); outline-offset: 3px; }
+.dash-bearbeiten .dash-el.aus { opacity: .4; }
+.dash-bearbeiten .dash-el.dash-zieht { opacity: .2; }
+.dash-bearbeiten .dash-el[draggable="true"] { cursor: grab; }
+.dash-bearbeiten .dash-bereich { margin-bottom: 18px; padding-top: 2px; }
+.dash-bearbeiten .dash-werkzeug { display: flex; gap: 4px; align-items: center; }
+.dash-werkzeug button {
+  padding: 2px 7px; font-size: 12px; line-height: 1.4;
+  background: var(--border); border: 1px solid var(--border2); color: var(--text);
+}
+.dash-werkzeug button:hover { background: var(--border2); }
+.dash-bereich > .dash-werkzeug { margin-bottom: 8px; }
+.dash-werkzeug .dash-name { font-size: 12px; font-weight: 600; color: var(--blau-hell); margin: 0 6px; }
+.stat > .dash-werkzeug, .chart > .dash-werkzeug { position: absolute; top: 4px; right: 4px; z-index: 2; }
+.dash-bearbeiten .stat.dash-el { padding-top: 34px; }
+.dash-leiste {
+  position: sticky; bottom: 0; z-index: 20;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-top: 16px; padding: 10px 14px;
+  background: var(--card); border: 1px solid var(--border2); border-radius: 8px;
+}
+.dash-leiste[hidden] { display: none; }
+@media (max-width: 640px) { .dash-leiste .hint { display: none; } }

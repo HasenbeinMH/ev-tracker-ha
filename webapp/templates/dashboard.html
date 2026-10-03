@@ -73,6 +73,7 @@
   {{ _("<a class=\"zeitraum-zurueck\" href=\"?zeitraum=alles\">✕ Gesamter Zeitraum</a>") }}
   {% endif %}
   <span class="hint" style="margin:0">{{ _("KFZ-Steuer anteilig für {0} Monat", kz.monate) if kz.monate == 1 else _("KFZ-Steuer anteilig für {0} Monate", kz.monate) }}</span>
+  <button type="button" class="secondary dash-anpassen" id="dash-anpassen" title="{{ _t("Kennzahlen, Abschnitte und Diagramme ein-/ausblenden und anordnen") }}">{{ _("✏ Anpassen") }}</button>
 </form>
 
 {# Icon-Vorrat fuer die Kennzahl-Kacheln; wird ueber <use href="#ic-..."> eingebunden #}
@@ -83,20 +84,60 @@
   <symbol id="ic-muenzen" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></symbol>
   <symbol id="ic-blatt" viewBox="0 0 24 24"><path d="M20 4c0 9-5.5 13.5-11.5 13.5 0 0-1.5-5 2.5-8.5S20 4 20 4zM4.5 20c2-6 5-9.5 9-11.5"/></symbol>
   <symbol id="ic-wolke" viewBox="0 0 24 24"><path d="M7 18h9.2a4.1 4.1 0 0 0 .5-8.2 6.1 6.1 0 0 0-11.6 1.7A3.5 3.5 0 0 0 7 18z"/></symbol>
+  <symbol id="ic-stecker" viewBox="0 0 24 24"><path d="M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0zM12 17v5"/></symbol>
+  <symbol id="ic-tacho" viewBox="0 0 24 24"><path d="M4 18a8 8 0 1 1 16 0M12 18l4-6"/></symbol>
+  <symbol id="ic-sonne" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="ic-beleg" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></symbol>
+  <symbol id="ic-sparen" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 16 0 8 8 0 0 0-16 0M9.5 9.5c.4-1 1.4-1.5 2.5-1.5 1.5 0 2.5.8 2.5 2s-1 1.6-2.5 2-2.5.8-2.5 2 1 2 2.5 2c1.1 0 2.1-.5 2.5-1.5M12 6.5V8m0 8v1.5"/></symbol>
 </svg>
 
-{% set kacheln = [
-    ('ic-strecke',     '#4a90c4', kz.gesamt_km | de(0), 'km', _t('Gesamtstrecke')),
-    ('ic-energie',     '#7a6aaa', kz.gesamt_kwh | de(1), 'kWh', _t('Geladene Energie')),
-    ('ic-zapfsaeule',  '#5aaa78', kz.ersparnis_kraft | de(2), '€', _t('Kraftstoff-Ersparnis')),
-    ('ic-muenzen',     '#c4963a', kz.kfz_steuer | de(2), '€', _t('Steuer-Ersparnis')),
-    ('ic-blatt',       '#5aaa78', kz.thg_gesamt | de(2), '€', _t('THG-Ertrag')),
-    ('ic-wolke',       '#3a9aaa', kz.co2_gespart | de(0), 'kg', _t('CO2 gespart'))] %}
-{# Die Gesamt-Ersparnis steht nur noch in der Kopfzeile, nicht mehr als Kachel #}
+{# Alle waehlbaren Kacheln: (Icon, Farbe, Wert, Einheit, Beschriftung). Welche sichtbar
+   sind und in welcher Reihenfolge, steht in layout.kacheln (dashboard_layout.py). #}
+{% set pv = kz.anteile.get("PV-Strom") if kz.anteile else none %}
+{% set KACHEL = {
+    'strecke':           ('ic-strecke',    '#4a90c4', kz.gesamt_km | de(0), 'km', _t('Gesamtstrecke')),
+    'energie':           ('ic-energie',    '#7a6aaa', kz.gesamt_kwh | de(1), 'kWh', _t('Geladene Energie')),
+    'ersparnis_kraft':   ('ic-zapfsaeule', '#5aaa78', kz.ersparnis_kraft | de(2), '€', _t('Kraftstoff-Ersparnis')),
+    'steuer':            ('ic-muenzen',    '#c4963a', kz.kfz_steuer | de(2), '€', _t('Steuer-Ersparnis')),
+    'thg':               ('ic-blatt',      '#5aaa78', kz.thg_gesamt | de(2), '€', _t('THG-Ertrag')),
+    'co2':               ('ic-wolke',      '#3a9aaa', kz.co2_gespart | de(0), 'kg', _t('CO2 gespart')),
+    'ersparnis_gesamt':  ('ic-sparen',     '#5aaa78', kz.ersparnis_gesamt | de(2), '€', _t('Gesamt-Ersparnis')),
+    'ladevorgaenge':     ('ic-stecker',    '#7a6aaa', kz.ladevorgaenge | de(0), '', _t('Ladevorgänge')),
+    'stromkosten':       ('ic-beleg',      '#c47a3a', kz.strom_kosten | de(2), '€', _t('Stromkosten')),
+    'verbrenner_kosten': ('ic-zapfsaeule', '#aa5a5a', kz.benzin_kosten | de(2), '€', _t('Kosten {0}', kf.fahrzeug)),
+    'verbrauch':         ('ic-tacho',      '#3a9aaa', kz.verbrauch | de(1) if kz.verbrauch else '–', 'kWh/100 km', _t('Ø Verbrauch')),
+    'strompreis':        ('ic-energie',    '#c4963a', kz.strompreis_ct | de(1) if kz.strompreis_ct else '–', 'ct/kWh', _t('Ø Strompreis')),
+    'kosten_100km':      ('ic-beleg',      '#c47a3a', kz.kosten_pro_100km | de(2) if kz.kosten_pro_100km else '–', '€', _t('Stromkosten je 100 km')),
+    'ersparnis_100km':   ('ic-strecke',    '#5aaa78', kz.ersparnis_100km | de(2) if kz.ersparnis_100km else '–', '€', _t('Ersparnis je 100 km')),
+    'pv_anteil':         ('ic-sonne',      '#c4963a', pv | de(0) if pv is not none else '–', '%', _t('PV-Anteil'))} %}
+{% set DIAGRAMM = {
+    'monatlich': _t('Monatliche Kosten & Ersparnis'),
+    'kosten':    _t('Kraftstoffkosten Vergleich'),
+    'co2':       _t('CO2-Ersparnis'),
+    'verbrauch': _t('Verbrauch kWh/100km'),
+    'benzin':    _t('{0}preisentwicklung', kf.name),
+    'strom':     _t('Stromtarifverlauf'),
+    'anbieter':  _t('Ladekosten nach Anbieter'),
+    'strommix':  _t('Geladene kWh nach Stromquelle'),
+    'thg':       _t('THG-Quote Erträge')} %}
+{% set BEREICH = {
+    'kacheln':      _t('Kennzahlen'),
+    'amortisation': _t('Amortisation des Mehrpreises'),
+    'je_fahrzeug':  _t('Je Fahrzeug'),
+    'abo':          _t('Lade-Abo'),
+    'diagramme':    _t('Diagramme')} %}
 
+<div id="dash">
+{% for b in layout.bereiche %}
+<div class="dash-el dash-bereich{{ ' aus' if not b.an }}" data-gruppe="bereiche" data-id="{{ b.id }}"
+     data-an="{{ 1 if b.an else 0 }}" data-name="{{ BEREICH[b.id] }}">
+
+{% if b.id == "kacheln" %}
 <div class="statgrid">
-  {% for icon, farbe, wert, einheit, label in kacheln %}
-  <div class="stat mit-icon" style="--farbe: {{ farbe }}">
+  {% for k in layout.kacheln %}
+  {% set icon, farbe, wert, einheit, label = KACHEL[k.id] %}
+  <div class="stat mit-icon dash-el{{ ' aus' if not k.an }}" style="--farbe: {{ farbe }}" data-gruppe="kacheln"
+       data-id="{{ k.id }}" data-an="{{ 1 if k.an else 0 }}" data-name="{{ label }}">
     <span class="stat-icon"><svg viewBox="0 0 24 24"><use href="#{{ icon }}"></use></svg></span>
     <div>
       <span class="wert">{{ wert }}</span><span class="einheit">{{ einheit }}</span>
@@ -106,6 +147,7 @@
   {% endfor %}
 </div>
 
+{% elif b.id == "amortisation" %}
 {% if amo %}
 {# Amortisation des Mehrpreises – immer ueber den ganzen Datenbestand, nicht ueber den Zeitraum #}
 <div class="card amortisation" id="amortisation">
@@ -145,8 +187,11 @@
     <a href="einstellungen#anschaffung">{{ _("Kaufpreise ändern") }}</a>
   </p>
 </div>
+{% else %}
+<div class="card dash-platzhalter">{{ _("Amortisation: erscheint, sobald unter <a href=\"einstellungen#anschaffung\">Einstellungen → Anschaffung</a> ein Kaufpreis eingetragen ist.") }}</div>
 {% endif %}
 
+{% elif b.id == "je_fahrzeug" %}
 {% if kz.je_fahrzeug %}
 {# Gesamtsicht: jedes Fahrzeug mit eigenem Vergleichs-Verbrenner, darunter die Summe #}
 <div class="card je-fahrzeug">
@@ -182,26 +227,181 @@
   </table></div>
   <p class="hint">{{ _("Jedes Fahrzeug wird mit seinem eigenen Vergleichs-Verbrenner (Kraftstoff, Verbrauch, KFZ-Steuer) gerechnet; Verbrauch und Preise der Summe ergeben sich aus den Summen.") }}</p>
 </div>
+{% else %}
+<div class="card dash-platzhalter">{{ _("Je Fahrzeug: erscheint bei mehreren Fahrzeugen in der Ansicht „Alle Fahrzeuge“.") }}</div>
 {% endif %}
 
+{% elif b.id == "abo" %}
+{% if abo %}
+{# Lade-Abo: Break-even je Anbieter mit Vergleichstarif – Details auf der Seite Ladetarife #}
+<div class="card amortisation">
+  <h2 style="margin-top:0">{{ _("🏷️ Lohnt sich das Abo?") }}</h2>
+  {% for r in abo %}
+  {% for v in r.vergleiche %}
+  {% set be = v.break_even %}
+  {% set name = (r.anbieter ~ " " ~ v.name) | trim %}
+  <div class="amo-wert" style="font-size:15px">
+    {% if be.art == "ab" %}{{ _("Ab {0} kWh im Monat ist dein Abo günstiger als {1}.", be.kwh | de(0), name) }}
+    {% elif be.art == "bis" %}{{ _("Bis {0} kWh im Monat ist dein Abo günstiger als {1}.", be.kwh | de(0), name) }}
+    {% elif be.art == "immer" %}{{ _("Dein Abo ist bei jeder Lademenge günstiger als {0}.", name) }}
+    {% else %}{{ _("{0} ist bei jeder Lademenge günstiger als dein Abo.", name) }}{% endif %}
+  </div>
+  {% if be.art == "ab" %}
+  {% set anteil = r.kwh_jetzt / be.kwh * 100 %}
+  <div class="amo-balken" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ [anteil, 100] | min | round(0) }}"><span style="width: {{ [anteil, 100] | min }}%"></span></div>
+  <p class="hint" style="margin:6px 0 12px">
+    {% if r.kwh_jetzt >= be.kwh %}{{ _("✅ Diesen Monat erreicht: {0} kWh geladen.", r.kwh_jetzt | de(1)) }}
+    {% else %}{{ _("Diesen Monat {0} von {1} kWh – noch {2} kWh bis zum Break-even.", r.kwh_jetzt | de(1), be.kwh | de(0), (be.kwh - r.kwh_jetzt) | de(1)) }}{% endif %}
+  </p>
+  {% else %}
+  <p class="hint" style="margin:6px 0 12px">{{ _("Ø der letzten 12 Monate: {0} kWh.", r.kwh_monat | de(0)) }}</p>
+  {% endif %}
+  {% endfor %}
+  {% endfor %}
+  <p class="hint" style="margin:0"><a href="ladetarife#rentabilitaet-1">{{ _("Details auf der Seite Ladetarife") }}</a></p>
+</div>
+{% else %}
+<div class="card dash-platzhalter">{{ _("Lade-Abo: erscheint, sobald es auf der Seite <a href=\"ladetarife\">Ladetarife</a> zu einem Abo einen Tarif mit „nur Vergleich“ gibt.") }}</div>
+{% endif %}
+
+{% elif b.id == "diagramme" %}
 <div class="chartgrid">
-  {% for key, titel in [
-      ('monatlich', _t('Monatliche Kosten & Ersparnis')),
-      ('kosten', _t('Kraftstoffkosten Vergleich')),
-      ('co2', _t('CO2-Ersparnis')),
-      ('verbrauch', _t('Verbrauch kWh/100km')),
-      ('benzin', _t('{0}preisentwicklung', kf.name)),
-      ('strom', _t('Stromtarifverlauf')),
-      ('anbieter', _t('Ladekosten nach Anbieter')),
-      ('strommix', _t('Geladene kWh nach Stromquelle')),
-      ('thg', _t('THG-Quote Erträge'))] %}
-  <div class="chart">
-    <div class="titel">{{ titel }}</div>
-    <div class="echart" data-echart="opt-{{ key }}"></div>
-    <script type="application/json" id="opt-{{ key }}">{{ charts[key] | tojson }}</script>
+  {% for d in layout.diagramme %}
+  <div class="chart dash-el{{ ' aus' if not d.an }}{{ ' breit' if d.breit }}" data-gruppe="diagramme"
+       data-id="{{ d.id }}" data-an="{{ 1 if d.an else 0 }}" data-breit="{{ 1 if d.breit else 0 }}" data-name="{{ DIAGRAMM[d.id] }}">
+    <div class="titel">{{ DIAGRAMM[d.id] }}</div>
+    <div class="echart" data-echart="opt-{{ d.id }}"></div>
+    <script type="application/json" id="opt-{{ d.id }}">{{ charts[d.id] | tojson }}</script>
   </div>
   {% endfor %}
 </div>
+{% endif %}
+</div>
+{% endfor %}
+</div>
+
+{# Bearbeiten-Modus: Leiste mit Speichern/Abbrechen/Standard #}
+<div id="dash-leiste" class="dash-leiste" hidden>
+  <span class="hint" style="margin:0">{{ _("Ziehen oder ◀ ▶ zum Sortieren · 👁 ein-/ausblenden · ↔ Diagramm schmal/breit") }}</span>
+  <span style="flex:1"></span>
+  <button type="button" class="secondary" id="dash-standard">{{ _("Standard") }}</button>
+  <button type="button" class="secondary" onclick="location.reload()">{{ _("✕ Abbrechen") }}</button>
+  <button type="button" id="dash-speichern">{{ _("💾 Speichern") }}</button>
+</div>
+
 <script src="static/echarts.min.js"></script>
 <script src="static/charts.js"></script>
+<script>
+// Dashboard anpassen: Reihenfolge (Ziehen oder Pfeile), ein-/ausblenden, Diagrammbreite.
+// Gespeichert wird global (alle Fahrzeuge, alle Geraete) ueber /api/dashboard/layout.
+(function () {
+  const TEXT = {
+    zurueck: {{ _t("Nach vorne") | tojson }}, vor: {{ _t("Nach hinten") | tojson }},
+    auge: {{ _t("Ein-/ausblenden") | tojson }}, breite: {{ _t("Schmal/breit") | tojson }},
+    standard: {{ _t("Dashboard auf die Standard-Anordnung zurücksetzen?") | tojson }},
+    fehler: {{ _t("Speichern fehlgeschlagen.") | tojson }},
+  };
+  const knopf = document.getElementById("dash-anpassen");
+  const leiste = document.getElementById("dash-leiste");
+  const alle = () => document.querySelectorAll("#dash .dash-el");
+  const neuZeichnen = () => window.dispatchEvent(new Event("resize"));
+
+  function werkzeug(el) {
+    const g = el.dataset.gruppe;
+    const [hin, her] = g === "bereiche" ? ["▲", "▼"] : ["◀", "▶"];
+    const w = document.createElement("div");
+    w.className = "dash-werkzeug";
+    w.innerHTML =
+      `<button type="button" data-a="zurueck" title="${TEXT.zurueck}">${hin}</button>` +
+      (g === "bereiche" ? `<span class="dash-name"></span>` : "") +
+      `<button type="button" data-a="auge" title="${TEXT.auge}"></button>` +
+      (g === "diagramme" ? `<button type="button" data-a="breite" title="${TEXT.breite}">↔</button>` : "") +
+      `<button type="button" data-a="vor" title="${TEXT.vor}">${her}</button>`;
+    const name = w.querySelector(".dash-name");
+    if (name) name.textContent = el.dataset.name;
+    el.prepend(w);
+    augeSetzen(el);
+  }
+  function augeSetzen(el) {
+    const an = el.dataset.an === "1";
+    el.classList.toggle("aus", !an);
+    const b = el.querySelector(":scope > .dash-werkzeug [data-a=auge]");
+    if (b) b.textContent = an ? "👁" : "🚫";
+  }
+  const geschwister = (el) => [...el.parentNode.children].filter(
+    (x) => x.classList.contains("dash-el") && x.dataset.gruppe === el.dataset.gruppe);
+
+  function aktion(el, a) {
+    const reihe = geschwister(el), i = reihe.indexOf(el);
+    if (a === "zurueck" && i > 0) reihe[i - 1].before(el);
+    if (a === "vor" && i < reihe.length - 1) reihe[i + 1].after(el);
+    if (a === "auge") { el.dataset.an = el.dataset.an === "1" ? "0" : "1"; augeSetzen(el); }
+    if (a === "breite") {
+      el.dataset.breit = el.dataset.breit === "1" ? "0" : "1";
+      el.classList.toggle("breit", el.dataset.breit === "1");
+    }
+    neuZeichnen();
+  }
+
+  // Ziehen (Maus): nur innerhalb derselben Gruppe und desselben Behaelters
+  let gezogen = null;
+  function ziehenEinrichten(el) {
+    el.draggable = true;
+    el.addEventListener("dragstart", (e) => {
+      e.stopPropagation();
+      gezogen = el;
+      el.classList.add("dash-zieht");
+      e.dataTransfer.effectAllowed = "move";
+      try { e.dataTransfer.setData("text/plain", el.dataset.id); } catch (_) { /* alte Browser */ }
+    });
+    el.addEventListener("dragend", (e) => {
+      e.stopPropagation();
+      el.classList.remove("dash-zieht");
+      gezogen = null;
+      neuZeichnen();
+    });
+    el.addEventListener("dragover", (e) => {
+      if (!gezogen || gezogen === el || gezogen.parentNode !== el.parentNode
+          || gezogen.dataset.gruppe !== el.dataset.gruppe) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const r = el.getBoundingClientRect();
+      const davor = el.dataset.gruppe === "bereiche"
+        ? e.clientY < r.top + r.height / 2
+        : e.clientX < r.left + r.width / 2;
+      if (davor) el.before(gezogen); else el.after(gezogen);
+    });
+  }
+
+  knopf.addEventListener("click", () => {
+    if (document.body.classList.contains("dash-bearbeiten")) return;
+    document.body.classList.add("dash-bearbeiten");
+    leiste.hidden = false;
+    knopf.hidden = true;
+    alle().forEach((el) => { werkzeug(el); ziehenEinrichten(el); });
+    neuZeichnen();
+  });
+  document.getElementById("dash").addEventListener("click", (e) => {
+    const b = e.target.closest(".dash-werkzeug button");
+    if (b) { e.preventDefault(); aktion(b.closest(".dash-el"), b.dataset.a); }
+  });
+
+  document.getElementById("dash-speichern").addEventListener("click", async () => {
+    const layout = {};
+    ["bereiche", "kacheln", "diagramme"].forEach((g) => {
+      layout[g] = [...document.querySelectorAll(`#dash .dash-el[data-gruppe="${g}"]`)].map((el) => (
+        { id: el.dataset.id, an: el.dataset.an === "1", breit: el.dataset.breit === "1" }));
+    });
+    const r = await fetch("api/dashboard/layout", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(layout) });
+    if (!r.ok) { alert(TEXT.fehler); return; }
+    location.reload();
+  });
+  document.getElementById("dash-standard").addEventListener("click", async () => {
+    if (!confirm(TEXT.standard)) return;
+    await fetch("api/dashboard/layout/standard", { method: "POST" });
+    location.reload();
+  });
+})();
+</script>
 {% endblock %}

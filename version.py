@@ -19,10 +19,22 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "3.3.0"
+VERSION = "3.4.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.4.0",
+        "datum": "2026-10-03",
+        "titel": "Dashboard anpassen",
+        "aenderungen": [
+            "Dashboard: Knopf \"✏ Anpassen\" neben der Zeitraumauswahl – Kacheln, Diagramme und ganze Abschnitte ein- und ausblenden und anordnen (Pfeile oder Ziehen), Diagramme schmal oder breit; \"Standard\" stellt die urspruengliche Anordnung wieder her",
+            "Die Anordnung gilt fuer die ganze App (alle Fahrzeuge, alle Geraete) und wird mit den Einstellungen gesichert. Ohne Anpassung sieht das Dashboard aus wie bisher",
+            "Neue waehlbare Kacheln: Gesamt-Ersparnis, Ladevorgaenge, Stromkosten, Kosten des Vergleichs-Verbrenners, Ø Verbrauch, Ø Strompreis, Stromkosten und Ersparnis je 100 km, PV-Anteil",
+            "Neuer waehlbarer Abschnitt \"Lade-Abo\": Break-even der Lade-Abos mit Fortschrittsbalken fuer den laufenden Monat",
+            "Hilfe: Abschnitt \"Dashboard anpassen\" (Deutsch und Englisch); neuer Test dashboard_test.py",
+        ],
+    },
     {
         "version": "3.3.0",
         "datum": "2026-10-03",

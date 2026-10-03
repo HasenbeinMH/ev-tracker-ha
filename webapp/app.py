@@ -30,6 +30,7 @@ import berechnung
 import berichte
 import ladeerkennung
 import ladetarife as ladetarife_mod
+import dashboard_layout
 import unterhalt
 import mailer
 import charts
@@ -349,7 +350,11 @@ def dashboard(request: Request, zeitraum: str | None = None):
     amo = zeitraum_mod.amortisation(daten)
     if amo:
         charts_html["amortisation"] = charts.chart_amortisation(amo)
+    layout = dashboard_layout.laden()
+    # Lade-Abo (Break-even) – auch ausgeblendet, damit es im Bearbeiten-Modus erscheint
+    abo = ladetarife_mod.seite_daten()["rentabilitaet"]
     antwort = render(request, "dashboard.html", kz=kz, charts=charts_html, amo=amo,
+                     layout=layout, abo=abo,
                      zeitraum=z, zeitraum_optionen=zeitraum_mod.optionen(daten),
                      fahrzeug_name=(_("Alle Fahrzeuge") if gesamt else
                                     db.get_einstellung_str("fahrzeug_name") or "Mein Elektroauto"),
@@ -359,6 +364,18 @@ def dashboard(request: Request, zeitraum: str | None = None):
         antwort.set_cookie("zeitraum", z["schluessel"], max_age=365 * 24 * 3600,
                            samesite="lax")
     return antwort
+
+
+@app.post("/api/dashboard/layout")
+def dashboard_layout_speichern(payload: dict):
+    """Anordnung aus dem Bearbeiten-Modus des Dashboards speichern (global)."""
+    return {"ok": True, "layout": dashboard_layout.speichern(payload)}
+
+
+@app.post("/api/dashboard/layout/standard")
+def dashboard_layout_standard():
+    dashboard_layout.zuruecksetzen()
+    return {"ok": True, "layout": dashboard_layout.standard()}
 
 
 # ─────────────────────────────────────────────────────────────
