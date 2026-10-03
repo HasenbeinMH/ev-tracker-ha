@@ -19,10 +19,22 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "3.2.0"
+VERSION = "3.3.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.3.0",
+        "datum": "2026-10-03",
+        "titel": "Lohnt sich das Abo? Schneller nachtragen",
+        "aenderungen": [
+            "Laden: nach \"Hinzufuegen\" bleiben Datum, Anbieter, Typ und kW (bei mehreren Fahrzeugen auch das Fahrzeug) stehen, der Cursor steht in kWh – mehrere Ladungen eines Monats lassen sich zuegig nachtragen",
+            "Ladetarife: neuer Haken \"nur Vergleich\" fuer Tarife, die man nicht hat – z. B. der Ad-hoc-Preis ohne Abo oder ein anderes Abo desselben Anbieters. Sie kosten nichts und belegen keine Preise vor",
+            "Neuer Abschnitt \"Lohnt sich das Abo?\" je Anbieter: Break-even in kWh je Monat mit Fortschrittsbalken fuer den laufenden Monat, Monatstabelle mit den Kosten mit Abo und mit jedem Vergleichstarif (AC/DC getrennt, Grundgebuehr anteilig, Blockiergebuehr wie bezahlt), Ersparnis bisher und Diagramm der aufsummierten Kosten im laufenden Monat",
+            "Hilfe: Abschnitt \"Lohnt sich das Abo?\" mit Formeln und Beispiel (Deutsch und Englisch)",
+            "Neuer Test ladetarife_test.py",
+        ],
+    },
     {
         "version": "3.2.0",
         "datum": "2026-10-02",

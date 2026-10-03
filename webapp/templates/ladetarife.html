@@ -3,7 +3,7 @@
 {% block inhalt %}
 {% from "_fahrzeug.html" import fahrzeug_feld, fahrzeug_name_von with context %}
 <h1>{{ _("🏷️ Ladetarife") }}</h1>
-<p class="hint">{{ _("Deine Abos für öffentliches Laden. Bei einer Preisänderung einen neuen Eintrag mit neuem „gültig ab“ anlegen – der alte bleibt als Verlauf stehen. Auf der Seite Laden wird ct/kWh aus dem aktuellen Tarif des Anbieters vorbelegt.") }}</p>
+<p class="hint">{{ _("Deine Abos für öffentliches Laden. Bei einer Preisänderung einen neuen Eintrag mit neuem „gültig ab“ anlegen – der alte bleibt als Verlauf stehen. Auf der Seite Laden wird ct/kWh aus dem aktuellen Tarif des Anbieters vorbelegt. Mit „nur Vergleich“ legst du einen Tarif an, den du nicht hast (z. B. Ad-hoc-Preis) – unten siehst du dann, ob sich dein Abo lohnt.") }}</p>
 
 <div class="card">
   <form class="inline" method="post" action="ladetarife" id="tarif-form">
@@ -52,6 +52,9 @@
     <label class="feld">{{ _("Notiz") }}
       <input name="notiz" id="t-notiz" placeholder="{{ _t("optional") }}">
     </label>
+    <label class="feld" title="{{ _t("Nicht abgeschlossen – z. B. Ad-hoc-Preis ohne Abo oder ein anderes Abo. Kostet nichts, dient nur dem Vergleich.") }}">{{ _("nur Vergleich") }}
+      <input type="checkbox" name="nur_vergleich" id="t-nur_vergleich" value="1">
+    </label>
     {{ fahrzeug_feld(name="tarif_fahrzeug", gemeinsam=_t("Gemeinsam (alle Fahrzeuge)"), wert=0, id="t-fahrzeug_id") }}
     <button type="submit" id="t-senden">{{ _("➕ Hinzufügen") }}</button>
     <button type="button" class="secondary" id="t-abbrechen" style="display:none"
@@ -73,7 +76,7 @@
   {% for t in tarife %}
   <tr>
     <td>{{ t.anbieter }}</td>
-    <td>{{ t.tarif_name or "—" }}</td>
+    <td>{{ t.tarif_name or "—" }}{% if t.nur_vergleich %} <span class="muted" title="{{ _t("Nicht abgeschlossen, nur zum Vergleich") }}">{{ _("(Vergleich)") }}</span>{% endif %}</td>
     {% if mehrere and fahrzeuge | length > 1 %}<td>{{ fahrzeug_name_von(t.fahrzeug_id) if t.fahrzeug_id else _("gemeinsam") }}</td>{% endif %}
     <td style="white-space:nowrap">{{ t.gueltig_ab }}{{ " – " ~ t.gueltig_bis if t.gueltig_bis }}</td>
     <td>{{ t.preis_ac | de(2) }}</td>
@@ -130,6 +133,71 @@
   {% endfor %}
 </table></div>
 
+
+{% for r in rentabilitaet %}
+<h2 id="rentabilitaet-{{ loop.index }}">{{ _("Lohnt sich das Abo? {0} {1}", r.anbieter, r.ist.tarif_name or "") }}</h2>
+<div class="card amortisation">
+  {% for v in r.vergleiche %}
+  {% set be = v.break_even %}
+  <div class="amo-wert">
+    {% if be.art == "ab" %}{{ _("Ab {0} kWh im Monat ist dein Abo günstiger als {1}.", be.kwh | de(0), (r.anbieter ~ " " ~ v.name) | trim) }}
+    {% elif be.art == "bis" %}{{ _("Bis {0} kWh im Monat ist dein Abo günstiger als {1}.", be.kwh | de(0), (r.anbieter ~ " " ~ v.name) | trim) }}
+    {% elif be.art == "immer" %}{{ _("Dein Abo ist bei jeder Lademenge günstiger als {0}.", (r.anbieter ~ " " ~ v.name) | trim) }}
+    {% else %}{{ _("{0} ist bei jeder Lademenge günstiger als dein Abo.", (r.anbieter ~ " " ~ v.name) | trim) }}{% endif %}
+  </div>
+  {% if be.art == "ab" %}
+  {% set anteil = r.kwh_jetzt / be.kwh * 100 %}
+  <div class="amo-balken" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ [anteil, 100] | min | round(0) }}"><span style="width: {{ [anteil, 100] | min }}%"></span></div>
+  <p class="hint" style="margin:6px 0 12px">
+    {% if r.kwh_jetzt >= be.kwh %}{{ _("✅ Diesen Monat erreicht: {0} kWh geladen.", r.kwh_jetzt | de(1)) }}
+    {% else %}{{ _("Diesen Monat {0} von {1} kWh – noch {2} kWh bis zum Break-even.", r.kwh_jetzt | de(1), be.kwh | de(0), (be.kwh - r.kwh_jetzt) | de(1)) }}{% endif %}
+    {{ _("Ø der letzten 12 Monate: {0} kWh.", r.kwh_monat | de(0)) }}
+  </p>
+  {% else %}
+  <p class="hint" style="margin:6px 0 12px">{{ _("Ø der letzten 12 Monate: {0} kWh.", r.kwh_monat | de(0)) }}</p>
+  {% endif %}
+  {% endfor %}
+  <p class="hint" style="margin:0">
+    {{ _("Bisher insgesamt mit deinem Abo: {0} €.", r.summe_ist | de(2)) }}
+    {% for v in r.vergleiche %}
+      {% if v.diff > 0 %}{{ _("Mit {0} wären es {1} € gewesen – du hast {2} € gespart.", (r.anbieter ~ " " ~ v.name) | trim, v.summe | de(2), v.diff | de(2)) }}
+      {% elif v.diff < 0 %}{{ _("Mit {0} wären es {1} € gewesen – das Abo hat {2} € mehr gekostet.", (r.anbieter ~ " " ~ v.name) | trim, v.summe | de(2), (-v.diff) | de(2)) }}
+      {% else %}{{ _("Mit {0} wäre es gleich teuer gewesen.", (r.anbieter ~ " " ~ v.name) | trim) }}{% endif %}
+    {% endfor %}
+  </p>
+</div>
+
+<div class="chart">
+  <div class="echart" data-echart="opt-rentabilitaet-{{ loop.index }}"></div>
+  <script type="application/json" id="opt-rentabilitaet-{{ loop.index }}">{{ r.chart | tojson }}</script>
+</div>
+<p class="hint">{{ _("Aufsummierte Kosten im laufenden Monat ({0}): dein Abo startet bei der Grundgebühr, ein Tarif ohne Grundgebühr bei 0 € und steigt steiler. Wo sich die Linien kreuzen, ist der Break-even.", r.verlauf.monat[5:7] ~ "/" ~ r.verlauf.monat[:4]) }}</p>
+
+<div class="tabelle-scroll"><table>
+  <tr><th>{{ _("Monat") }}</th><th>{{ _("kWh AC") }}</th><th>{{ _("kWh DC") }}</th><th>{{ _("Mit Abo €") }}</th>
+      {% for v in r.vergleiche %}<th>{{ _("{0} €", (r.anbieter ~ " " ~ v.name) | trim) }}</th><th>{{ _("Ersparnis €") }}</th>{% endfor %}</tr>
+  {% for m in r.monate %}
+  <tr>
+    <td>{{ m.monat }}</td>
+    <td>{{ m.kwh_ac | de(1) }}</td>
+    <td>{{ m.kwh_dc | de(1) }}</td>
+    <td>{{ m.gesamt | de(2) }}</td>
+    {% for a in m.alt %}<td>{{ a.kosten | de(2) }}</td>
+    <td><span class="{{ 'gruen' if a.diff > 0 else ('rot' if a.diff < 0) }}">{{ a.diff | de(2) }}</span></td>{% endfor %}
+  </tr>
+  {% endfor %}
+  <tr>
+    <td><b>{{ _("Summe") }}</b></td><td></td><td></td><td><b>{{ r.summe_ist | de(2) }}</b></td>
+    {% for v in r.vergleiche %}<td><b>{{ v.summe | de(2) }}</b></td>
+    <td><b class="{{ 'gruen' if v.diff > 0 else ('rot' if v.diff < 0) }}">{{ v.diff | de(2) }}</b></td>{% endfor %}
+  </tr>
+</table></div>
+<p class="hint">{{ _("Gleiche kWh mit den Preisen des Vergleichstarifs (AC und DC getrennt), dazu seine Grundgebühr – in angefangenen Monaten anteilig wie beim Abo – und die tatsächliche Blockiergebühr. Ersparnis positiv = das Abo war günstiger.") }}</p>
+{% else %}
+<h2>{{ _("Lohnt sich das Abo?") }}</h2>
+<p class="hint">{{ _("Lege oben einen Tarif desselben Anbieters mit Haken „nur Vergleich“ an – z. B. den Ad-hoc-Preis ohne Abo (Grundgebühr 0) oder ein anderes Abo. Dann siehst du hier, was dein Laden damit gekostet hätte und ab wie vielen kWh im Monat sich dein Abo lohnt.") }}</p>
+{% endfor %}
+
 <script src="static/echarts.min.js"></script>
 <script src="static/charts.js"></script>
 <script>
@@ -138,7 +206,8 @@ function bearbeiten(btn) {
   const t = JSON.parse(btn.dataset.tarif);
   for (const [k, v] of Object.entries(t)) {
     const el = document.getElementById("t-" + k);
-    if (el) el.value = v === null ? "" : String(v).replace(".", k.startsWith("gueltig") ? "." : ",");
+    if (el && el.type === "checkbox") el.checked = !!v;
+    else if (el) el.value = v === null ? "" : String(v).replace(".", k.startsWith("gueltig") ? "." : ",");
   }
   document.getElementById("t-senden").textContent = {{ _t("💾 Speichern") | tojson }};
   document.getElementById("t-abbrechen").style.display = "";

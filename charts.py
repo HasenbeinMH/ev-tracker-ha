@@ -614,6 +614,30 @@ def chart_ladetarife(tarife, stromtarife=None):
     return _bedienung(opt, max(len(s["data"]) for s in serien), umschalten=False, kategorie=False)
 
 
+def chart_rentabilitaet(verlauf):
+    """Aufsummierte Kosten im laufenden Monat (ladetarife.monatsverlauf): das eigene Abo
+    startet bei der Grundgebuehr, ein Tarif ohne Grundgebuehr bei 0 und steigt steiler.
+    Wo sich die Linien kreuzen, ist der Break-even."""
+    if not verlauf or not any(w is not None for w in verlauf["ist"]):
+        return _leer(_("Keine Daten im laufenden Monat"))
+    farben = ["orange", "purple", "teal", "red", "green"]
+    serien = [_linie(verlauf["ist_name"], "blue", verlauf["ist"], "fn:euro2",
+                     showSymbol=False, z=3)]
+    for i, alt in enumerate(verlauf["alt"]):
+        farbe = farben[i % len(farben)]
+        serien.append(_linie(_("{0} (Vergleich)", alt["name"]), farbe, alt["werte"],
+                             "fn:euro2", showSymbol=False,
+                             lineStyle={"width": 2, "type": "dashed", "color": COLORS[farbe]}))
+    opt = _basis(
+        xAxis=_achse_kategorie(verlauf["tage"], formatter="fn:tag"),
+        yAxis=_achse_wert(axisLabel={"color": COLORS["subtext"], "fontSize": 10,
+                                     "formatter": "fn:euro0"}),
+        series=serien,
+    )
+    opt["legend"]["show"] = True
+    return opt
+
+
 def chart_anbieter_verteilung(lade_daten):
     if not lade_daten:
         return _leer(_("Keine Ladedaten"))

@@ -182,7 +182,8 @@
   <tr><td><b>Privat – PV</b> (home, solar)</td><td>The PV price from the settings (default 13 ct/kWh).</td></tr>
   <tr><td>medl, EnBW, Ionity, ARAL Pulse, your own</td><td>The current price from the <a href="#ladetarife">Charging tariffs</a> page (AC or DC depending on type). No tariff, no suggestion.</td></tr>
 </table>
-<div class="hb-info"><b>Charging power and AC/DC</b> are for documentation only and are not used in any calculation.</div>
+<div class="hb-info"><b>Charging power</b> is for documentation only. <b>AC/DC</b> selects the suggested price and, in the subscription comparison (<a href="#abo-vergleich">Does the subscription pay off?</a>), splits the kWh by AC and DC price.</div>
+<p><b>Entering several sessions:</b> after “Add”, date, provider, type and kW (with several vehicles also the vehicle) stay filled in and the cursor jumps to the kWh field – for the next session of the same month just change the day and amount.</p>
 
 <h2 id="ladetarife">Charging tariffs <a class="hb-oben" href="#oben">↑ back to top</a></h2>
 <p class="hint">Heading: <b>“🏷️ Charging tariffs”</b> · your subscriptions for public charging, e.g. EnBW M.</p>
@@ -195,6 +196,18 @@
 </ul>
 <div class="hb-formel"><span class="lbl">Effective price</span>effective [ct/kWh] = (Σ charging costs of the month + base fee) ÷ Σ kWh × 100</div>
 <div class="hb-info"><b>Base fee in the costs:</b> it is included in the electricity costs, the Ø electricity price and the savings on the dashboard, statistics and in the reports – as an entry without kWh that does not count as a charging session. With few charges in a month, the effective price is clearly above the tariff price – then a smaller tariff may be worthwhile.</div>
+<h3 id="abo-vergleich">Does the subscription pay off?</h3>
+<p>A tariff with <b>“comparison only”</b> ticked is one you do <b>not</b> have – e.g. the ad-hoc price of the same provider without a subscription (base fee 0) or a larger or smaller subscription. It costs nothing and does not prefill any price on the charging page. As soon as there is a comparison tariff of the <b>same provider</b> for one of your subscriptions, the charging tariffs page shows per provider:</p>
+<ul>
+  <li><b>Break-even:</b> from (or up to) how many kWh a month your subscription is cheaper, with a progress bar for the current month.</li>
+  <li><b>Monthly table:</b> what the same charging sessions would have cost with the comparison tariff and the saving (positive = the subscription was cheaper), plus the total since the subscription started.</li>
+  <li><b>Chart:</b> the cumulative costs in the current month – the subscription starts at the base fee, a tariff without a base fee at 0 € and rises more steeply. Where the lines cross is the break-even point.</li>
+</ul>
+<div class="hb-formel"><span class="lbl">Costs with comparison tariff</span>costs = kWh AC × ct AC ÷ 100 + kWh DC × ct DC ÷ 100 + base fee + blocking fee</div>
+<div class="hb-formel"><span class="lbl">Break-even</span>kWh/month = (base fee subscription − base fee comparison) ÷ (price comparison − price subscription) × 100</div>
+<div class="hb-bsp"><b>Example</b> – subscription 49 ct and 5,99 € a month, without subscription 59 ct:
+  <span class="rechnung">5,99 € ÷ (59 − 49) ct × 100 = <span class="erg">59,9 kWh a month</span></span></div>
+<div class="hb-info"><b>Assumptions:</b> the prices for the break-even mix AC and DC according to your share over the last 12 months. The base fee of the comparison tariff counts pro rata in partial months like that of the subscription, the blocking fee as actually paid. If a month lies before the first entry of the comparison tariff, its first price applies – you can enter today's ad-hoc price and still compare the previous months.</div>
 
 <h2 id="benzin">{{ kf.name }} <a class="hb-oben" href="#oben">↑ back to top</a></h2>
 <p class="hint">Heading: <b>“⛽ {{ kf.name }} prices (monthly average)”</b></p>

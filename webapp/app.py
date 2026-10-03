@@ -527,17 +527,23 @@ def fahrten_delete(monat: str = Form(...)):
 # ─────────────────────────────────────────────────────────────
 
 @app.get("/laden", response_class=HTMLResponse)
-def laden(request: Request):
+def laden(request: Request, datum: str = "", anbieter: str = "", typ: str = "",
+          kw: str = "", fz: str = "", ok: str = ""):
     daten = db.get_ladevorgaenge(limit=500)
-    anbieter = db.get_lade_anbieter()
+    anbieter_liste = db.get_lade_anbieter()
     tarif = db.get_aktueller_stromtarif()
     pv_ct = db.get_einstellung("pv_preis_ct") or 13.0
     # Aktueller Abo-Preis je Anbieter fuer die Vorbelegung von ct/kWh
     abo = {a: {"ac": t["preis_ac"], "dc": t["preis_dc"] or t["preis_ac"],
                "name": t["tarif_name"] or ""}
            for a, t in db.get_aktuelle_ladetarife().items()}
-    return render(request, "laden.html", rows=daten, anbieter=anbieter,
-                  tarif=tarif, pv_ct=pv_ct, abo=abo, aktiv="laden",
+    # Nach dem Hinzufuegen bleiben Datum, Anbieter, Typ, kW und Fahrzeug stehen –
+    # so lassen sich mehrere Ladungen eines Monats zuegig nachtragen
+    letzte = {"datum": datum if re.fullmatch(r"\d{4}-\d{2}-\d{2}", datum) else "",
+              "anbieter": anbieter, "typ": typ if typ in ("AC", "DC") else "",
+              "kw": kw, "fz": int(fz) if fz.isdigit() else None, "ok": ok == "1"}
+    return render(request, "laden.html", rows=daten, anbieter=anbieter_liste,
+                  tarif=tarif, pv_ct=pv_ct, abo=abo, aktiv="laden", letzte=letzte,
                   heute=datetime.now().strftime("%Y-%m-%d"))
 
 
@@ -548,6 +554,7 @@ def laden_add(datum: str = Form(...), kwh: str = Form(...),
               anbieter: str = Form(...), leistung: str = Form(""),
               ladetyp: str = Form("AC"), notiz: str = Form(""),
               blockier: str = Form("")):
+    from urllib.parse import urlencode
     kwh_v = parse_de(kwh)
     ct_v = parse_de(preis_kwh)
     gesamt_v = parse_de(gesamt, tausender=True)
@@ -555,10 +562,17 @@ def laden_add(datum: str = Form(...), kwh: str = Form(...),
     # Der Gesamtpreis enthaelt die Blockiergebuehr
     if gesamt_v is None and kwh_v is not None and ct_v is not None:
         gesamt_v = round(kwh_v * ct_v / 100 + (blockier_v or 0), 2)
-    if kwh_v is not None and kwh_v > 0 and gesamt_v is not None:
+    gespeichert = kwh_v is not None and kwh_v > 0 and gesamt_v is not None
+    if gespeichert:
         db.add_ladevorgang(datum, kwh_v, ct_v, gesamt_v, anbieter,
                            parse_de(leistung), ladetyp, notiz, blockier_v)
-    return RedirectResponse("laden", status_code=303)
+    # Eingaben fuer den naechsten Eintrag stehen lassen (in der Gesamtsicht auch
+    # das Fahrzeug – mit_fahrzeug hat es hier schon ausgewaehlt)
+    fz = db.aktuelles_fahrzeug() if db.mehrere_fahrzeuge() else None
+    teile = {k: v for k, v in (("datum", datum), ("anbieter", anbieter), ("typ", ladetyp),
+                               ("kw", leistung.strip()), ("fz", fz),
+                               ("ok", "1" if gespeichert else "")) if v}
+    return RedirectResponse("laden?" + urlencode(teile), status_code=303)
 
 
 @app.post("/laden/update")
@@ -652,8 +666,10 @@ def ladetarife(request: Request):
     d = ladetarife_mod.seite_daten()
     # Nur oeffentliche Anbieter – fuer Laden zuhause gibt es die Seite Stromtarif
     anbieter = [a for a in db.get_lade_anbieter() if not a["name"].startswith("Privat")]
+    for r in d["rentabilitaet"]:
+        r["chart"] = charts.chart_rentabilitaet(r["verlauf"])
     return render(request, "ladetarife.html", tarife=d["tarife"], monate=d["monate"],
-                  anbieter=anbieter,
+                  rentabilitaet=d["rentabilitaet"], anbieter=anbieter,
                   chart=charts.chart_ladetarife(d["roh"], db.get_stromtarife()),
                   aktiv="ladetarife", heute=datetime.now().strftime("%Y-%m-%d"))
 
@@ -666,6 +682,8 @@ def _ladetarif_werte(form) -> dict | None:
               "blockier_max_eur", "fremd_ab_ct", "fremd_max_ct", "ladekarte_eur"):
         werte[k] = parse_de(form.get(k), tausender=k.endswith(("_eur", "gebuehr")))
     werte["grundgebuehr"] = werte["grundgebuehr"] or 0.0
+    # Nur zum Vergleich: nicht abgeschlossen, kostet nichts, belegt keine Preise vor
+    werte["nur_vergleich"] = 1 if form.get("nur_vergleich") else 0
     # Mehrere Fahrzeuge: Tarif eines Fahrzeugs oder gemeinsam (leer = NULL, nach km verteilt)
     if "tarif_fahrzeug" in form:
         roh = str(form.get("tarif_fahrzeug") or "")

@@ -163,7 +163,8 @@ def init_db():
                 fremd_ab_ct REAL,
                 fremd_max_ct REAL,
                 ladekarte_eur REAL,
-                notiz TEXT
+                notiz TEXT,
+                nur_vergleich INTEGER NOT NULL DEFAULT 0
             )
         """)
 
@@ -279,6 +280,11 @@ def init_db():
         # Ladetarif: NULL = gemeinsam (Grundgebuehr nach km auf die Fahrzeuge verteilt)
         try:
             c.execute("ALTER TABLE ladetarif ADD COLUMN fahrzeug_id INTEGER")
+        except sqlite3.OperationalError:
+            pass
+        # Ladetarif nur zum Vergleich (Ad-hoc-Preis oder anderes Abo, nicht abgeschlossen)
+        try:
+            c.execute("ALTER TABLE ladetarif ADD COLUMN nur_vergleich INTEGER NOT NULL DEFAULT 0")
         except sqlite3.OperationalError:
             pass
         c.execute("""CREATE INDEX IF NOT EXISTS idx_ladevorgang_fahrzeug
@@ -1036,7 +1042,8 @@ def delete_stromtarif(id):
 # --- Ladetarife (eigene Abos) ---
 LADETARIF_FELDER = ["anbieter", "tarif_name", "gueltig_ab", "gueltig_bis", "preis_ac", "preis_dc",
                     "grundgebuehr", "blockier_ct_min", "blockier_ab_min", "blockier_max_eur",
-                    "fremd_ab_ct", "fremd_max_ct", "ladekarte_eur", "notiz", "fahrzeug_id"]
+                    "fremd_ab_ct", "fremd_max_ct", "ladekarte_eur", "notiz", "fahrzeug_id",
+                    "nur_vergleich"]
 
 
 def add_ladetarif(werte: dict):
@@ -1063,11 +1070,14 @@ def update_ladetarif(id, werte: dict):
         conn.commit()
 
 
-def get_ladetarife():
-    """Alle Eintraege, aelteste zuerst je Anbieter/Tarif."""
+def get_ladetarife(vergleich: bool | None = False):
+    """Eintraege, aelteste zuerst je Anbieter/Tarif. vergleich=False: nur die eigenen
+    Abos (Standard – nur sie kosten Grundgebuehr und belegen Preise vor), True: nur die
+    Vergleichstarife, None: alle."""
+    bedingung = "" if vergleich is None else         f"WHERE COALESCE(nur_vergleich, 0) = {1 if vergleich else 0}"
     with closing(get_connection()) as conn:
-        rows = conn.execute("""SELECT * FROM ladetarif
-                               ORDER BY anbieter, tarif_name, gueltig_ab""").fetchall()
+        rows = conn.execute(f"""SELECT * FROM ladetarif {bedingung}
+                                ORDER BY anbieter, tarif_name, gueltig_ab""").fetchall()
     return [dict(r) for r in rows]
 
 
@@ -1076,7 +1086,7 @@ def get_ladetarif_am(anbieter, datum):
     with closing(get_connection()) as conn:
         row = conn.execute("""
             SELECT * FROM ladetarif
-             WHERE anbieter=? AND gueltig_ab <= ?
+             WHERE anbieter=? AND gueltig_ab <= ? AND COALESCE(nur_vergleich, 0) = 0
                AND (gueltig_bis IS NULL OR gueltig_bis = '' OR gueltig_bis >= ?)
              ORDER BY gueltig_ab DESC LIMIT 1""", (anbieter, datum, datum)).fetchone()
     return dict(row) if row else None

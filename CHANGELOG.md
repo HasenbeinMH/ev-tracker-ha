@@ -3,16 +3,24 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
-## [3.2.0] - 2026-10-02
+## [3.3.0] - 2026-10-03
 
 > ⚠️ **VOR DEM UPDATE UNBEDINGT EIN BACKUP ANLEGEN!**
 >
-> Wer von 2.13 oder aelter kommt, bekommt mit einem Schritt sechs Versionen auf einmal – darunter den groessten Umbau bisher (3.0.0 "Mehrere E-Autos", neue Datenbankstruktur). Bitte vorher sichern:
+> Wer von 2.13 oder aelter kommt, bekommt mit einem Schritt sieben Versionen auf einmal – darunter den groessten Umbau bisher (3.0.0 "Mehrere E-Autos", neue Datenbankstruktur). Bitte vorher sichern:
 > - **Home Assistant:** Einstellungen → System → Sicherungen → "Sicherung erstellen" (mit dem EV Tracker Add-on), oder im Update-Dialog den Haken "Sicherung erstellen" setzen
 > - **zusaetzlich** im EV Tracker unter Backup die Datenbank herunterladen und aufbewahren
 >
 > Ohne Sicherung gibt es keinen Weg zurueck auf eine aeltere Version: nach dem Umschalten auf "Mehrere Fahrzeuge" kann eine Version vor 3.0 die Datenbank nur noch lesen.
 
+### Lohnt sich das Abo? Schneller nachtragen
+- Laden: nach "Hinzufuegen" bleiben Datum, Anbieter, Typ und kW (bei mehreren Fahrzeugen auch das Fahrzeug) stehen, der Cursor steht in kWh – mehrere Ladungen eines Monats lassen sich zuegig nachtragen
+- Ladetarife: neuer Haken "nur Vergleich" fuer Tarife, die man nicht hat – z. B. der Ad-hoc-Preis ohne Abo oder ein anderes Abo desselben Anbieters. Sie kosten nichts und belegen keine Preise vor
+- Neuer Abschnitt "Lohnt sich das Abo?" je Anbieter: Break-even in kWh je Monat mit Fortschrittsbalken fuer den laufenden Monat, Monatstabelle mit den Kosten mit Abo und mit jedem Vergleichstarif (AC/DC getrennt, Grundgebuehr anteilig, Blockiergebuehr wie bezahlt), Ersparnis bisher und Diagramm der aufsummierten Kosten im laufenden Monat
+- Hilfe: Abschnitt "Lohnt sich das Abo?" mit Formeln und Beispiel (Deutsch und Englisch)
+- Neuer Test ladetarife_test.py
+
+## [3.2.0] - 2026-10-02
 ### Amortisation des Mehrpreises
 - Neu: Einstellungen → Anschaffung – Amortisation: Kaufpreis des E-Autos, Preis eines vergleichbaren Verbrenners und Foerderung; daraus der Mehrpreis. Je Fahrzeug; ohne Kaufpreis bleibt alles wie bisher
 - Dashboard: Abschnitt "Amortisation des Mehrpreises" – wie viel Prozent die Gesamt-Ersparnis (Kraftstoff, KFZ-Steuer, THG) schon hereingeholt hat, Fortschrittsbalken und Kurve der aufsummierten Ersparnis gegen den Mehrpreis

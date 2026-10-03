@@ -30,6 +30,7 @@
     km0: (v) => (v == null ? "–" : f0.format(v) + " km"),
     monat: (v) => { const s = String(v); return s.slice(5, 7) + "/" + s.slice(0, 4); },
     datumMonat: (v) => { const d = alsDatum(v); return zweistellig(d.getMonth() + 1) + "/" + d.getFullYear(); },
+    tag: (v) => String(v) + ".",
     datum: (v) => { const d = alsDatum(v); return zweistellig(d.getDate()) + "." + zweistellig(d.getMonth() + 1) + "." + d.getFullYear(); },
     // Schieberegler: bei Kategorien kommt der Wert als zweites Argument
     zoomMonat: (v, s) => FORMAT.monat(s || v),

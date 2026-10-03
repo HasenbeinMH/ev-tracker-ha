@@ -14,10 +14,10 @@
 <div class="card">
   <form class="inline" method="post" action="laden">
     <label class="feld">{{ _("Datum") }}
-      <input type="date" name="datum" value="{{ heute }}" required>
+      <input type="date" name="datum" value="{{ letzte.datum or heute }}" required>
     </label>
     <label class="feld">{{ _("kWh") }}
-      <input name="kwh" id="inp-kwh" placeholder="32,5" required style="width:90px">
+      <input name="kwh" id="inp-kwh" placeholder="32,5" required style="width:90px"{% if letzte.datum %} autofocus{% endif %}>
     </label>
     <label class="feld">{{ _("ct/kWh") }}
       <input name="preis_kwh" id="inp-ct" placeholder="{{ _t("ct") }}" style="width:80px">
@@ -27,14 +27,14 @@
     </label>
     <label class="feld">{{ _("Anbieter") }}
       <select name="anbieter" id="inp-anbieter">
-        {% for a in anbieter %}<option>{{ a.name }}</option>{% endfor %}
+        {% for a in anbieter %}<option{% if a.name == letzte.anbieter %} selected{% endif %}>{{ a.name }}</option>{% endfor %}
       </select>
     </label>
     <label class="feld">{{ _("kW") }}
-      <input name="leistung" placeholder="11" style="width:60px">
+      <input name="leistung" value="{{ letzte.kw }}" placeholder="11" style="width:60px">
     </label>
     <label class="feld">{{ _("Typ") }}
-      <select name="ladetyp" id="inp-typ"><option>{{ _("AC") }}</option><option>{{ _("DC") }}</option></select>
+      <select name="ladetyp" id="inp-typ"><option>{{ _("AC") }}</option><option{% if letzte.typ == "DC" %} selected{% endif %}>{{ _("DC") }}</option></select>
     </label>
     <label class="feld" title="{{ _t("Blockiergebühr – ist im Gesamtpreis enthalten") }}">{{ _("Blockier €") }}
       <input name="blockier" id="inp-blockier" placeholder="0" style="width:70px">
@@ -42,9 +42,10 @@
     <label class="feld">{{ _("Notiz") }}
       <input name="notiz" placeholder="{{ _t("optional") }}">
     </label>
-    {{ fahrzeug_feld() }}
+    {{ fahrzeug_feld(wert=letzte.fz) }}
     <button type="submit">{{ _("➕ Hinzufügen") }}</button>
   </form>
+  {% if letzte.ok %}<p class="hint" style="margin:8px 0 0">{{ _("✓ Gespeichert. Datum, Anbieter, Typ und kW bleiben für den nächsten Eintrag stehen.") }}</p>{% endif %}
 </div>
 
 <div class="tabelle-scroll"><table>

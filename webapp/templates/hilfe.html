@@ -179,7 +179,8 @@
   <tr><td><b>Privat – PV</b></td><td>Der PV-Preis aus den Einstellungen (Standard 13 ct/kWh).</td></tr>
   <tr><td>medl, EnBW, Ionity, ARAL Pulse, eigene</td><td>Der aktuelle Preis aus der Seite <a href="#ladetarife">Ladetarife</a> (AC oder DC je nach Typ). Ohne Tarif kein Vorschlag.</td></tr>
 </table>
-<div class="hb-info"><b>Ladeleistung und AC/DC</b> sind reine Dokumentation und fließen in keine Berechnung ein.</div>
+<div class="hb-info"><b>Ladeleistung</b> ist reine Dokumentation. <b>AC/DC</b> wählt den Preisvorschlag und trennt im Abo-Vergleich (<a href="#abo-vergleich">Lohnt sich das Abo?</a>) die kWh nach AC- und DC-Preis.</div>
+<p><b>Mehrere Ladungen nachtragen:</b> Nach „Hinzufügen“ bleiben Datum, Anbieter, Typ und kW (bei mehreren Fahrzeugen auch das Fahrzeug) stehen und der Cursor springt ins Feld kWh – für die nächste Ladung desselben Monats nur Tag und Menge anpassen.</p>
 
 <h2 id="ladetarife">Ladetarife <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„🏷️ Ladetarife"</b> · deine Abos für öffentliches Laden, z. B. EnBW M.</p>
@@ -192,6 +193,18 @@
 </ul>
 <div class="hb-formel"><span class="lbl">Effektiver Preis</span>effektiv [ct/kWh] = (Σ Ladekosten des Monats + Grundgebühr) ÷ Σ kWh × 100</div>
 <div class="hb-info"><b>Grundgebühr in den Kosten:</b> Sie fließt in die Stromkosten, den Ø Strompreis und die Ersparnis auf Dashboard, Statistik und in den Berichten ein – als Eintrag ohne kWh, der nicht als Ladevorgang zählt. Bei wenig Ladungen im Monat liegt der effektive Preis deutlich über dem Tarifpreis – dann lohnt vielleicht ein kleinerer Tarif.</div>
+<h3 id="abo-vergleich">Lohnt sich das Abo?</h3>
+<p>Ein Tarif mit Haken <b>„nur Vergleich“</b> ist einer, den du <b>nicht</b> hast – z. B. der Ad-hoc-Preis desselben Anbieters ohne Abo (Grundgebühr 0) oder ein größeres bzw. kleineres Abo. Er kostet nichts und belegt auf der Seite Laden keinen Preis vor. Sobald es zu einem eigenen Abo einen Vergleichstarif <b>desselben Anbieters</b> gibt, zeigt die Seite Ladetarife je Anbieter:</p>
+<ul>
+  <li><b>Break-even:</b> ab (oder bis) wie vielen kWh im Monat dein Abo günstiger ist, mit Fortschrittsbalken für den laufenden Monat.</li>
+  <li><b>Monatstabelle:</b> was dieselben Ladungen mit dem Vergleichstarif gekostet hätten und die Ersparnis (positiv = das Abo war günstiger), dazu die Summe seit Beginn des Abos.</li>
+  <li><b>Diagramm:</b> die aufsummierten Kosten im laufenden Monat – das Abo startet bei der Grundgebühr, ein Tarif ohne Grundgebühr bei 0 € und steigt steiler. Wo sich die Linien kreuzen, ist der Break-even.</li>
+</ul>
+<div class="hb-formel"><span class="lbl">Kosten mit Vergleichstarif</span>Kosten = kWh AC × ct AC ÷ 100 + kWh DC × ct DC ÷ 100 + Grundgebühr + Blockiergebühr</div>
+<div class="hb-formel"><span class="lbl">Break-even</span>kWh/Monat = (Grundgebühr Abo − Grundgebühr Vergleich) ÷ (Preis Vergleich − Preis Abo) × 100</div>
+<div class="hb-bsp"><b>Beispiel</b> – Abo 49 ct und 5,99 € im Monat, ohne Abo 59 ct:
+  <span class="rechnung">5,99 € ÷ (59 − 49) ct × 100 = <span class="erg">59,9 kWh im Monat</span></span></div>
+<div class="hb-info"><b>Annahmen:</b> Die Preise für den Break-even mischen AC und DC nach deinem Anteil der letzten 12 Monate. Die Grundgebühr des Vergleichstarifs zählt in angefangenen Monaten anteilig wie die des Abos, die Blockiergebühr wie tatsächlich bezahlt. Liegt der Monat vor dem ersten Eintrag des Vergleichstarifs, gilt dessen erster Preis – du kannst den heutigen Ad-hoc-Preis eintragen und trotzdem die Vormonate vergleichen.</div>
 
 <h2 id="benzin">{{ kf.name }} <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„⛽ {{ kf.name }}preise (Monatsdurchschnitt)"</b></p>
