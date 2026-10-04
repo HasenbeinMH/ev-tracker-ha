@@ -3,6 +3,15 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [3.4.2] - 2026-10-04
+
+> ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.
+
+### Ladungen ohne km
+- Dashboard: Hinweis, wenn ein Monat Ladungen, aber noch keine km hat – dort sind Kraftstoff-Ersparnis und Kosten je km unvollstaendig (typisch am Monatsanfang bis zum naechsten Abruf)
+- Ladungen aus Home Assistant: beim Empfang werden die km des Monats sofort mit abgerufen (hoechstens alle 10 Minuten, nur mit automatischem Abruf) statt erst in der Nacht; Ergebnis im Importprotokoll
+- Hilfe ergaenzt; neuer Test km_test.py
+
 ## [3.4.1] - 2026-10-04
 
 > ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.

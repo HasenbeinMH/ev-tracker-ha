@@ -919,7 +919,7 @@ HA_API = "HA-API"
 IMPORT_WERTE = ("km", "pv", "wallbox", "kosten", "benzin")
 
 
-def _fetch_monat(client, quelle, cfg, year, month):
+def _fetch_monat(client, quelle, cfg, year, month, nur=None):
     """Holt alle Werte eines Monats: zuerst aus der eingestellten Datenbank
     (datenquellen.py), was dort fehlt aus der HA-API.
     Unter "_quelle" steht je Wert, woher er kam (Name der Datenbank, HA_API oder None),
@@ -964,7 +964,7 @@ def _fetch_monat(client, quelle, cfg, year, month):
             return None
         return None
 
-    for key in IMPORT_WERTE:
+    for key in nur or IMPORT_WERTE:
         if key == "kosten" and not (cfg.get("ha_wallbox_cost") or cfg.get("fn_wallbox_cost")):
             out[key] = None             # optional – ohne Sensor kein Hinweis
             out["_quelle"][key] = None
@@ -1822,7 +1822,49 @@ async def ladung_empfangen(request: Request):
         _log_import([f"✗ Ladung aus HA abgelehnt: {e} · {str(daten)[:200]}"])
         return JSONResponse({"ok": False, "error": str(e)}, status_code=422)
     _log_import([heimladung.protokoll_text(ergebnis)])
+    # Die km des Monats gleich mit holen – sonst stuende die Ladung bis zum naechtlichen
+    # Abruf ohne km da (Dashboard: Ersparnis des Monats unvollstaendig)
+    threading.Thread(target=_km_nachziehen, args=(ergebnis["datum"][:7], ergebnis["fahrzeug"]),
+                     daemon=True).start()
     return ergebnis
+
+
+_km_zuletzt = {}
+_km_sperre = threading.Lock()
+KM_NACHZIEHEN_ABSTAND = 600     # Sekunden je Fahrzeug und Monat
+
+
+def _km_nachziehen(monat: str, fid: int) -> float | None:
+    """Kilometer eines Monats nach einer Ladung aus HA aktualisieren – hoechstens alle
+    10 Minuten je Fahrzeug und Monat (mehrere Ladungen kurz hintereinander). Nur mit
+    eingeschaltetem automatischem Abruf. Gibt die km zurueck (None = nicht gelesen)."""
+    import time
+    if db.SCHEMA_ZU_NEU or db.get_mail_settings().get("auto_import", "1") != "1":
+        return None
+    jetzt = time.monotonic()
+    with _km_sperre:
+        if jetzt - _km_zuletzt.get((fid, monat), -KM_NACHZIEHEN_ABSTAND) < KM_NACHZIEHEN_ABSTAND:
+            return None
+        _km_zuletzt[(fid, monat)] = jetzt
+    try:
+        cfg = db.get_ha_settings(fid)
+        verbindung = _ha_verbindung(cfg)
+        client = HAClient(**verbindung) if verbindung else None
+        dq = datenquellen.aus_einstellungen(cfg)
+        if client is None and dq is None:
+            return None
+        werte = _fetch_monat(client, dq, cfg, int(monat[:4]), int(monat[5:7]), nur=("km",))
+        km = werte.get("km")
+        if km:
+            db.set_fahrt_monat(monat, round(km, 1), fahrzeug_id=fid)
+            _log_import([f"{monat}: km nach Ladung aus HA aktualisiert: {km:.0f} km "
+                         f"({werte['_quelle']['km']})"])
+            return km
+        grund = (werte["_grund"].get("km") or {}).get("lang") or "keine Werte im Monat"
+        _log_import([f"{monat}: km nach Ladung aus HA nicht gelesen – {grund}"])
+    except Exception as e:
+        _log_import([f"{monat}: km nach Ladung aus HA nicht aktualisiert ({e})"])
+    return None
 
 
 @app.post("/einstellungen/push-token")

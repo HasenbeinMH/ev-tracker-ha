@@ -3,7 +3,7 @@
 # + webapp/Dockerfile verwenden.
 # version: muss synchron zu version.py VERSION gehalten werden (siehe dort).
 name: EV Tracker
-version: "3.4.1"
+version: "3.4.2"
 slug: ev_tracker
 description: Ladekosten, Ersparnis und Statistik für ein oder mehrere E-Autos – als Add-on direkt in Home Assistant, auf Deutsch oder Englisch.
 url: "https://github.com/HasenbeinMH/ev-tracker-ha"

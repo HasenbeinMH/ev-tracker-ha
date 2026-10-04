@@ -133,6 +133,7 @@
   <tr><td>Kacheln</td><td>Gesamt-Ersparnis, Ladevorgänge, Stromkosten, Kosten des Vergleichs-Verbrenners, Ø Verbrauch (kWh/100 km), Ø Strompreis (ct/kWh), Stromkosten und Ersparnis je 100 km, PV-Anteil – alle für den gewählten Zeitraum.</td></tr>
   <tr><td>Lade-Abo</td><td>Break-even deiner Lade-Abos mit Fortschrittsbalken für den laufenden Monat – siehe <a href="#abo-vergleich">Lohnt sich das Abo?</a>. Braucht einen Tarif mit „nur Vergleich“.</td></tr>
 </table>
+<div class="hb-warn"><b>„Ladungen, aber noch keine km“:</b> Die km gibt es nur als Monatswert aus dem Kilometerzähler, Ladungen dagegen sofort. Hat ein Monat Ladungen, aber keine km, fehlt dort der Vergleich zum Verbrenner – Kraftstoff-Ersparnis und Kosten je km wären zu niedrig. Das Dashboard weist dann darauf hin. Am Monatsanfang erledigt sich das mit dem nächsten Abruf; bleibt der Hinweis, liefert der Kilometerzähler keinen Wert für den Monat (Grund im Importprotokoll, z. B. „keine Werte im Monat“).</div>
 <h3 id="zeitraum">Zeitraum wählen</h3>
 <p>Das Auswahlfeld unter der Kopfzeile schränkt <b>alle Kennzahlen und Diagramme</b> auf einen Zeitraum ein: gesamter Zeitraum, ein Kalenderjahr, ein Quartal des laufenden oder letzten Jahres, oder ein Sommer- bzw. Winterhalbjahr. Die Wahl wird im Browser gemerkt und gilt beim nächsten Aufruf weiter; „✕ Gesamter Zeitraum“ setzt zurück. Die Schieberegler in den einzelnen Diagrammen grenzen innerhalb des gewählten Zeitraums weiter ein.</p>
 <table>
@@ -254,6 +255,7 @@
   <li>Der nächtliche Abruf legt nur den <b>Rest</b> als Monatssumme an (Notiz „Rest ohne Einzelladung“). Ist er kleiner als 0,5 kWh, entfällt die Monatssumme.</li>
   <li>Kam eine Ladung nicht an (Add-on gerade neu gestartet), steckt sie im Rest – es fehlt nichts, nur das Datum ist dann der Monatserste.</li>
   <li>Dieselbe Ladung darf mehrfach ankommen; Kennung ist der Ladebeginn. Eine Ladung über den Monatswechsel teilt die Vorlage um 0 Uhr.</li>
+  <li><b>km gleich mit:</b> Kommt eine Ladung an, holt der Tracker sofort auch die km des Monats (höchstens alle 10 Minuten, nur mit automatischem Abruf) – sonst stünde die Ladung bis zum nächtlichen Abruf ohne km da. Das Importprotokoll zeigt das Ergebnis.</li>
 </ul>
 
 <h2 id="steuer">Steuer &amp; THG <a class="hb-oben" href="#oben">↑ nach oben</a></h2>

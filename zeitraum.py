@@ -234,6 +234,9 @@ def kennzahlen(z: dict, daten: dict) -> dict:
         if l["menge_kwh"]:          # Grundgebuehr-Eintraege haben keine kWh
             kwh_m[l["datum"][:7]] = kwh_m.get(l["datum"][:7], 0) + l["menge_kwh"]
     beide = [m for m in km_m if m in kwh_m and km_m[m] > 0]
+    # Monate mit Ladungen, aber ohne km: dort fehlt der Vergleich zum Verbrenner –
+    # typisch im laufenden Monat bis zum naechsten Abruf der km
+    ohne_km = sorted(m for m in kwh_m if not km_m.get(m))
     v_km = sum(km_m[m] for m in beide)
     verbrauch = sum(kwh_m[m] for m in beide) / v_km * 100 if v_km else None
 
@@ -270,6 +273,7 @@ def kennzahlen(z: dict, daten: dict) -> dict:
         "ersparnis_100km":  ersparnis_kraft / km * 100 if km else None,
         "strompreis_ct":    strom_kosten / kwh * 100 if kwh else None,
         "anteile":          {q: (v / kwh * 100 if kwh else None) for q, v in quellen.items()},
+        "ohne_km":          ohne_km,
     }
 
 
@@ -437,6 +441,7 @@ def kennzahlen_summe(liste: list, titel: str) -> dict:
         "strompreis_ct": kosten / kwh * 100 if kwh else None,
         "anteile": {q: (v / kwh * 100 if kwh else None) for q, v in quellen.items()},
         "_quellen": quellen,
+        "ohne_km": sorted({m for x in liste for m in x.get("ohne_km", [])}),
     }
 
 

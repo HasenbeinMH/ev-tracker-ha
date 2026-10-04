@@ -75,6 +75,15 @@
   <span class="hint" style="margin:0">{{ _("KFZ-Steuer anteilig für {0} Monat", kz.monate) if kz.monate == 1 else _("KFZ-Steuer anteilig für {0} Monate", kz.monate) }}</span>
   <button type="button" class="secondary dash-anpassen" id="dash-anpassen" title="{{ _t("Kennzahlen, Abschnitte und Diagramme ein-/ausblenden und anordnen") }}">{{ _("✏ Anpassen") }}</button>
 </form>
+{% if kz.ohne_km %}
+{# Ladungen ohne km im selben Monat: Ersparnis dort unvollstaendig (meist laufender Monat) #}
+{% set namen = [] %}{% for m in kz.ohne_km[-4:] %}{{ namen.append(m[5:7] ~ "/" ~ m[:4]) or "" }}{% endfor %}
+<div class="hinweisbox" id="ohne-km">
+  {% if kz.ohne_km | length == 1 %}{{ _("⚠️ {0}: Ladungen, aber noch keine km – Kraftstoff-Ersparnis und Kosten je km sind für diesen Monat unvollständig.", namen[0]) }}
+  {% else %}{{ _("⚠️ In {0} Monaten Ladungen, aber keine km ({1}) – Kraftstoff-Ersparnis und Kosten je km sind dort unvollständig.", kz.ohne_km | length, ("… " if kz.ohne_km | length > 4 else "") ~ namen | join(", ")) }}{% endif %}
+  {{ _("Die km kommen mit dem nächsten Abruf. Fehlen sie danach noch, liefert der Kilometerzähler keinen Wert für den Monat – siehe <a href=\"import\">Importprotokoll</a>.") }}
+</div>
+{% endif %}
 
 {# Icon-Vorrat fuer die Kennzahl-Kacheln; wird ueber <use href="#ic-..."> eingebunden #}
 <svg class="ikonen" aria-hidden="true">

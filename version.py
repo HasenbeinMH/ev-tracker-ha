@@ -19,10 +19,20 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "3.4.1"
+VERSION = "3.4.2"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.4.2",
+        "datum": "2026-10-04",
+        "titel": "Ladungen ohne km",
+        "aenderungen": [
+            "Dashboard: Hinweis, wenn ein Monat Ladungen, aber noch keine km hat – dort sind Kraftstoff-Ersparnis und Kosten je km unvollstaendig (typisch am Monatsanfang bis zum naechsten Abruf)",
+            "Ladungen aus Home Assistant: beim Empfang werden die km des Monats sofort mit abgerufen (hoechstens alle 10 Minuten, nur mit automatischem Abruf) statt erst in der Nacht; Ergebnis im Importprotokoll",
+            "Hilfe ergaenzt; neuer Test km_test.py",
+        ],
+    },
     {
         "version": "3.4.1",
         "datum": "2026-10-04",
