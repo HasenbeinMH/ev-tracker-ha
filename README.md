@@ -192,6 +192,22 @@ möchte, kann das freiwillig über [Ko-fi](https://ko-fi.com/daniel71292) tun �
 
 [![Unterstütze das Projekt auf Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/daniel71292)
 
+## Lizenz
+
+Copyright © 2026 Daniel ([HasenbeinMH](https://github.com/HasenbeinMH))
+
+Der EV Tracker steht unter der **GNU General Public License v3.0** – siehe [LICENSE](LICENSE).
+Nutzen, verändern und weitergeben ist erlaubt; wer eine veränderte Fassung weitergibt, muss
+deren Quellcode ebenfalls unter der GPL-3.0 offenlegen.
+
+Mitgelieferte Fremdkomponenten behalten ihre eigene Lizenz:
+
+| Komponente | Lizenz |
+|------------|--------|
+| [Apache ECharts](https://echarts.apache.org) (`webapp/static/echarts.min.js`) | Apache License 2.0 |
+| [plotly.js](https://plotly.com/javascript/) (`webapp/static/plotly.min.js`) | MIT |
+| Fahrzeugbilder (`fahrzeugbilder/`) | nach Vorlagen von Wikimedia Commons – Autor und Lizenz je Bild in [CREDITS.md](fahrzeugbilder/CREDITS.md) |
+
 ---
 
 ## Für Entwickler: zwei Betriebsarten, eine Codebasis
