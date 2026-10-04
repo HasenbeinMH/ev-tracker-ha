@@ -19,10 +19,16 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "3.4.0"
+VERSION = "3.4.1"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.4.1",
+        "datum": "2026-10-04",
+        "titel": "Fuer alle Benutzer sichtbar",
+        "aenderungen": ["Seitenleisten-Eintrag fuer alle HA-Benutzer sichtbar, nicht nur fuer Admins (panel_admin: false)"],
+    },
     {
         "version": "3.4.0",
         "datum": "2026-10-03",

@@ -3,6 +3,13 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [3.4.1] - 2026-10-04
+
+> ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.
+
+### Für alle Benutzer sichtbar
+- Der Eintrag „EV Tracker“ in der Seitenleiste ist jetzt für alle Benutzer von Home Assistant sichtbar, nicht nur für Admins (`panel_admin: false`). Die Add-on-Optionen kann weiterhin nur ein Admin ändern
+
 ## [3.4.0] - 2026-10-03
 
 > ⚠️ **VOR DEM UPDATE UNBEDINGT EIN BACKUP ANLEGEN!**
