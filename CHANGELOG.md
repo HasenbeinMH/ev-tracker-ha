@@ -3,6 +3,17 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [3.5.0] - 2026-10-06
+
+> ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.
+
+### Erstzulassung und Gebrauchtwagen
+- Einstellungen → Anschaffung: Erstzulassung, bei Gebrauchtwagen das Datum der Zulassung auf den Halter, und der km-Stand bei Kauf (je Fahrzeug)
+- KFZ-Steuer-Ersparnis, Monate und Amortisation zaehlen erst ab der Zulassung – der Zulassungsmonat tagesgenau anteilig, Monate und Daten davor gar nicht (z.B. „KFZ-Steuer anteilig fuer 7,5 Monate“); im Simulationsmodus gilt die Zulassung nicht
+- Kaufmonat: km = Kilometerstand am Monatsende − km-Stand bei Kauf – ohne die km des Vorbesitzers, auch wenn der Sensor vorher keinen Wert hatte
+- Steuerseite: Vorschlag fuer den ersten steuerpflichtigen Monat des E-Autos aus der Erstzulassung (10 Jahre, laengstens bis Ende 2035)
+- Hilfe DE/EN, Uebersetzungen, neuer Test zulassung_test.py
+
 ## [3.4.2] - 2026-10-04
 
 > ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.

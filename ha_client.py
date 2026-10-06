@@ -444,6 +444,20 @@ class HAClient:
             val = self._history_delta(entity_id, year, month)
         return val
 
+    def get_month_end_state(self, entity_id: str, year: int, month: int) -> float | None:
+        """Letzter Zaehlerstand im Monat (z.B. Kilometerstand am Monatsende) aus der History."""
+        last_day = calendar.monthrange(year, month)[1]
+        h = self.get_history_period(entity_id, datetime(year, month, 1),
+                                    datetime(year, month, last_day, 23, 59, 59))
+        for entry in reversed(h or []):
+            try:
+                v = float(entry.get("state", ""))
+            except (ValueError, TypeError):
+                continue
+            if v > 0:
+                return v
+        return None
+
     def get_month_delta_with_prev(self, entity_id: str, year: int, month: int) -> float | None:
         """Alias – nutzt Statistics als primäre Quelle."""
         return self.get_month_delta(entity_id, year, month)

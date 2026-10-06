@@ -72,7 +72,10 @@
   {% if zeitraum.von %}
   {{ _("<a class=\"zeitraum-zurueck\" href=\"?zeitraum=alles\">✕ Gesamter Zeitraum</a>") }}
   {% endif %}
-  <span class="hint" style="margin:0">{{ _("KFZ-Steuer anteilig für {0} Monat", kz.monate) if kz.monate == 1 else _("KFZ-Steuer anteilig für {0} Monate", kz.monate) }}</span>
+  {# Zulassungsmonat tagesgenau: dann mit einer Nachkommastelle (4,5 Monate) #}
+  {% set sm = kz.steuer_monate if kz.steuer_monate is defined else kz.monate %}
+  {% set sm_text = sm | de(0) if (sm - sm | round) | abs < 0.05 else sm | de(1) %}
+  <span class="hint" style="margin:0">{{ _("KFZ-Steuer anteilig für {0} Monat", sm_text) if sm_text == "1" else _("KFZ-Steuer anteilig für {0} Monate", sm_text) }}</span>
   <button type="button" class="secondary dash-anpassen" id="dash-anpassen" title="{{ _t("Kennzahlen, Abschnitte und Diagramme ein-/ausblenden und anordnen") }}">{{ _("✏ Anpassen") }}</button>
 </form>
 {% if kz.ohne_km %}

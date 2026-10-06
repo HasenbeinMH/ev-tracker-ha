@@ -148,6 +148,7 @@
 </table>
 <div class="hb-formel"><span class="lbl">Vehicle tax</span>Tax savings = vehicle tax [€/year] × months in period ÷ 12 − EV vehicle tax [€/year] × taxable months ÷ 12</div>
 <div class="hb-info"><b>Why pro rata?</b> Vehicle tax is an annual amount. Otherwise every quarter would be credited with a whole year's tax – and several years only once. For the entire period, the months from the first to the last month with data count. From the start of the period, the electricity tariff history shows the tariff valid then, even if it was entered earlier; tariff changes within the period appear as a step.</div>
+<div class="hb-info"><b>Registration:</b> If the first registration (for a used car also “Registered to me”) is entered under <b>Settings → Purchase</b>, only the months from registration count: the registration month is calculated pro rata to the day (registered on 16 May = 16 of 31 days), months and data before it count neither in the key figures nor in the payback. The dashboard then shows e.g. “Vehicle tax pro rata for 7.5 months”. In simulation mode the registration does not apply.</div>
 
 <h2 id="statistik">Statistics <a class="hb-oben" href="#oben">↑ back to top</a></h2>
 <p>Compares two periods side by side – e.g. a year with the previous year or <b>summer against winter</b>. The quick selection at the top offers the most common pairs; “⇄ swap” switches the sides.</p>
@@ -374,6 +375,8 @@
   <tr><td>CO2 factor</td><td>2,37 kg/L (diesel 2,65, LPG 1,64)</td><td>Combustion plus upstream emissions per litre. When the fuel changes, the default value changes with it; your own value stays.</td></tr>
   <tr><td>Vehicle tax</td><td>0 € or, from the end of the exemption, the annual amount entered</td><td>Annual tax of the comparison {{ kf.fahrzeug_gen }}.</td></tr>
   <tr><td>Purchase – payback</td><td>empty (hidden)</td><td>Purchase price of the EV, price of a comparable {{ kf.fahrzeug_gen }} and subsidies (environmental bonus, grants). This gives the extra cost for the <a href="#amortisation">payback</a> on the dashboard. Per vehicle; an empty purchase price hides the payback.</td></tr>
+  <tr><td>First registration / Registered to me</td><td>empty (all months count)</td><td>From the registration to you (used car) or the first registration (new car), vehicle tax savings, months and payback count, the first month pro rata to the day. From the first registration the tax page suggests the end of the tax exemption (10 years, at most until the end of 2035).</td></tr>
+  <tr><td>Odometer at purchase</td><td>empty</td><td>For the purchase month: km = odometer at the end of the month − odometer at purchase. So no kilometres are missing if the sensor had no value before the purchase, and the previous owner's kilometres do not count.</td></tr>
   <tr><td>Sprache / Language</td><td>Deutsch</td><td>German or English for the interface, help and e-mail reports – also via <b>DE | EN</b> at the top right. Applies to all vehicles and users. Numbers and dates stay in German format; names stored in your data (providers, notes), the import log and the changelog are not translated.</td></tr>
 </table>
 <ul>

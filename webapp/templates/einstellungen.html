@@ -166,8 +166,18 @@
     <label class="feld">{{ _("Förderung / Prämien €") }}
       <input name="foerderung" value="{{ anschaffung.foerderung | de(0) if anschaffung.foerderung else '' }}" placeholder="{{ _t("z.B. 3.000") }}" inputmode="decimal" style="width:110px">
     </label>
+    <label class="feld">{{ _("Erstzulassung") }}
+      <input type="date" name="erstzulassung" value="{{ zulassung.erst }}">
+    </label>
+    <label class="feld">{{ _("Auf mich zugelassen (Gebrauchtwagen)") }}
+      <input type="date" name="zulassung_eigen" value="{{ zulassung.eigen }}">
+    </label>
+    <label class="feld">{{ _("km-Stand bei Kauf") }}
+      <input name="km_bei_kauf" value="{{ zulassung.km | de(0) if zulassung.km else '' }}" placeholder="{{ _t("z.B. 35.000") }}" inputmode="decimal" style="width:110px">
+    </label>
     <button type="submit">{{ _("💾 Speichern") }}</button>
   </form>
+  <p class="hint">{{ _("<b>Zulassung</b>: Ab dem Tag, an dem das Auto auf dich zugelassen ist, zählen KFZ-Steuer-Ersparnis, Monate und Amortisation – der erste Monat tagesgenau anteilig, die Monate davor gar nicht. Bei einem Neuwagen reicht die Erstzulassung; bei einem Gebrauchtwagen zusätzlich das Datum, ab dem er auf dich zugelassen ist. Die Erstzulassung bestimmt, wie lange das E-Auto steuerfrei ist. Der <b>km-Stand bei Kauf</b> ergibt die km des Kaufmonats: Kilometerstand am Monatsende minus km-Stand bei Kauf – ohne die km des Vorbesitzers.") }}</p>
   {% if anschaffung.eauto %}
   <p class="hint">{{ _("Mehrpreis: {0} €", (anschaffung.eauto - anschaffung.verbrenner - anschaffung.foerderung) | de(0)) }}</p>
   {% endif %}

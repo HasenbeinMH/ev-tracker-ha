@@ -32,7 +32,7 @@
       <input name="betrag" value="{{ '%.2f'|format(kfz_eauto)|replace('.', ',') }}" required>
     </label>
     <label class="feld">{{ _("steuerpflichtig ab") }}
-      <input type="month" name="ab" value="{{ kfz_eauto_ab or heute[:7] }}">
+      <input type="month" name="ab" value="{{ kfz_eauto_ab or steuerfrei_bis or heute[:7] }}">
     </label>
     <button type="submit">{{ _("💾 Speichern") }}</button>
     {% if kfz_eauto > 0 %}
@@ -41,6 +41,11 @@
     </span>
     {% endif %}
   </form>
+  {% if steuerfrei_bis %}
+  <p class="hint">{{ _("Laut Erstzulassung ({0}) voraussichtlich steuerpflichtig ab {1}/{2} – 10 Jahre ab Erstzulassung, längstens bis Ende 2035. Gilt auch nach einem Gebrauchtkauf weiter.", erstzulassung[8:10] ~ "." ~ erstzulassung[5:7] ~ "." ~ erstzulassung[:4], steuerfrei_bis[5:7], steuerfrei_bis[:4]) }}</p>
+  {% else %}
+  <p class="hint">{{ _("Tipp: Mit der <a href=\"einstellungen#anschaffung\">Erstzulassung</a> schlägt die App den ersten steuerpflichtigen Monat vor und rechnet die Steuer-Ersparnis erst ab der Zulassung.") }}</p>
+  {% endif %}
 </div>
 
 <h2>{{ _("🌿 THG-Quote Einträge") }}</h2>

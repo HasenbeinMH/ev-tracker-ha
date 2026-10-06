@@ -19,10 +19,22 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "3.4.2"
+VERSION = "3.5.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.5.0",
+        "datum": "2026-10-06",
+        "titel": "Erstzulassung und Gebrauchtwagen",
+        "aenderungen": [
+            "Einstellungen → Anschaffung: Erstzulassung, bei Gebrauchtwagen das Datum der Zulassung auf den Halter, und der km-Stand bei Kauf (je Fahrzeug)",
+            "KFZ-Steuer-Ersparnis, Monate und Amortisation zaehlen erst ab der Zulassung – der Zulassungsmonat tagesgenau anteilig, Monate und Daten davor gar nicht (z.B. „KFZ-Steuer anteilig fuer 7,5 Monate“); im Simulationsmodus gilt die Zulassung nicht",
+            "Kaufmonat: km = Kilometerstand am Monatsende − km-Stand bei Kauf – ohne die km des Vorbesitzers, auch wenn der Sensor vorher keinen Wert hatte",
+            "Steuerseite: Vorschlag fuer den ersten steuerpflichtigen Monat des E-Autos aus der Erstzulassung (10 Jahre, laengstens bis Ende 2035)",
+            "Hilfe DE/EN, Uebersetzungen, neuer Test zulassung_test.py",
+        ],
+    },
     {
         "version": "3.4.2",
         "datum": "2026-10-04",

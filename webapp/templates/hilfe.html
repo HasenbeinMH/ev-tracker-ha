@@ -145,6 +145,7 @@
 </table>
 <div class="hb-formel"><span class="lbl">KFZ-Steuer</span>Steuer-Ersparnis = KFZ-Steuer [€/Jahr] × Monate im Zeitraum ÷ 12 − KFZ-Steuer E-Auto [€/Jahr] × steuerpflichtige Monate ÷ 12</div>
 <div class="hb-info"><b>Warum anteilig?</b> Die KFZ-Steuer ist ein Jahresbetrag. Sonst bekäme jedes Quartal die Steuer eines ganzen Jahres gutgeschrieben – und mehrere Jahre nur einmal. Im Gesamtzeitraum zählen die Monate vom ersten bis zum letzten Monat mit Daten. Der Stromtarif-Verlauf zeigt ab Zeitraumbeginn den dann gültigen Tarif, auch wenn er früher eingetragen wurde; Tarifwechsel innerhalb des Zeitraums erscheinen als Stufe.</div>
+<div class="hb-info"><b>Zulassung:</b> Ist unter <b>Einstellungen → Anschaffung</b> die Erstzulassung (bei einem Gebrauchtwagen zusätzlich „Auf mich zugelassen“) eingetragen, zählen nur die Monate ab der Zulassung: Im Zulassungsmonat wird tagesgenau anteilig gerechnet (Zulassung am 16. Mai = 16 von 31 Tagen), Monate und Daten davor fließen weder in Kennzahlen noch in die Amortisation ein. Das Dashboard zeigt dann z.B. „KFZ-Steuer anteilig für 7,5 Monate“. Im Simulationsmodus gilt die Zulassung nicht.</div>
 
 <h2 id="statistik">Statistik <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p>Vergleicht zwei Zeiträume nebeneinander – etwa ein Jahr mit dem Vorjahr oder <b>Sommer gegen Winter</b>. Die Schnellauswahl oben bietet die häufigsten Paare; mit „⇄ tauschen“ wechseln die Seiten.</p>
@@ -370,6 +371,8 @@
   <tr><td>CO2-Faktor</td><td>2,37 kg/L (Diesel 2,65, Autogas 1,64)</td><td>Verbrennungs- plus Vorkettenemission je Liter. Beim Wechsel des Kraftstoffs springt der Standardwert mit um; ein eigener Wert bleibt stehen.</td></tr>
   <tr><td>KFZ-Steuer</td><td>0 € bzw. ab Ende der Befreiung der eingetragene Jahresbetrag</td><td>Jahressteuer des Vergleichs-{{ kf.fahrzeug_gen }}.</td></tr>
   <tr><td>Anschaffung – Amortisation</td><td>leer (ausgeblendet)</td><td>Kaufpreis des E-Autos, Preis eines vergleichbaren {{ kf.fahrzeug_gen }} und Förderung (Umweltbonus, Prämien). Daraus der Mehrpreis für die <a href="#amortisation">Amortisation</a> im Dashboard. Je Fahrzeug; ein leerer Kaufpreis blendet die Amortisation aus.</td></tr>
+  <tr><td>Erstzulassung / Auf mich zugelassen</td><td>leer (alle Monate zählen)</td><td>Ab der Zulassung auf dich (Gebrauchtwagen) bzw. der Erstzulassung (Neuwagen) zählen KFZ-Steuer-Ersparnis, Monate und Amortisation, der erste Monat tagesgenau anteilig. Aus der Erstzulassung schlägt die Steuerseite das Ende der Steuerbefreiung vor (10 Jahre, längstens bis Ende 2035).</td></tr>
+  <tr><td>km-Stand bei Kauf</td><td>leer</td><td>Für den Kaufmonat: km = Kilometerstand am Monatsende − km-Stand bei Kauf. So fehlen keine km, wenn der Sensor vor dem Kauf noch keinen Wert hatte, und die km des Vorbesitzers zählen nicht mit.</td></tr>
   <tr><td>Sprache / Language</td><td>Deutsch</td><td>Deutsch oder Englisch für Oberfläche, Hilfe und Mail-Berichte – auch über <b>DE | EN</b> oben rechts. Gilt für alle Fahrzeuge und Nutzer. Zahlen und Datum bleiben im deutschen Format; gespeicherte Namen (Anbieter, Notizen), das Importprotokoll und das Änderungslog werden nicht übersetzt.</td></tr>
 </table>
 <ul>

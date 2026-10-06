@@ -745,6 +745,8 @@ def steuer(request: Request):
                   kfz=db.get_einstellung("kfz_steuer_benziner") or 0.0,
                   kfz_eauto=db.get_einstellung("kfz_steuer_eauto") or 0.0,
                   kfz_eauto_ab=db.get_einstellung_str("kfz_steuer_eauto_ab") or "",
+                  erstzulassung=zeitraum_mod.erstzulassung(),
+                  steuerfrei_bis=zeitraum_mod.steuerfrei_bis(zeitraum_mod.erstzulassung()),
                   rows=db.get_thg_eintraege(), thg_gesamt=db.get_thg_gesamt(),
                   aktiv="steuer", heute=datetime.now().strftime("%Y-%m-%d"))
 
@@ -978,9 +980,34 @@ def _fetch_monat(client, quelle, cfg, year, month, nur=None):
                                                             f"({quelle.beschreibung(key)})"}
             val = ha(key)
             herkunft = HA_API if val is not None else None
+        if key == "km" and cfg.get("km_bei_kauf") and cfg.get("kauf_monat") == f"{year}-{month:02d}":
+            val, herkunft = _km_kaufmonat(client, quelle, cfg, year, month, val, herkunft)
+            if quelle is not None and herkunft == quelle.name:
+                out["_grund"].pop(key, None)
         out[key] = round(val, 3) if val is not None else None
         out["_quelle"][key] = herkunft
     return out
+
+
+def _km_kaufmonat(client, quelle, cfg, year, month, val, herkunft):
+    """km im Kaufmonat: Kilometerstand am Monatsende minus km-Stand bei Kauf. Die
+    Differenz zum Vormonat fehlt dort oft (Sensor erst seit dem Kauf in HA) oder
+    enthielte die km des Vorbesitzers. Ohne Stand am Monatsende bleibt der Wert."""
+    stand = quelle.monat_stand("km", year, month) if quelle else None
+    if stand is not None:
+        herkunft = quelle.name
+    elif client:
+        for eid in reversed(datenquellen.namen_liste(cfg.get("ha_odometer"))):
+            try:
+                stand = client.get_month_end_state(eid, year, month)
+            except Exception:
+                stand = None
+            if stand is not None:
+                herkunft = HA_API
+                break
+    if stand is None or stand < cfg["km_bei_kauf"]:
+        return val, herkunft
+    return stand - cfg["km_bei_kauf"], herkunft
 
 
 def _import_worker(job_id, monate, cfg):
@@ -2240,6 +2267,9 @@ def einstellungen(request: Request, meldung: str = ""):
                   kfz=db.get_einstellung("kfz_steuer_benziner") or 0.0,
                   anschaffung={k: db.get_einstellung(f"anschaffung_{k}") or 0.0
                                for k in ("eauto", "verbrenner", "foerderung")},
+                  zulassung={"erst": zeitraum_mod.erstzulassung(),
+                             "eigen": zeitraum_mod.zulassung_eigen(),
+                             "km": db.get_einstellung("km_bei_kauf") or 0.0},
                   kraftstoffe=berechnung.kraftstoffe(),
                   galerie=galerie.bilder(),
                   galerie_aktiv=auto_bild_galerie(),
@@ -2288,13 +2318,19 @@ def einstellungen_parameter(benziner_verbrauch: str = Form(...),
 @app.post("/einstellungen/anschaffung")
 @mit_fahrzeug
 def einstellungen_anschaffung(eauto: str = Form(""), verbrenner: str = Form(""),
-                              foerderung: str = Form("")):
-    """Kaufpreise fuer die Amortisation; ein leerer Preis des E-Autos blendet sie aus."""
+                              foerderung: str = Form(""), km_bei_kauf: str = Form(""),
+                              erstzulassung: str = Form(""), zulassung_eigen: str = Form("")):
+    """Kaufpreise fuer die Amortisation (ein leerer Preis des E-Autos blendet sie aus),
+    Zulassung und km-Stand bei Kauf. Datum 'YYYY-MM-DD', leer = unbekannt."""
     for key, raw in [("anschaffung_eauto", eauto), ("anschaffung_verbrenner", verbrenner),
-                     ("anschaffung_foerderung", foerderung)]:
+                     ("anschaffung_foerderung", foerderung), ("km_bei_kauf", km_bei_kauf)]:
         v = parse_de(raw, tausender=True) if raw.strip() else 0.0
         if v is not None and v >= 0:
             db.set_einstellung(key, v)
+    for key, raw in [("erstzulassung", erstzulassung), ("zulassung_eigen", zulassung_eigen)]:
+        raw = raw.strip()
+        if not raw or re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw):
+            db.set_einstellung(key, raw)
     return RedirectResponse("../einstellungen#anschaffung", status_code=303)
 
 

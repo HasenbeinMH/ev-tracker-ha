@@ -20,7 +20,12 @@ Steuer-Ersparnis eines Quartals so hoch wie die eines ganzen Jahres, und
 mehrere Jahre bekaemen die Steuer nur einmal gutgeschrieben.
 Endet die Steuerbefreiung des E-Autos, wird dessen Jahressteuer ab dem
 eingetragenen Monat ebenso anteilig abgezogen.
+Zulassung: Monate davor gibt es fuer das E-Auto nicht (keine Steuer-Ersparnis,
+keine Monate im Verlauf), der Zulassungsmonat zaehlt tagesgenau anteilig. Massgeblich
+ist die Zulassung auf den Halter (Gebrauchtwagen), sonst die Erstzulassung. Im
+Simulationsmodus gibt es noch kein E-Auto – dort gilt sie nicht.
 """
+import calendar
 import re
 from datetime import date
 
@@ -77,16 +82,35 @@ def _monatsfolge(von: str, bis: str) -> list:
 
 def monate(z: dict, daten: dict) -> list:
     """Monate des Zeitraums bis einschliesslich des laufenden Monats.
-    Beim Gesamtzeitraum: vom ersten bis zum letzten Monat mit Daten."""
+    Beim Gesamtzeitraum: vom ersten bis zum letzten Monat mit Daten.
+    Monate vor der Erstzulassung fallen weg."""
     heute = date.today().strftime("%Y-%m")
     if z["von"] is None:
         vorhanden = _datenmonate(daten)
         if not vorhanden:
             return []
-        return _monatsfolge(vorhanden[0], vorhanden[-1])
-    if z["von"] > heute:
+        folge = _monatsfolge(vorhanden[0], vorhanden[-1])
+    elif z["von"] > heute:
         return []
-    return _monatsfolge(z["von"], min(z["bis"], heute))
+    else:
+        folge = _monatsfolge(z["von"], min(z["bis"], heute))
+    ab = (daten.get("zugelassen_ab") or "")[:7]
+    return [m for m in folge if m >= ab]
+
+
+def monatsanteil(monat: str, daten: dict) -> float:
+    """Anteil des Monats, in dem das E-Auto zugelassen war: 1, im Zulassungsmonat
+    die Tage ab dem Zulassungstag (Zulassung am 16. Mai: 16/31)."""
+    ab = daten.get("zugelassen_ab") or ""
+    if len(ab) != 10 or ab[:7] != monat:
+        return 1.0
+    tage = calendar.monthrange(int(ab[:4]), int(ab[5:7]))[1]
+    return (tage - int(ab[8:10]) + 1) / tage
+
+
+def steuer_monate(mon: list, daten: dict) -> float:
+    """Monate, fuer die die KFZ-Steuer zaehlt – der Zulassungsmonat anteilig."""
+    return sum(monatsanteil(m, daten) for m in mon)
 
 
 def _datenmonate(daten: dict) -> list:
@@ -153,6 +177,7 @@ def laden() -> dict:
 
 def _laden_einzeln() -> dict:
     import akkuverbrauch
+    cfg = db.get_config()
     return {
         "fahrten": db.get_fahrten_alle_als_liste(),
         # im Simulationsmodus aus den km gerechnet; "lade_sim" ist die Simulation immer –
@@ -163,11 +188,12 @@ def _laden_einzeln() -> dict:
         "thg": sorted(db.get_thg_eintraege(), key=lambda t: t["datum"]),
         "stromtarife": db.get_stromtarife(),
         "akku": akkuverbrauch.pro_monat(),
-        "cfg": db.get_config(),
+        "cfg": cfg,
         "kfz_steuer": db.get_einstellung("kfz_steuer_benziner") or 0.0,
         "kfz_steuer_eauto": db.get_einstellung("kfz_steuer_eauto") or 0.0,
         "kfz_steuer_eauto_ab": db.get_einstellung_str("kfz_steuer_eauto_ab") or "",
         "anschaffung": anschaffung(),
+        "zugelassen_ab": "" if cfg["simulation"] else zugelassen_ab(),
         "fahrzeug_id": db.aktuelles_fahrzeug(),
         "nur_eigene_monate": (db.mehrere_fahrzeuge() and db.aktuelles_fahrzeug() is not None
                               and len(db.sichtbare_ids()) > 1),
@@ -175,16 +201,22 @@ def _laden_einzeln() -> dict:
 
 
 def filtern(z: dict, daten: dict) -> dict:
-    """Die Rohdaten eingeschraenkt auf den Zeitraum (Stromtarife bleiben vollstaendig –
-    der beim Zeitraumbeginn gueltige Tarif liegt meist davor)."""
+    """Die Rohdaten eingeschraenkt auf den Zeitraum und die Monate ab der Zulassung
+    (Stromtarife bleiben vollstaendig – der beim Zeitraumbeginn gueltige Tarif liegt
+    meist davor)."""
+    ab = (daten.get("zugelassen_ab") or "")[:7]
+
+    def drin(datum):
+        return enthaelt(z, datum) and (datum or "")[:7] >= ab
+
     return {
         **daten,
-        "fahrten": [f for f in daten["fahrten"] if enthaelt(z, f["datum"])],
-        "lade": [l for l in daten["lade"] if enthaelt(z, l["datum"])],
-        "lade_sim": [l for l in daten.get("lade_sim", []) if enthaelt(z, l["datum"])],
-        "benzin": [b for b in daten["benzin"] if enthaelt(z, b["monat"])],
-        "thg": [t for t in daten["thg"] if enthaelt(z, t["datum"])],
-        "akku": [a for a in daten["akku"] if enthaelt(z, a["monat"])],
+        "fahrten": [f for f in daten["fahrten"] if drin(f["datum"])],
+        "lade": [l for l in daten["lade"] if drin(l["datum"])],
+        "lade_sim": [l for l in daten.get("lade_sim", []) if drin(l["datum"])],
+        "benzin": [b for b in daten["benzin"] if drin(b["monat"])],
+        "thg": [t for t in daten["thg"] if drin(t["datum"])],
+        "akku": [a for a in daten["akku"] if drin(a["monat"])],
     }
 
 
@@ -226,7 +258,8 @@ def kennzahlen(z: dict, daten: dict) -> dict:
 
     # Jahresbetrag, anteilig nach Monaten (Gesamtzeitraum: erster bis letzter Datenmonat)
     kfz_eauto = steuer_eauto(mon, daten)
-    kfz = daten["kfz_steuer"] * len(mon) / 12 - kfz_eauto
+    st_mon = steuer_monate(mon, daten)
+    kfz = daten["kfz_steuer"] * st_mon / 12 - kfz_eauto
 
     # Verbrauch laut Ladung nur ueber Monate, in denen km und Ladung vorliegen
     kwh_m = {}
@@ -254,6 +287,7 @@ def kennzahlen(z: dict, daten: dict) -> dict:
         "_quellen": quellen,
         "titel":            z["titel"],
         "monate":           len(mon),
+        "steuer_monate":    st_mon,
         "gesamt_km":        km,
         "gesamt_kwh":       kwh,
         "ladevorgaenge":    len(berechnung.nur_ladungen(f["lade"])),
@@ -293,6 +327,38 @@ PROGNOSE_BASIS_MONATE = 12      # Ø-Ersparnis der letzten abgeschlossenen Monat
 PROGNOSE_MAX_MONATE = 15 * 12   # weiter wird nicht hochgerechnet
 
 
+def _datum(key: str) -> str:
+    wert = (db.get_einstellung_str(key) or "").strip()
+    return wert if re.fullmatch(r"\d{4}-\d{2}-\d{2}", wert) else ""
+
+
+def erstzulassung() -> str:
+    """Erstzulassung des aktuellen Fahrzeugs 'YYYY-MM-DD' – leer, wenn nicht eingetragen."""
+    return _datum("erstzulassung")
+
+
+def zulassung_eigen() -> str:
+    """Zulassung auf den Halter bei einem Gebrauchtwagen – leer bei einem Neuwagen."""
+    return _datum("zulassung_eigen")
+
+
+def zugelassen_ab() -> str:
+    """Seit wann das Auto dem Halter gehoert: Zulassung auf ihn (Gebrauchtwagen),
+    sonst die Erstzulassung. Leer = unbekannt, alle Monate zaehlen voll."""
+    return zulassung_eigen() or erstzulassung()
+
+
+def steuerfrei_bis(ez: str) -> str | None:
+    """Erster steuerpflichtiger Monat eines E-Autos nach deutschem Recht (§ 3d KraftStG):
+    befreit 10 Jahre ab Erstzulassung, laengstens bis 31.12.2035, nur bei Zulassung bis
+    Ende 2030. Nur ein Vorschlag fuer die Steuerseite – None ohne Erstzulassung."""
+    if not ez:
+        return None
+    if ez > "2030-12-31":
+        return ez[:7]
+    return min(f"{int(ez[:4]) + 10}{ez[4:7]}", "2036-01")
+
+
 def anschaffung() -> dict | None:
     """Kaufpreise des aktuellen Fahrzeugs – None, solange kein Preis des E-Autos
     eingetragen ist. Mehrpreis = E-Auto − vergleichbarer Verbrenner − Foerderung."""
@@ -311,8 +377,9 @@ def ersparnis_je_monat(daten: dict) -> dict:
     cfg = daten["cfg"]
     ersatz = berechnung.durchschnitt_benzinpreis(daten["benzin"])
     preise = {b["monat"][:7]: b["preis_liter"] for b in daten["benzin"]}
-    werte = {m: daten["kfz_steuer"] / 12 - steuer_eauto([m], daten)
+    werte = {m: daten["kfz_steuer"] / 12 * monatsanteil(m, daten) - steuer_eauto([m], daten)
              for m in monate(aufloesen(ALLES), daten)}
+    daten = filtern(aufloesen(ALLES), daten)        # nichts vor der Zulassung
 
     def dazu(m, betrag):
         werte[m] = werte.get(m, 0.0) + betrag
@@ -432,6 +499,7 @@ def kennzahlen_summe(liste: list, titel: str) -> dict:
         **s,
         "titel": titel,
         "monate": max((x["monate"] for x in liste), default=0),
+        "steuer_monate": max((x.get("steuer_monate", 0) for x in liste), default=0),
         "avg_benzin": (s["benzin_kosten"] / s["liter"] if s["liter"]
                        else (preise[0] if preise else None)),
         "verbrauch": s["_v_kwh"] / s["_v_km"] * 100 if s["_v_km"] else None,

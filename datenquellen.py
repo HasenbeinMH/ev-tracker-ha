@@ -214,6 +214,17 @@ class Datenquelle:
             self.grund[schluessel] = self._warum
         return wert
 
+    def monat_stand(self, schluessel: str, jahr: int, monat: int) -> float | None:
+        """Letzter Zaehlerstand im Monat (Kilometerstand am Monatsende); None ohne Werte."""
+        ids = self.kennungen(schluessel)
+        if not ids:
+            return None
+        try:
+            treffer = self._letzter_von(schluessel, ids, *_monat(jahr, monat))
+        except Exception:
+            return None
+        return treffer[1] if treffer else None
+
     def _letzter_von(self, schl, kennungen, von, bis):
         """Juengster Wert ueber alle Namen – nach einer Umbenennung der des neuen Namens."""
         treffer = [x for x in (self._letzter(schl, k, von, bis) for k in kennungen) if x]

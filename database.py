@@ -322,6 +322,7 @@ FAHRZEUG_SCHLUESSEL = {
     "kraftstoff", "benziner_verbrauch", "ev_verbrauch_default", "co2_faktor_benzin",
     "kfz_steuer_benziner", "kfz_steuer_eauto", "kfz_steuer_eauto_ab",
     "anschaffung_eauto", "anschaffung_verbrenner", "anschaffung_foerderung",
+    "erstzulassung", "zulassung_eigen", "km_bei_kauf",
     "akku_kapazitaet_kwh", "lade_min_anstieg", "heimladung",
     "ha_odometer", "ha_ev_battery", "ha_ev_range", "fn_odometer", "fn_ev_battery",
 }
@@ -1434,12 +1435,19 @@ def get_ha_settings(fahrzeug_id=None, eigene_zaehler: bool = False):
     (Standard: aktuelles). eigene_zaehler=True: statt der gemeinsamen Wallbox die
     eigenen Ladezaehler des Fahrzeugs."""
     keys = list(HA_ENTITY_DEFAULTS.keys())
+    kauf = ["erstzulassung", "zulassung_eigen", "km_bei_kauf"]
     if fahrzeug_id is not None:
         with fahrzeug_kontext(int(fahrzeug_id)):
-            found = _werte(keys)
+            found = _werte(keys + kauf)
     else:
-        found = _werte(keys)
+        found = _werte(keys + kauf)
     erg = {key: found.get(key, HA_ENTITY_DEFAULTS.get(key, "")) for key in keys}
+    # Kaufmonat und km-Stand bei Kauf: km im Kaufmonat = Stand am Monatsende − km bei Kauf
+    erg["kauf_monat"] = (found.get("zulassung_eigen") or found.get("erstzulassung") or "")[:7]
+    try:
+        erg["km_bei_kauf"] = float(found.get("km_bei_kauf") or 0)
+    except ValueError:
+        erg["km_bei_kauf"] = 0.0
     if eigene_zaehler:
         fid = schreib_fahrzeug(fahrzeug_id)
         with closing(get_connection()) as conn:
