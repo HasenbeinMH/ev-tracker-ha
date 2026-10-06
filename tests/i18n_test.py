@@ -38,6 +38,10 @@ DEUTSCHE_WOERTER = ["Speichern", "Hinzufügen", "Löschen", "Einstellungen", "La
                     "Monate", "Ladungen", "Gesamt", "Zeile", "gespeichert", "noch", "auch"]
 
 
+# Einheiten wie "kWh/100 km" oder "ct/kWh" – kein Text, der uebersetzt wird
+EINHEIT = re.compile(r"(€|%|ct|km|kWh|kW|L)(/(\d+ )?(km|kWh|h|L))?")
+
+
 def check(bereich, test, ok, detail=""):
     ERG.append((bereich, test, bool(ok), detail))
 
@@ -146,6 +150,8 @@ def jinja_reste():
                     frei.add(id(k))
         for k in baum.find_all(nodes.Const):
             v = k.value
+            if isinstance(v, str) and EINHEIT.fullmatch(v.strip()):
+                continue                            # Einheiten sind in beiden Sprachen gleich
             if id(k) not in frei and isinstance(v, str) and re.search(r"[A-Za-zÄÖÜäöüß]{3,}", v) \
                     and (" " in v.strip() or re.search(r"[äöüÄÖÜß]", v) or v[:1].isupper()):
                 funde.append(f"{os.path.basename(p)}:{k.lineno} {v!r}")

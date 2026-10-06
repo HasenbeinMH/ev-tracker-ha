@@ -73,6 +73,10 @@ SEITEN = ["/", "/statistik", "/fahrten", "/laden", "/benzin", "/stromtarif", "/l
           "/statistik?a=2025-S&b=2025-W"]
 HAUPTSEITEN = ["/", "/statistik", "/fahrten", "/laden", "/benzin", "/stromtarif", "/ladetarife",
                "/steuer", "/instandhaltung", "/versicherung", "/berichte", "/rechnung"]
+# Seiten, die nach 3.0 gewollt neue Inhalte bekommen haben – beim Vergleich mit 2.16 ausgenommen
+GEWOLLT_NEU = {"/": "3.4.0 Dashboard anpassen, 3.4.2 Hinweis auf Ladungen ohne km",
+               "/ladetarife": "3.3.0 Tarife „nur Vergleich“",
+               "/steuer": "3.5.0 Vorschlag aus der Erstzulassung"}
 
 # ── 1. Ein Fahrzeug: Ausgangslage ─────────────────────────────────────────────
 k_vorher = kennzahlen()
@@ -619,9 +623,10 @@ if alt_commit:
         alt_html = html_mit_code(wt, a)
         neu_html = html_mit_code(REPO, b)
         versions = re.compile(r"v\d+\.\d+\.\d+")
-        unterschiede = [s for s in HAUPTSEITEN
+        verglichen = [s for s in HAUPTSEITEN if s not in GEWOLLT_NEU]
+        unterschiede = [s for s in verglichen
                         if versions.sub("v", alt_html[s]) != versions.sub("v", neu_html[s])]
-        check("Wie vorher", f"Ein Fahrzeug: sichtbarer Text von {len(HAUPTSEITEN)} Hauptseiten wie 2.16",
+        check("Wie vorher", f"Ein Fahrzeug: sichtbarer Text von {len(verglichen)} Hauptseiten wie 2.16",
               not unterschiede, ", ".join(unterschiede))
         for s in unterschiede[:3]:
             x, y = versions.sub("v", alt_html[s]), versions.sub("v", neu_html[s])
