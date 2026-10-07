@@ -7,3 +7,4 @@ webapp/data/
 webapp/static/plotly.min.js
 .dockerignore
 fahrzeugbilder/final/
+video/

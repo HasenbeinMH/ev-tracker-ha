@@ -1,0 +1,16 @@
+{
+  "name": "ev-tracker-video",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Werbevideo out/ev-tracker-werbevideo.mp4 --crf=18 --browser-executable=\"C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe\""
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.534",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "remotion": "^4.0.534",
+    "typescript": "^5.9.3"
+  }
+}

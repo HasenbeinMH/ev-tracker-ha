@@ -20,3 +20,10 @@ desktop.ini
 
 # Fahrzeugbilder in Arbeit – erst nach Fertigstellung ins Repo
 fahrzeugbilder/final/
+
+# Werbevideo: nur Quellen ins Repo (siehe video/README.md)
+video/node_modules/
+video/public/
+video/demo/
+video/out/
+video/stills/
