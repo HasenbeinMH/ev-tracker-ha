@@ -31,7 +31,7 @@ nicht auf ein bestimmtes Modell festgelegt. Oberfläche, Hilfe und Berichte gibt
 <tr>
 <td><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-verbrauch.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-verbrauch.png" alt="Verbrauch je Monat und aus dem Akkustand"></a>
 <br><b>Echter Verbrauch</b> – je Monat aus den Ladungen und je Fahrt aus dem Akkustand. Die Differenz zeigt die Ladeverluste.</td>
-<td><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-ladetarife.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-ladetarife.png" alt="Ladetarife mit Preisverlauf"></a>
+<td><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-ladetarife.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-ladetarife.png" alt="Ladetarife: Lohnt sich das Abo?"></a>
 <br><b>Ladetarife im Griff</b> – Abos mit Preisverlauf, Grundgebühr und Blockiergebühr, im Vergleich zum Heimstrom.</td>
 </tr>
 <tr>
