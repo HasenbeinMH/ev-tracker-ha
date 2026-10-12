@@ -64,6 +64,8 @@ class HAClient:
         # Zeitpunkt des Zaehler-Resets, den die letzte Monatsrechnung verrechnet hat
         # (None = keiner) – fuer Diagnose und Import-Log
         self.letzter_reset = None
+        # sum der HA-Statistik, die die letzte Monatsrechnung verworfen hat (siehe delta)
+        self.sum_verworfen = None
 
     # ─────────────────────────────────────────
     #  HTTP-Basis
@@ -231,24 +233,36 @@ class HAClient:
 
         if mode == "delta":
             self.letzter_reset = None
+            self.sum_verworfen = None
+            wert = None
             if art != "fortlaufend":
                 staende = [(r["start"], r["state"]) for r in month_rows if r.get("state") is not None]
                 vor = [r["state"] for r in pre_rows if r.get("state") is not None]
                 wert, reset = zaehler.verbrauch(staende, vor[-1] if vor else None, art)
-                if staende and (reset is not None or art == "reset"):
+                if not staende:
+                    wert = None
+                elif reset is not None or art == "reset":
                     self.letzter_reset = reset
                     if wert is None or (braucht_vorwert and not vor and reset is None):
                         return None
                     return round(wert, 3)
             curr_sum_rows = [r for r in month_rows if r.get("sum") is not None]
             if not curr_sum_rows:
-                return None
+                return round(wert, 3) if wert is not None else None
             end_sum      = curr_sum_rows[-1]["sum"]
             pre_sum_rows = [r for r in pre_rows if r.get("sum") is not None]
             if braucht_vorwert and not pre_sum_rows:
                 return None
             base_sum     = pre_sum_rows[-1]["sum"] if pre_sum_rows else curr_sum_rows[0].get("sum", end_sum)
             delta = end_sum - base_sum
+            # "auto": Faellt ein fortlaufender Zaehler kurz auf 0 (z.B. Neustart der
+            # Integration) und steht innerhalb derselben Stunde wieder auf dem alten Wert,
+            # bucht HA bei total_increasing den ganzen Stand noch einmal auf die sum – in
+            # den Stundenwerten ("state") ist davon nichts zu sehen. Ist die sum groesser,
+            # als die Zaehlerstaende erklaeren, gelten die Staende.
+            if wert is not None and delta > wert + max(0.1, wert * 0.01):
+                self.sum_verworfen = round(delta, 3)
+                return round(wert, 3)
             return round(delta, 3) if delta >= 0 else None
 
         elif mode == "mean":

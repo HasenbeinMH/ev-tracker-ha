@@ -102,6 +102,34 @@ ha._get_statistics = lambda ids, *a, **k: {ids[0]: fortl}
 check("Statistik, fortlaufender Zaehler unveraendert", ha.get_month_delta("sensor.x", 2026, 10, "auto") == 100.25
       and ha.letzter_reset is None, (ha.get_month_delta("sensor.x", 2026, 10, "auto"), ha.letzter_reset))
 
+# Fortlaufender Zaehler (total_increasing) mit zwei Aussetzern auf 0 innerhalb je einer Stunde:
+# HA bucht jedes Mal den ganzen Stand auf die sum (Meldung: 563.236 bei Stand 309.27)
+def aussetzer_statistik():
+    rows, s = [], 1000.0
+    def row(t, st):
+        return {"start": t.isoformat(), "sum": round(s, 4), "state": st}
+    rows.append(row(datetime(2026, 9, 30, 23), 254.0))
+    rows.append(row(datetime(2026, 10, 2, 10), 254.0))
+    s += 254.0
+    rows.append(row(datetime(2026, 10, 4, 3), 254.0))
+    s += 50.21
+    rows.append(row(datetime(2026, 10, 5, 22), 304.21))
+    s += 253.97
+    rows.append(row(datetime(2026, 10, 8, 5), 304.21))
+    s += 5.06
+    rows.append(row(datetime(2026, 10, 12, 20), 309.27))
+    return rows
+
+ha._get_statistics = lambda ids, *a, **k: {ids[0]: aussetzer_statistik()}
+check("Aussetzer: fortlaufend = HA-sum wie gemeldet (563.24)",
+      ha.get_month_delta("sensor.x", 2026, 10, "fortlaufend") == 563.24)
+check("Aussetzer: auto rechnet mit den Staenden (55.27)", ha.get_month_delta("sensor.x", 2026, 10, "auto") == 55.27
+      and ha.sum_verworfen == 563.24, (ha.get_month_delta("sensor.x", 2026, 10, "auto"), ha.sum_verworfen))
+check("Aussetzer ueber mehrere Werte (0, 0, alter Stand) ist kein Reset",
+      v([254, 0, 0, 0, 254.5, 260], 254) == (6.0, None), v([254, 0, 0, 0, 254.5, 260], 254))
+check("Monatsreset mit mehreren Nullen bleibt Reset", v([0, 0, 0, 0.78, 50.21], 32.85) == (50.21, 0),
+      v([0, 0, 0, 0.78, 50.21], 32.85))
+
 # ── HA-API: History-Fallback ─────────────────────────────────────────────────
 def history(eid, start, ende):
     if start.month == 10:

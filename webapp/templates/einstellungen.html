@@ -787,9 +787,13 @@ async function pruefeSensor() {
   for (const m of d.monate) {
     const f = v => v === null ? "<span class='muted'>–</span>" : v;
     const reset = m.reset ? ` <span class="muted" title="${esc({{ _t("Zähler wurde zurückgesetzt – die Zuwächse sind zusammengezählt") | tojson }})}">↺ ${esc(m.reset)}</span>` : "";
-    html += `<tr><td>${m.monat}</td><td>${f(m.delta)}${reset}</td><td>${f(m.summe)}</td><td>${f(m.mittel)}</td></tr>`;
+    const sum = m.ha_sum !== null && m.ha_sum !== undefined
+      ? ` <span class="gelb" title="${esc(T({{ _t("Die Langzeitstatistik von HA ergäbe {0} – mehr, als die Zählerstände hergeben (vermutlich kurze Aussetzer des Sensors). Gerechnet wird mit den Zählerständen.") | tojson }}, m.ha_sum))}">⚠ HA: ${esc(m.ha_sum)}</span>` : "";
+    html += `<tr><td>${m.monat}</td><td>${f(m.delta)}${reset}${sum}</td><td>${f(m.summe)}</td><td>${f(m.mittel)}</td></tr>`;
   }
   html += "</table><div class='hint'>" + {{ _t("km und Netz/PV-Laden nutzen <em>Delta</em>, {0}preis den <em>Mittelwert</em>. Überall „–“ = keine Daten für diesen Zeitraum.", kf.name) | tojson }} + "</div>";
+  if (d.monate.some(m => m.ha_sum !== null && m.ha_sum !== undefined))
+    html += "<div class='hint gelb'>" + {{ _t("⚠ HA = Wert der Langzeitstatistik von Home Assistant. Sie ist höher als die Zählerstände, meist weil der Sensor kurz auf 0 fiel (z.B. Neustart) und HA das als Zählerwechsel mitgezählt hat. Die App rechnet mit den Zählerständen.") | tojson }} + "</div>";
   if (d.setzt_zurueck && d.art === "fortlaufend")
     html += "<div class='hint gelb'>" + {{ _t("Dieser Sensor wird offenbar zurückgesetzt (täglich/monatlich) – Zählerart besser auf „Automatisch“ stellen.") | tojson }} + "</div>";
   else if (d.monate.some(m => m.reset))

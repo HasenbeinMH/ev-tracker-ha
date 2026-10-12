@@ -3,6 +3,16 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [3.5.2] - 2026-10-12
+
+> ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.
+
+### Aussetzer bei fortlaufenden Zaehlern
+- Fortlaufende Zaehler mit kurzen Aussetzern (z.B. evcc-Neustart meldet kurz 0): HA bucht bei total_increasing jedes Mal den ganzen Stand noch einmal auf die Langzeitstatistik (gemeldet: 563 statt rund 55 kWh) – mit Zaehlerart Automatisch gelten jetzt die Zaehlerstaende, wenn die Statistik mehr ergibt, als sie erklaeren
+- Aussetzer ueber mehrere Werte (0, 0, dann wieder der alte Stand) zaehlen nicht als Reset
+- Sensor pruefen zeigt den verworfenen Statistikwert („⚠ HA: …“) mit Erklaerung
+- Test zaehler_test.py erweitert
+
 ## [3.5.1] - 2026-10-12
 
 > ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.

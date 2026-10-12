@@ -1387,12 +1387,14 @@ def sensor_diagnose(entity: str, jahr: int = 0, monat: int = 0, art: str = ""):
     for _i in range(3):
         delta = client.get_month_delta(entity, j, m, art)
         reset = client.letzter_reset if delta is not None else None
+        verworfen = client.sum_verworfen if delta is not None else None
         summe = client.get_month_sum_from_daily(entity, j, m, art)
         mittel = client.get_month_avg(entity, j, m)
         ergebnis["monate"].append({
             "monat": f"{monatsname(m)[:3]} {j}",
             "delta": delta, "summe": summe, "mittel": mittel,
             "reset": _reset_text(reset) if reset is not None else None,
+            "ha_sum": verworfen,
         })
         m -= 1
         if m < 1:

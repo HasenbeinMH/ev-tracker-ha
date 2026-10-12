@@ -57,8 +57,12 @@ def _schritte(reihe: list, art: str):
         elif v > letzter:
             letzter = v
         elif art != "fortlaufend" and v < letzter and (art == "reset" or v < letzter * RESET_ANTEIL):
-            naechster = reihe[i + 1][1] if i + 1 < len(reihe) else None
-            # Aussetzer: gleich danach wieder etwa der alte Stand (±10 %)
+            # Naechster abweichende Wert – ein Aussetzer kann mehrere Werte lang dauern (0, 0, …)
+            j = i + 1
+            while j < len(reihe) and reihe[j][1] == v:
+                j += 1
+            naechster = reihe[j][1] if j < len(reihe) else None
+            # Aussetzer: danach direkt wieder etwa der alte Stand (±10 %)
             aussetzer = (art == "auto" and naechster is not None
                          and abs(naechster - letzter) <= letzter * (1 - RESET_ANTEIL))
             if not aussetzer:

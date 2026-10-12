@@ -19,10 +19,21 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "3.5.1"
+VERSION = "3.5.2"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.5.2",
+        "datum": "2026-10-12",
+        "titel": "Aussetzer bei fortlaufenden Zaehlern",
+        "aenderungen": [
+            "Fortlaufende Zaehler mit kurzen Aussetzern (z.B. evcc-Neustart meldet kurz 0): HA bucht bei total_increasing jedes Mal den ganzen Stand noch einmal auf die Langzeitstatistik (gemeldet: 563 statt rund 55 kWh) – mit Zaehlerart Automatisch gelten jetzt die Zaehlerstaende, wenn die Statistik mehr ergibt, als sie erklaeren",
+            "Aussetzer ueber mehrere Werte (0, 0, dann wieder der alte Stand) zaehlen nicht als Reset",
+            "Sensor pruefen zeigt den verworfenen Statistikwert („⚠ HA: …“) mit Erklaerung",
+            "Test zaehler_test.py erweitert",
+        ],
+    },
     {
         "version": "3.5.1",
         "datum": "2026-10-12",
