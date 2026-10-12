@@ -358,6 +358,8 @@
       <button type="button" class="secondary" onclick="sucheSensoren()">{{ _("🔍 In HA suchen") }}</button>
       <button type="button" class="secondary" data-quelle="influxdb influxdb2 influxdb3 postgres prometheus"
               onclick="sucheDatenbank()" title="{{ _t("Sucht mit der gespeicherten Verbindung") }}">{{ _("🗄️ In Datenbank suchen") }}</button>
+      <button type="button" class="secondary" onclick="evccVorschlag()"
+              title="{{ _t("Sucht die evcc-Sensoren in Home Assistant und schlägt sie für die Zeilen unten vor") }}">{{ _("⚡ Aus evcc übernehmen") }}</button>
       <label class="feld">{{ _("Sensor prüfen (Monatswerte)") }}
         <input id="sensor-pruef" placeholder="{{ _t("sensor.xyz") }}" style="width:230px">
       </label>
@@ -369,15 +371,23 @@
   <table>
     {# Friendly-Name-Spalte nur bei InfluxDB – die Werte bleiben beim Ausblenden erhalten #}
     <tr><th>{{ _("Sensor") }}</th><th>{{ _("Entity-ID (Home Assistant)") }}</th>
-        <th data-quelle="influxdb influxdb2 influxdb3">{{ _("Name in der InfluxDB (Friendly Name)") }}</th></tr>
+        <th data-quelle="influxdb influxdb2 influxdb3">{{ _("Name in der InfluxDB (Friendly Name)") }}</th>
+        <th title="{{ _t("Automatisch erkennt, ob der Zähler zurückgesetzt wird (täglich, monatlich …)") }}">{{ _("Zählerart") }}</th></tr>
     {% for ha_key, fn_key, label in sensor_felder %}
     <tr>
       <td style="white-space:nowrap">{{ label }}</td>
       <td><input class="breit" name="{{ ha_key }}" value="{{ ha[ha_key] }}"></td>
       <td data-quelle="influxdb influxdb2 influxdb3">{% if fn_key %}<input class="breit" name="{{ fn_key }}" value="{{ ha[fn_key] }}">{% endif %}</td>
+      <td>{% if ha_key in art_felder %}{% set art = ha[art_felder[ha_key]] or "auto" %}
+        <select name="{{ art_felder[ha_key] }}">
+          <option value="auto" {{ "selected" if art == "auto" }}>{{ _("Automatisch") }}</option>
+          <option value="fortlaufend" {{ "selected" if art == "fortlaufend" }}>{{ _("Fortlaufend") }}</option>
+          <option value="reset" {{ "selected" if art == "reset" }}>{{ _("Wird zurückgesetzt") }}</option>
+        </select>{% endif %}</td>
     </tr>
     {% endfor %}
   </table>
+  <p class="hint">{{ _("<strong>Zählerart:</strong> <em>Automatisch</em> passt fast immer – die App erkennt, ob ein Zähler täglich oder monatlich auf 0 springt (z.B. evcc „…_monatlich“ oder ein Verbrauchszähler-Helfer), und rechnet dann die Zuwächse zusammen. <em>Fortlaufend</em> schaltet die Erkennung aus, <em>Wird zurückgesetzt</em> wertet jeden Rückgang als Neustart.") }}</p>
 
   <div data-quelle="influxdb influxdb2 influxdb3">
   <details class="erweitert">
@@ -582,6 +592,82 @@ async function sucheSensoren() {
 
 // ── Suche in der eingestellten Datenbank ────────────────────────────────────
 const SENSOR_ZEILEN = {{ sensor_felder | tojson }};   // [[ha_key, fn_key, label], ...]
+const ART_FELDER = {{ art_felder | tojson }};          // ha_key -> art_<sensor>
+const ART_NAMEN = {auto: {{ _t("Automatisch") | tojson }}, fortlaufend: {{ _t("Fortlaufend") | tojson }},
+                   reset: {{ _t("Wird zurückgesetzt") | tojson }}};
+
+// ── evcc-Sensoren aus HA vorschlagen ────────────────────────────────────────
+let evccZeilen = [];
+async function evccVorschlag() {
+  const box = document.getElementById("sensor-ergebnis");
+  box.innerHTML = "<span class='muted'>" + {{ _t("Suche evcc-Sensoren in Home Assistant …") | tojson }} + "</span>";
+  let d;
+  try {
+    d = await (await fetch("api/evcc_vorschlag")).json();
+  } catch (e) { box.innerHTML = "<span class='rot'>✗ " + esc(e) + "</span>"; return; }
+  if (d.error) { box.innerHTML = "<span class='rot'>✗ " + esc(d.error) + "</span>"; return; }
+  evccZeilen = d.zeilen.filter(z => z.kandidaten.length);
+  if (!evccZeilen.length) {
+    box.innerHTML = "<span class='gelb'>" + (d.anzahl
+      ? T({{ _t("{0} evcc-Sensoren gefunden, aber keiner passt zu einer Zeile – bitte über „In HA suchen“ zuordnen.") | tojson }}, d.anzahl)
+      : {{ _t("Keine evcc-Sensoren gefunden – ist die evcc-Integration in Home Assistant eingerichtet?") | tojson }}) + "</span>";
+    return;
+  }
+  let html = `<div class="muted">${ {{ _t("Vorschlag aus evcc – bitte prüfen, dann übernehmen. Gespeichert wird erst mit „Alle Einstellungen speichern“.") | tojson }} }</div>`;
+  html += "<div class='tabelle-scroll'><table><tr><th></th><th>" + {{ _t("Zeile") | tojson }} + "</th><th>" +
+          {{ _t("evcc-Sensor") | tojson }} + "</th><th>" + {{ _t("Zählerart") | tojson }} + "</th><th>" + {{ _t("bisher") | tojson }} + "</th></tr>";
+  evccZeilen.forEach((z, i) => {
+    const zeile = SENSOR_ZEILEN.find(s => s[0] === z.ha_key);
+    const bisher = document.querySelector(`[name="${z.ha_key}"]`)?.value || "";
+    const opts = z.kandidaten.map((k, j) =>
+      `<option value="${j}">${esc(k.entity_id)} (${esc(k.state)} ${esc(k.einheit)})${k.hinweis ? " ⚠" : ""}</option>`).join("");
+    const art = ART_FELDER[z.ha_key]
+      ? `<select id="evcc-art-${i}">${Object.entries(ART_NAMEN).map(([w, n]) => `<option value="${w}">${esc(n)}</option>`).join("")}</select>`
+      : "<span class='muted'>–</span>";
+    html += `<tr><td><input type="checkbox" id="evcc-an-${i}" ${bisher && bisher !== z.kandidaten[0].entity_id ? "" : "checked"}></td>` +
+            `<td style="white-space:nowrap">${esc(zeile ? zeile[2] : z.ha_key)}</td>` +
+            `<td><select id="evcc-wahl-${i}" onchange="evccWahl(${i})">${opts}</select>` +
+            `<div class="hint" id="evcc-hinweis-${i}"></div></td><td>${art}</td>` +
+            `<td class="muted">${esc(bisher) || "–"}</td></tr>`;
+  });
+  html += `</table></div><button type="button" onclick="evccUebernehmen()">${ {{ _t("Ausgewählte übernehmen") | tojson }} }</button>`;
+  box.innerHTML = html;
+  evccZeilen.forEach((_z, i) => evccWahl(i));
+}
+
+// Zaehlerart und Hinweis zum gewaehlten Kandidaten anzeigen
+function evccWahl(i) {
+  const k = evccZeilen[i].kandidaten[document.getElementById("evcc-wahl-" + i).value];
+  const art = document.getElementById("evcc-art-" + i);
+  if (art && k.art) art.value = k.art;
+  document.getElementById("evcc-hinweis-" + i).textContent =
+    [k.name, k.hinweis && "⚠ " + k.hinweis].filter(Boolean).join(" · ");
+}
+
+function evccUebernehmen() {
+  let n = 0, wh = false;
+  evccZeilen.forEach((z, i) => {
+    if (!document.getElementById("evcc-an-" + i).checked) return;
+    const k = z.kandidaten[document.getElementById("evcc-wahl-" + i).value];
+    const eingabe = document.querySelector(`[name="${z.ha_key}"]`);
+    if (!eingabe) return;
+    eingabe.value = k.entity_id;
+    eingabe.style.outline = "2px solid #5aaa78";
+    const artFeld = ART_FELDER[z.ha_key] && document.querySelector(`[name="${ART_FELDER[z.ha_key]}"]`);
+    if (artFeld) {
+      artFeld.value = document.getElementById("evcc-art-" + i).value;
+      artFeld.style.outline = "2px solid #5aaa78";
+    }
+    wh = wh || (ART_FELDER[z.ha_key] && /^wh$/i.test(k.einheit));
+    n++;
+  });
+  const hinweis = document.getElementById("test-ergebnis");
+  hinweis.textContent = wh
+    ? {{ _t("Achtung: dieser Sensor zählt in Wh – die App erwartet kWh (Werte wären 1000-fach zu hoch). Besser in HA einen kWh-Sensor anlegen, z.B. mit den Vorlagen.") | tojson }}
+    : T({{ _t("{0} Sensoren eingetragen – zum Übernehmen „Alle Einstellungen speichern“ klicken.") | tojson }}, n);
+  hinweis.className = wh ? "rot" : "gelb";
+  document.querySelector(`[name="${evccZeilen[0].ha_key}"]`)?.scrollIntoView({block: "center", behavior: "smooth"});
+}
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
   c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 let dbTreffer = [], dbSpalte = "entity";
@@ -695,12 +781,19 @@ async function pruefeSensor() {
   const d = await resp.json();
   if (d.error) { box.innerHTML = "<span class='rot'>✗ " + d.error + "</span>"; return; }
   let html = `<div><strong>${d.entity}</strong> ${d.name ? "(" + d.name + ")" : ""} · ${ {{ _t("aktuell:") | tojson }} } ${d.state} ${d.einheit}</div>`;
+  html += `<div class="muted">${ {{ _t("Zählerart:") | tojson }} } ${esc(ART_NAMEN[d.art] || d.art)}` +
+          (d.state_class ? ` · state_class: ${esc(d.state_class)}` : "") + "</div>";
   html += "<table style='margin-top:6px'><tr><th>" + {{ _t("Monat") | tojson }} + "</th><th>" + {{ _t("Delta (Zähler)") | tojson }} + "</th><th>" + {{ _t("Summe (Tageswerte)") | tojson }} + "</th><th>" + {{ _t("Mittelwert") | tojson }} + "</th></tr>";
   for (const m of d.monate) {
     const f = v => v === null ? "<span class='muted'>–</span>" : v;
-    html += `<tr><td>${m.monat}</td><td>${f(m.delta)}</td><td>${f(m.summe)}</td><td>${f(m.mittel)}</td></tr>`;
+    const reset = m.reset ? ` <span class="muted" title="${esc({{ _t("Zähler wurde zurückgesetzt – die Zuwächse sind zusammengezählt") | tojson }})}">↺ ${esc(m.reset)}</span>` : "";
+    html += `<tr><td>${m.monat}</td><td>${f(m.delta)}${reset}</td><td>${f(m.summe)}</td><td>${f(m.mittel)}</td></tr>`;
   }
   html += "</table><div class='hint'>" + {{ _t("km und Netz/PV-Laden nutzen <em>Delta</em>, {0}preis den <em>Mittelwert</em>. Überall „–“ = keine Daten für diesen Zeitraum.", kf.name) | tojson }} + "</div>";
+  if (d.setzt_zurueck && d.art === "fortlaufend")
+    html += "<div class='hint gelb'>" + {{ _t("Dieser Sensor wird offenbar zurückgesetzt (täglich/monatlich) – Zählerart besser auf „Automatisch“ stellen.") | tojson }} + "</div>";
+  else if (d.monate.some(m => m.reset))
+    html += "<div class='hint'>" + {{ _t("↺ = Zähler wurde zurückgesetzt; das Delta ist die Summe der Zuwächse im Monat.") | tojson }} + "</div>";
   box.innerHTML = html;
 }
 

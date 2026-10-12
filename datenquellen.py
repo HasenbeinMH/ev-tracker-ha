@@ -36,6 +36,8 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+import zaehler
+
 QUELLEN = {
     "influxdb":   "InfluxDB 1.x",
     "influxdb2":  "InfluxDB 2.x",
@@ -170,6 +172,8 @@ class Datenquelle:
         self.cfg = cfg
         # Warum monatswert() fuer einen Schluessel nichts geliefert hat (kurzer Text)
         self.grund = {}
+        # Zeitpunkt eines verrechneten Zaehler-Resets je Schluessel (siehe zaehler.py)
+        self.reset_bei = {}
         self._warum = ""
 
     @property
@@ -195,6 +199,7 @@ class Datenquelle:
         """Monatswert fuer den Import. None = keine Daten; der Grund steht dann in
         self.grund[schluessel]. Fehler der Datenbank werden abgefangen."""
         self.grund.pop(schluessel, None)
+        self.reset_bei.pop(schluessel, None)
         ids = self.kennungen(schluessel)
         if not ids:
             self.grund[schluessel] = "kein Sensor eingetragen"
@@ -204,15 +209,21 @@ class Datenquelle:
             if schluessel == "benzin":
                 wert = self.monat_mittel(schluessel, ids, jahr, monat)
             elif schluessel in ("pv", "wallbox"):
-                wert = self.monat_summe(schluessel, ids, jahr, monat)
+                wert = self.monat_summe(schluessel, ids, jahr, monat, self.zaehlerart(schluessel))
             else:
-                wert = self.monat_delta(schluessel, ids, jahr, monat)
+                wert = self.monat_delta(schluessel, ids, jahr, monat, self.zaehlerart(schluessel))
         except Exception as e:
             wert = None
             self._warum = "Fehler: " + self.fehlertext(e)
         if wert is None:
             self.grund[schluessel] = self._warum
         return wert
+
+    def zaehlerart(self, schluessel: str) -> str:
+        """Zaehlerart aus den Einstellungen (kWh/Kosten); der Kilometerstand ist fortlaufend."""
+        if schluessel not in ("pv", "wallbox", "kosten"):
+            return "fortlaufend"
+        return zaehler.art_aus(self.cfg, SENSOREN[schluessel][0][0])
 
     def monat_stand(self, schluessel: str, jahr: int, monat: int) -> float | None:
         """Letzter Zaehlerstand im Monat (Kilometerstand am Monatsende); None ohne Werte."""
@@ -230,16 +241,29 @@ class Datenquelle:
         treffer = [x for x in (self._letzter(schl, k, von, bis) for k in kennungen) if x]
         return max(treffer, key=lambda x: (x[0], x[1])) if treffer else None
 
-    def monat_delta(self, schl, kennungen, jahr, monat) -> float | None:
+    def monat_delta(self, schl, kennungen, jahr, monat, art="fortlaufend") -> float | None:
         """Zaehlerstand am Monatsende minus letzter Stand vor dem Monat (bis 1 Jahr zurueck).
         Bei mehreren Namen zaehlt je Zeitpunkt der juengste Wert – so klappt auch der Monat
-        einer Umbenennung (Stand unter dem neuen minus Stand unter dem alten Namen)."""
+        einer Umbenennung (Stand unter dem neuen minus Stand unter dem alten Namen).
+        art (siehe zaehler.py): wird der Zaehler im Monat zurueckgesetzt, die Summe der
+        Zuwaechse ueber alle Werte des Monats."""
         start, ende = _monat(jahr, monat)
         jetzt = self._letzter_von(schl, kennungen, start, ende)
         if jetzt is None:
             self._warum = "keine Werte im Monat"
             return None
         vorher = self._letzter_von(schl, kennungen, start - timedelta(days=366), start)
+        if art != "fortlaufend":
+            werte = sorted((x for k in kennungen for x in self._werte(schl, k, start, ende)),
+                           key=lambda x: x[0])
+            wert, reset = zaehler.verbrauch(werte, vorher[1] if vorher else None, art)
+            if werte and (reset is not None or art == "reset"):
+                # Mit Reset im Monat haengt das Ergebnis nicht am Stand davor – keine Luecke
+                self.reset_bei[schl] = reset
+                if wert is None or wert > MAX_DELTA:
+                    self._warum = "Zählerstände unplausibel"
+                    return None
+                return round(wert, 3)
         if vorher is None:
             self._warum = "kein Wert vor dem Monat (nötig für die Differenz)"
             return None
@@ -263,10 +287,10 @@ class Datenquelle:
             return None
         return round(delta, 3)
 
-    def monat_summe(self, schl, kennungen, jahr, monat) -> float | None:
+    def monat_summe(self, schl, kennungen, jahr, monat, art="fortlaufend") -> float | None:
         """Differenz wie beim Zaehler; bei taeglich zurueckgesetzten Sensoren (Differenz
         leer oder 0) die Summe der Tagesmaxima."""
-        delta = self.monat_delta(schl, kennungen, jahr, monat)
+        delta = self.monat_delta(schl, kennungen, jahr, monat, art)
         if delta:
             return delta
         start, ende = _monat(jahr, monat)

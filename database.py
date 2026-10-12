@@ -329,7 +329,8 @@ FAHRZEUG_SCHLUESSEL = {
 # Eigene Ladezaehler eines Fahrzeugs (Heimladung "eigen"): immer "<schluessel>@<id>",
 # ohne @ sind es die Zaehler der gemeinsamen Wallbox
 WALLBOX_SCHLUESSEL = ("ha_pv_production", "ha_wallbox_energy", "ha_wallbox_cost",
-                      "fn_pv_production", "fn_wallbox_energy", "fn_wallbox_cost")
+                      "fn_pv_production", "fn_wallbox_energy", "fn_wallbox_cost",
+                      "art_pv_production", "art_wallbox_energy", "art_wallbox_cost")
 # Heimladung je Fahrzeug: gemeinsame Wallbox (Rest nach km verteilt; "push" = zusaetzlich
 # Einzelladungen aus HA mit Fahrzeug-Kennung; "akku" = Wallbox-Stunden dem Auto zuordnen, dessen
 # Akkustand gleichzeitig stieg, siehe heimladung.akku_anteile) oder eigene Zaehler
@@ -1342,6 +1343,10 @@ HA_ENTITY_DEFAULTS = {
     "fn_tankerkoenig":           "",
     "fn_tankerkoenig_2":         "",
     "fn_ev_battery":             "",
+    # Zaehlerart je kWh-/Kostensensor (siehe zaehler.py): "auto", "fortlaufend" oder "reset"
+    "art_pv_production":         "auto",
+    "art_wallbox_energy":        "auto",
+    "art_wallbox_cost":          "auto",
     # InfluxDB Verbindung
     "influx_url":                "http://localhost",
     "influx_port":               "8086",

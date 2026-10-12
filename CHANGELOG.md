@@ -3,6 +3,17 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [3.5.1] - 2026-10-12
+
+> ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.
+
+### Zaehler mit Reset und evcc
+- Zaehler, die taeglich, monatlich oder jaehrlich auf 0 springen (z.B. evcc „…_monatlich“, Verbrauchszaehler-Helfer), werden richtig gerechnet: Summe der Zuwaechse statt „Stand am Monatsende minus Vormonat“ (vorher z.B. 50,21 − 32,85 = 17,36 statt 50,21 kWh) – in der HA-Statistik, im History-Fallback und bei allen Datenbanken
+- Einstellungen → Sensoren: neue Spalte „Zaehlerart“ fuer PV, Netz und Kosten – Automatisch (Standard, erkennt Resets; kurze Aussetzer auf 0 zaehlen nicht), Fortlaufend oder Wird zurueckgesetzt
+- Neuer Knopf „⚡ Aus evcc uebernehmen“: sucht die evcc-Sensoren in Home Assistant und schlaegt sie samt Zaehlerart fuer die Sensorzeilen vor
+- Sensor pruefen zeigt die Zaehlerart und markiert Monate mit Reset (↺); das Importprotokoll vermerkt verrechnete Resets
+- Hilfe DE/EN, Uebersetzungen, neuer Test zaehler_test.py
+
 ## [3.5.0] - 2026-10-06
 
 > ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.
