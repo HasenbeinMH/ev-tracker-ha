@@ -1,26 +1,17 @@
 # Changelog
 
-Alle nennenswerten Aenderungen des EV Tracker Add-ons.
-Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
-
 ## [3.5.4] - 2026-10-13
-
-> ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.
 
 ### Klarere Hinweise
 - Sensor pruefen und Hilfe: verstaendlicherer Hinweis zu „⚠ HA“ – der Monatswert von Home Assistant ist zu hoch, wenn der Sensor kurz auf 0 fiel; die App rechnet mit dem tatsaechlichen Anstieg des Zaehlers
 
 ## [3.5.3] - 2026-10-13
 
-> ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.
-
 ### Sensor pruefen uebersichtlicher
 - Sensor pruefen: Spalten, die der Import fuer den Sensor nicht nutzt, sind ausgegraut, mit Erklaerung darunter (z.B. ist der Mittelwert eines Zaehlers nur der durchschnittliche Zaehlerstand – genutzt wird er nur fuer den Kraftstoffpreis)
 - Vereinfacht: Auswahl „Zaehlerart“ und Knopf „Aus evcc uebernehmen“ wieder entfernt – Resets und Aussetzer bei PV, Netz und Kosten werden immer automatisch erkannt, einstellen muss man nichts
 
 ## [3.5.2] - 2026-10-12
-
-> ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.
 
 ### Aussetzer bei fortlaufenden Zaehlern
 - Fortlaufende Zaehler mit kurzen Aussetzern (z.B. evcc-Neustart meldet kurz 0): HA bucht bei total_increasing jedes Mal den ganzen Stand noch einmal auf die Langzeitstatistik (gemeldet: 563 statt rund 55 kWh) – mit Zaehlerart Automatisch gelten jetzt die Zaehlerstaende, wenn die Statistik mehr ergibt, als sie erklaeren
@@ -29,8 +20,6 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 - Test zaehler_test.py erweitert
 
 ## [3.5.1] - 2026-10-12
-
-> ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.
 
 ### Zaehler mit Reset und evcc
 - Zaehler, die taeglich, monatlich oder jaehrlich auf 0 springen (z.B. evcc „…_monatlich“, Verbrauchszaehler-Helfer), werden richtig gerechnet: Summe der Zuwaechse statt „Stand am Monatsende minus Vormonat“ (vorher z.B. 50,21 − 32,85 = 17,36 statt 50,21 kWh) – in der HA-Statistik, im History-Fallback und bei allen Datenbanken
@@ -41,8 +30,6 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [3.5.0] - 2026-10-06
 
-> ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.
-
 ### Erstzulassung und Gebrauchtwagen
 - Einstellungen → Anschaffung: Erstzulassung, bei Gebrauchtwagen das Datum der Zulassung auf den Halter, und der km-Stand bei Kauf (je Fahrzeug)
 - KFZ-Steuer-Ersparnis, Monate und Amortisation zaehlen erst ab der Zulassung – der Zulassungsmonat tagesgenau anteilig, Monate und Daten davor gar nicht (z.B. „KFZ-Steuer anteilig fuer 7,5 Monate“); im Simulationsmodus gilt die Zulassung nicht
@@ -52,16 +39,12 @@ Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
 ## [3.4.2] - 2026-10-04
 
-> ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.
-
 ### Ladungen ohne km
 - Dashboard: Hinweis, wenn ein Monat Ladungen, aber noch keine km hat – dort sind Kraftstoff-Ersparnis und Kosten je km unvollstaendig (typisch am Monatsanfang bis zum naechsten Abruf)
 - Ladungen aus Home Assistant: beim Empfang werden die km des Monats sofort mit abgerufen (hoechstens alle 10 Minuten, nur mit automatischem Abruf) statt erst in der Nacht; Ergebnis im Importprotokoll
 - Hilfe ergaenzt; neuer Test km_test.py
 
 ## [3.4.1] - 2026-10-04
-
-> ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.
 
 ### Für alle Benutzer sichtbar
 - Der Eintrag „EV Tracker“ in der Seitenleiste ist jetzt für alle Benutzer von Home Assistant sichtbar, nicht nur für Admins (`panel_admin: false`). Die Add-on-Optionen kann weiterhin nur ein Admin ändern

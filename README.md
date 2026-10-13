@@ -1,15 +1,14 @@
 # ⚡ EV Tracker
 
-> 🚧 **Noch in aktiver Entwicklung.** Dieses Add-on wird mit Unterstützung von KI (Claude)
-> erstellt und getestet. Funktionen, Konfiguration und Datenstruktur können sich noch
-> ändern; vor größeren Updates lohnt sich eine Sicherung über Home Assistants eigene
-> Backups. Rückmeldungen und Fehlerberichte sind willkommen.
+> Dieses Add-on wird mit Unterstützung von KI (Claude) entwickelt und getestet und läuft
+> stabil. Eine Sicherung über Home Assistants eigene Backups vor einem Update schadet nie.
+> Rückmeldungen und Fehlerberichte sind willkommen.
 
-> [!WARNING]
-> **Update auf 3.x: vorher unbedingt ein Backup anlegen!** Version 3.0 baut die Datenbank
-> für mehrere E-Autos um. Vor dem Update eine Home-Assistant-Sicherung mit dem EV Tracker
-> Add-on erstellen und zusätzlich unter **Backup** die Datenbank herunterladen. Ohne Sicherung
-> gibt es keinen Weg zurück auf eine ältere Version.
+> [!NOTE]
+> **Update von 2.x:** Version 3.0 hat die Datenbank für mehrere E-Autos umgebaut. Wer noch
+> eine 2.x-Version nutzt, erstellt vor dem Update eine Home-Assistant-Sicherung mit dem
+> EV Tracker Add-on und lädt zusätzlich unter **Backup** die Datenbank herunter – ohne
+> Sicherung gibt es keinen Weg zurück.
 
 Web-App zur Erfassung und Auswertung der Kosteneinsparungen eines oder mehrerer Elektroautos
 gegenüber einem Benziner, Diesel oder Autogas-Auto. Fahrzeugname und -bild sind in den Einstellungen frei wählbar –
