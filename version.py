@@ -19,10 +19,18 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "3.5.3"
+VERSION = "3.5.4"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.5.4",
+        "datum": "2026-10-13",
+        "titel": "Klarere Hinweise",
+        "aenderungen": [
+            "Sensor pruefen und Hilfe: verstaendlicherer Hinweis zu „⚠ HA“ – der Monatswert von Home Assistant ist zu hoch, wenn der Sensor kurz auf 0 fiel; die App rechnet mit dem tatsaechlichen Anstieg des Zaehlers",
+        ],
+    },
     {
         "version": "3.5.3",
         "datum": "2026-10-13",

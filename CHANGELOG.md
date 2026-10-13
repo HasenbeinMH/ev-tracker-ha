@@ -3,6 +3,13 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [3.5.4] - 2026-10-13
+
+> ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.
+
+### Klarere Hinweise
+- Sensor pruefen und Hilfe: verstaendlicherer Hinweis zu „⚠ HA“ – der Monatswert von Home Assistant ist zu hoch, wenn der Sensor kurz auf 0 fiel; die App rechnet mit dem tatsaechlichen Anstieg des Zaehlers
+
 ## [3.5.3] - 2026-10-13
 
 > ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.
