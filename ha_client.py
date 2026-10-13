@@ -180,16 +180,17 @@ class HAClient:
                               year: int, month: int,
                               mode: str = "delta",
                               braucht_vorwert: bool = False,
-                              art: str = "fortlaufend") -> float | None:
+                              reset_erkennen: bool = False) -> float | None:
         """
         Holt den Monatswert über die Statistics-API.
         Gibt None zurück wenn keine Statistics → Fallback auf History.
         braucht_vorwert (nur "delta"): ohne Wert vor dem Monat None statt der Differenz
         ab dem ersten Wert im Monat – fuer Zaehler, die nur zusammen mit einem anderen
         ueber den ganzen Monat stimmen (Kosten ÷ kWh).
-        art (nur "delta", siehe zaehler.py): bei einem zurueckgesetzten Zaehler wird aus
-        den Staenden ("state") gerechnet – "sum" stimmt dann nicht immer, z.B. bei
-        state_class "total" ohne last_reset (HA zaehlt den Reset als Abnahme).
+        reset_erkennen (nur "delta", kWh/Kosten, siehe zaehler.py): bei einem
+        zurueckgesetzten Zaehler wird aus den Staenden ("state") gerechnet – "sum" stimmt
+        dann nicht immer, z.B. bei state_class "total" ohne last_reset (HA zaehlt den
+        Reset als Abnahme).
         """
         last_day  = calendar.monthrange(year, month)[1]
 
@@ -235,13 +236,13 @@ class HAClient:
             self.letzter_reset = None
             self.sum_verworfen = None
             wert = None
-            if art != "fortlaufend":
+            if reset_erkennen:
                 staende = [(r["start"], r["state"]) for r in month_rows if r.get("state") is not None]
                 vor = [r["state"] for r in pre_rows if r.get("state") is not None]
-                wert, reset = zaehler.verbrauch(staende, vor[-1] if vor else None, art)
+                wert, reset = zaehler.verbrauch(staende, vor[-1] if vor else None)
                 if not staende:
                     wert = None
-                elif reset is not None or art == "reset":
+                elif reset is not None:
                     self.letzter_reset = reset
                     if wert is None or (braucht_vorwert and not vor and reset is None):
                         return None
@@ -280,7 +281,8 @@ class HAClient:
         elif mode == "sum":
             state_rows = [r for r in month_rows if r.get("state") is not None]
             if not state_rows:
-                return self.get_month_value_stats(entity_id, year, month, mode="delta", art=art)
+                return self.get_month_value_stats(entity_id, year, month, mode="delta",
+                                                  reset_erkennen=reset_erkennen)
             states = [r["state"] for r in state_rows if r["state"] >= 0]
             if not states:
                 return None
@@ -296,7 +298,8 @@ class HAClient:
                 total = sum(daily_max.values())
                 return round(total, 3) if total > 0 else None
             else:
-                return self.get_month_value_stats(entity_id, year, month, mode="delta", art=art)
+                return self.get_month_value_stats(entity_id, year, month, mode="delta",
+                                                  reset_erkennen=reset_erkennen)
 
         return None
 
@@ -353,10 +356,10 @@ class HAClient:
             return []
 
     def _history_delta(self, entity_id: str, year: int, month: int,
-                       art: str = "fortlaufend") -> float | None:
+                       reset_erkennen: bool = False) -> float | None:
         """History-Fallback: Delta mit letztem bekannten Wert vor Monatsbeginn als Basis.
         Sucht bis zu 12 Monate zurück – nötig für Sensoren die selten aktualisieren.
-        art (siehe zaehler.py): bei einem zurueckgesetzten Zaehler die Summe der Zuwaechse
+        reset_erkennen (siehe zaehler.py): bei einem zurueckgesetzten Zaehler die Summe der Zuwaechse
         statt "letzter minus Vorwert" (der Vorwert ist dann der Endstand des Vormonats)."""
         self.letzter_reset = None
         # Letzten Wert VOR Monatsbeginn suchen – bis 12 Monate zurück
@@ -439,9 +442,9 @@ class HAClient:
                 except (ValueError, TypeError):
                     continue
 
-        if art != "fortlaufend" and staende:
-            wert, reset = zaehler.verbrauch(staende, start_val, art)
-            if reset is not None or art == "reset":
+        if reset_erkennen and staende:
+            wert, reset = zaehler.verbrauch(staende, start_val)
+            if reset is not None:
                 self.letzter_reset = reset
                 return round(wert, 3) if wert is not None and wert <= 10000 else None
 
@@ -484,11 +487,12 @@ class HAClient:
     # ─────────────────────────────────────────
 
     def get_month_delta(self, entity_id: str, year: int, month: int,
-                        art: str = "fortlaufend") -> float | None:
-        """Monatliches Delta eines Zählers (kWh, km); art siehe zaehler.py."""
-        val = self.get_month_value_stats(entity_id, year, month, mode="delta", art=art)
+                        reset_erkennen: bool = False) -> float | None:
+        """Monatliches Delta eines Zählers (kWh, km); reset_erkennen siehe zaehler.py."""
+        val = self.get_month_value_stats(entity_id, year, month, mode="delta",
+                                         reset_erkennen=reset_erkennen)
         if val is None:
-            val = self._history_delta(entity_id, year, month, art)
+            val = self._history_delta(entity_id, year, month, reset_erkennen)
         return val
 
     def get_month_end_state(self, entity_id: str, year: int, month: int) -> float | None:
@@ -510,11 +514,12 @@ class HAClient:
         return self.get_month_delta(entity_id, year, month)
 
     def get_month_sum_from_daily(self, entity_id: str, year: int, month: int,
-                                 art: str = "fortlaufend") -> float | None:
+                                 reset_erkennen: bool = False) -> float | None:
         """Monatssumme für Sensoren mit täglichem Reset (z.B. PV yield_today)."""
-        val = self.get_month_value_stats(entity_id, year, month, mode="sum", art=art)
+        val = self.get_month_value_stats(entity_id, year, month, mode="sum",
+                                         reset_erkennen=reset_erkennen)
         if val is None:
-            val = self._history_delta(entity_id, year, month, art)
+            val = self._history_delta(entity_id, year, month, reset_erkennen)
         return val
 
     def get_month_avg(self, entity_id: str, year: int, month: int) -> float | None:

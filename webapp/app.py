@@ -949,21 +949,20 @@ def _fetch_monat(client, quelle, cfg, year, month, nur=None):
                 return erster_wert(ha_ids("ha_odometer"),
                                    lambda e: client.get_month_delta(e, year, month))
             if key == "pv":
-                art = zaehler.art_aus(cfg, "ha_pv_production")
+                # kWh-/Kostenzaehler koennen zurueckgesetzt werden (siehe zaehler.py)
                 def pv(e):
-                    v = client.get_month_sum_from_daily(e, year, month, art)
-                    return v if v is not None else client.get_month_delta(e, year, month, art)
+                    v = client.get_month_sum_from_daily(e, year, month, reset_erkennen=True)
+                    return v if v is not None else client.get_month_delta(e, year, month, True)
                 return erster_wert(ha_ids("ha_pv_production"), pv)
             if key == "wallbox":
-                art = zaehler.art_aus(cfg, "ha_wallbox_energy")
                 return erster_wert(ha_ids("ha_wallbox_energy"),
-                                   lambda e: client.get_month_delta(e, year, month, art))
+                                   lambda e: client.get_month_delta(e, year, month, True))
             if key == "kosten":
                 # Nur mit Stand vor dem Monat – sonst passen Kosten und kWh nicht zusammen
-                art = zaehler.art_aus(cfg, "ha_wallbox_cost")
                 return erster_wert(ha_ids("ha_wallbox_cost"),
                                    lambda e: client.get_month_value_stats(
-                                       e, year, month, "delta", braucht_vorwert=True, art=art))
+                                       e, year, month, "delta", braucht_vorwert=True,
+                                       reset_erkennen=True))
             if key == "benzin":
                 ids = ha_ids("ha_tankerkoenig") + ha_ids("ha_tankerkoenig_2")
                 return client.get_month_avg_multi(ids, year, month) if ids else None
@@ -1263,99 +1262,31 @@ def entities_suchen(q: str = ""):
     return {"anzahl": len(treffer), "treffer": treffer[:60]}
 
 
-# Zuordnung der evcc-Sensoren zu den Sensorzeilen: je Zeile Einheit, Pflichtwoerter (eins
-# davon muss vorkommen), "lade" = ein Wort fuers Laden bringt +5 (ohne koennte es die
-# gesamte PV-Erzeugung bzw. der Hausnetzbezug sein – dann ein Hinweis), Pluswoerter (je +1)
-# und Ausschlusswoerter. Namen je nach evcc-
-# Integration bzw. eigenen Templates verschieden – deshalb nur ein Vorschlag, der User bestaetigt.
-_LADE = r"charg|lade|loadpoint|lp\d|_lp_|vehicle|fahrzeug|auto\b|_auto"
-EVCC_ZEILEN = {
-    "ha_wallbox_energy": {"einheit": r"^k?wh$", "pflicht": r"grid|netz", "lade": True,
-                          "plus": [r"import|bezug|total|gesamt"],
-                          "aus": r"pv|solar|sonne|export|einspeis|power|leistung|price|preis|percent"},
-    "ha_pv_production":  {"einheit": r"^k?wh$", "pflicht": r"pv|solar|sonne|green", "lade": True,
-                          "plus": [r"total|gesamt"],
-                          "aus": r"grid|netz|percent|anteil|power|leistung|forecast|prognose"},
-    "ha_wallbox_cost":   {"einheit": r"^(€|eur)$", "pflicht": r"cost|kosten|price|preis", "lade": True,
-                          "plus": [r"total|gesamt|grid|netz"], "aus": r"/"},
-    "ha_ev_battery":     {"einheit": r"^%$", "pflicht": r"soc|battery|akku|ladestand",
-                          "plus": [r"vehicle|fahrzeug|auto\b|_auto|lp\d|_lp_|loadpoint"],
-                          "aus": r"home|site|haus|speicher|house|percent|anteil|solar|limit|min|max"},
-    "ha_odometer":       {"einheit": r"^km$", "pflicht": r"odometer|kilometer|km_?stand|mileage",
-                          "plus": [r"vehicle|fahrzeug"], "aus": r"range|reichweite"},
-}
-# Ohne PV-Aufteilung bietet evcc oft nur die gesamte Ladeenergie – als Alternative fuer
-# "Netz ins Auto" (stimmt ohne PV-Anlage)
-_EVCC_GESAMT = re.compile(r"(charg|lade|loadpoint|lp\d)", re.I)
+# Welche Spalte der Diagnose der Import fuer eine Sensorzeile nutzt (siehe _fetch_monat);
+# "" = keine (Akkustand: nur Stundenwerte fuer Ladeerkennung und Akkuverbrauch)
+DIAGNOSE_SPALTE = {"ha_odometer": "delta", "ha_wallbox_energy": "delta", "ha_wallbox_cost": "delta",
+                   "ha_pv_production": "summe", "ha_tankerkoenig": "mittel",
+                   "ha_tankerkoenig_2": "mittel", "ha_ev_battery": ""}
 
 
-def evcc_zuordnung(zustaende: list) -> list:
-    """[{ha_key, kandidaten: [{entity_id, name, state, einheit, art, hinweis}]}] – je Zeile
-    die passenden evcc-Sensoren, der beste zuerst. Fortlaufende Zaehler gehen vor solchen,
-    die zurueckgesetzt werden (taeglich/monatlich); fuer die schlaegt art "reset" vor."""
-    evcc = []
-    for st in zustaende or []:
-        eid = st.get("entity_id", "")
-        attr = st.get("attributes") or {}
-        text = f"{eid} {attr.get('friendly_name', '')}".lower()
-        if eid.startswith("sensor.") and "evcc" in text:
-            evcc.append((eid, attr, text, st.get("state")))
-    zeilen = []
-    for ha_key, regel in EVCC_ZEILEN.items():
-        kandidaten = []
-        for eid, attr, text, state in evcc:
-            einheit = (attr.get("unit_of_measurement") or "").strip()
-            if not re.search(regel["einheit"], einheit.lower()):
-                continue
-            hinweis = ""
-            if re.search(regel["pflicht"], text) and not re.search(regel["aus"], text):
-                punkte = 10 + sum(1 for p in regel["plus"] if re.search(p, text))
-                if regel.get("lade"):
-                    if re.search(_LADE, text):
-                        punkte += 5
-                    else:
-                        hinweis = _("prüfen: nur die ins Auto geladene Energie, nicht Haus/Anlage gesamt")
-            elif (ha_key == "ha_wallbox_energy" and _EVCC_GESAMT.search(text)
-                  and not re.search(regel["aus"], text)):
-                punkte, hinweis = 1, _("gesamte Ladeenergie – nur ohne PV-Anlage richtig")
-            else:
-                continue
-            setzt_zurueck = bool(attr.get("last_reset") or attr.get("next_reset")
-                                 or zaehler.name_setzt_zurueck(text))
-            if ha_key in zaehler.ART_FELD and not setzt_zurueck:
-                punkte += 3             # fortlaufender Zaehler bevorzugt
-            if einheit.lower() == "wh":
-                punkte -= 5             # App erwartet kWh
-            kandidaten.append((punkte, eid, {
-                "entity_id": eid, "name": attr.get("friendly_name", ""), "state": state,
-                "einheit": einheit, "hinweis": hinweis,
-                "art": ("reset" if setzt_zurueck else "auto") if ha_key in zaehler.ART_FELD else ""}))
-        kandidaten.sort(key=lambda k: (-k[0], k[1]))
-        zeilen.append({"ha_key": ha_key, "kandidaten": [k[2] for k in kandidaten[:8]]})
-    return zeilen
-
-
-@app.get("/api/evcc_vorschlag")
-def evcc_vorschlag():
-    """Schlaegt die evcc-Sensoren aus HA fuer die Sensorzeilen vor (Einstellungen)."""
-    client = _ha_client()
-    if client is None:
-        return JSONResponse({"error": _("HA nicht konfiguriert.")}, status_code=400)
-    try:
-        alle = client._get("/api/states")
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=400)
-    zeilen = evcc_zuordnung(alle)
-    anzahl = sum(1 for st in alle or [] if "evcc" in
-                 f"{st.get('entity_id', '')} {(st.get('attributes') or {}).get('friendly_name', '')}".lower())
-    return {"anzahl": anzahl, "zeilen": zeilen}
+def _diagnose_spalte(zeile, einheit: str):
+    """Genutzte Spalte: aus der Sensorzeile, in der der Sensor eingetragen ist, sonst aus
+    der Einheit geraten. None = unbekannt (dann wird nichts ausgegraut)."""
+    if zeile in DIAGNOSE_SPALTE:
+        return DIAGNOSE_SPALTE[zeile]
+    e = (einheit or "").strip().lower()
+    if "/l" in e:
+        return "mittel"
+    if e in ("km", "kwh", "wh", "€", "eur"):
+        return "delta"
+    if e == "%":
+        return ""
+    return None
 
 
 @app.get("/api/diagnose")
-def sensor_diagnose(entity: str, jahr: int = 0, monat: int = 0, art: str = ""):
-    """Prueft einen Sensor: aktueller Wert + Monatswerte der letzten 3 Monate.
-    art: Zaehlerart (zaehler.ARTEN); leer = die eingestellte, falls der Sensor in einer
-    kWh-/Kostenzeile steht, sonst "auto"."""
+def sensor_diagnose(entity: str, jahr: int = 0, monat: int = 0):
+    """Prueft einen Sensor: aktueller Wert + Monatswerte der letzten 3 Monate."""
     client = _ha_client()
     if client is None:
         return JSONResponse({"error": _("HA nicht konfiguriert.")}, status_code=400)
@@ -1372,23 +1303,21 @@ def sensor_diagnose(entity: str, jahr: int = 0, monat: int = 0, art: str = ""):
     except Exception as e:
         return JSONResponse({"error": _("Entity nicht gefunden: {0}", e)}, status_code=400)
 
-    if art not in zaehler.ARTEN:
-        cfg = db.get_ha_settings()
-        feld = next((f for f in zaehler.ART_FELD
-                     if entity in datenquellen.namen_liste(cfg.get(f))), None)
-        art = zaehler.art_aus(cfg, feld) if feld else "auto"
-    ergebnis["art"] = art
+    cfg = db.get_ha_settings()
+    zeile = next((h for h, _f, _l in SENSOR_FELDER
+                  if entity in datenquellen.namen_liste(cfg.get(h))), None)
+    ergebnis["zeile"] = _sensor_label(next(l for h, _f, l in SENSOR_FELDER if h == zeile)) if zeile else ""
+    ergebnis["genutzt"] = _diagnose_spalte(zeile, ergebnis["einheit"])
     ergebnis["state_class"] = attr.get("state_class", "")
-    # Hinweis, dass der Sensor laut HA bzw. Name zurueckgesetzt wird
-    ergebnis["setzt_zurueck"] = bool(attr.get("last_reset") or attr.get("next_reset")
-                                     or zaehler.name_setzt_zurueck(f"{entity} {ergebnis['name']}"))
+    # Resets erkennen wie beim Import – nur der Kilometerstand ist immer fortlaufend
+    reset_erkennen = zeile != "ha_odometer" and ergebnis["einheit"].strip().lower() != "km"
     jetzt = datetime.now()
     j, m = (jahr or jetzt.year), (monat or jetzt.month)
     for _i in range(3):
-        delta = client.get_month_delta(entity, j, m, art)
+        delta = client.get_month_delta(entity, j, m, reset_erkennen)
         reset = client.letzter_reset if delta is not None else None
         verworfen = client.sum_verworfen if delta is not None else None
-        summe = client.get_month_sum_from_daily(entity, j, m, art)
+        summe = client.get_month_sum_from_daily(entity, j, m, reset_erkennen)
         mittel = client.get_month_avg(entity, j, m)
         ergebnis["monate"].append({
             "monat": f"{monatsname(m)[:3]} {j}",
@@ -1786,19 +1715,18 @@ def _wallbox_stundenwerte(client, dq, cfg):
     def stundenwerte(schluessel, start, ende):
         # Zurueckgesetzte Zaehler fortlaufend machen – sonst ergaebe der Reset eine
         # negative Stunde
-        art = zaehler.art_aus(cfg, felder[schluessel])
         if dq is not None and dq.hat(schluessel):
             try:
                 werte = dq.stundenwerte(schluessel, start, ende, "last")
                 if werte:
-                    return zaehler.fortlaufend_machen(werte, art)
+                    return zaehler.fortlaufend_machen(werte)
             except Exception:
                 pass
         entity = (datenquellen.namen_liste(cfg.get(felder[schluessel])) or [""])[-1]
         if client is None or not entity:
             return []
         return zaehler.fortlaufend_machen(
-            akkuverbrauch._stundenwerte(client, entity, start, ende, ("state", "sum")), art)
+            akkuverbrauch._stundenwerte(client, entity, start, ende, ("state", "sum")))
     return stundenwerte
 
 
@@ -2415,7 +2343,6 @@ def einstellungen(request: Request, meldung: str = ""):
                                    and not (ha_settings.get("ha_url") and ha_settings.get("ha_token")),
                   anbieter=db.get_lade_anbieter(),
                   sensor_felder=[(h, f, _sensor_label(l)) for h, f, l in SENSOR_FELDER],
-                  art_felder=zaehler.ART_FELD,
                   quellen=datenquellen.QUELLEN,
                   prom_standard=datenquellen.PROM_SELEKTOR_STANDARD,
                   push_token=heimladung.token(),

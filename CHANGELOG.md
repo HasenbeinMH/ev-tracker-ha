@@ -3,6 +3,14 @@
 Alle nennenswerten Aenderungen des EV Tracker Add-ons.
 Format angelehnt an [Keep a Changelog](https://keepachangelog.com/de/1.1.0/).
 
+## [3.5.3] - 2026-10-13
+
+> ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.
+
+### Sensor pruefen uebersichtlicher
+- Sensor pruefen: Spalten, die der Import fuer den Sensor nicht nutzt, sind ausgegraut, mit Erklaerung darunter (z.B. ist der Mittelwert eines Zaehlers nur der durchschnittliche Zaehlerstand – genutzt wird er nur fuer den Kraftstoffpreis)
+- Vereinfacht: Auswahl „Zaehlerart“ und Knopf „Aus evcc uebernehmen“ wieder entfernt – Resets und Aussetzer bei PV, Netz und Kosten werden immer automatisch erkannt, einstellen muss man nichts
+
 ## [3.5.2] - 2026-10-12
 
 > ⚠️ Vor dem Update ein Backup anlegen – Hinweise unter 3.4.0.

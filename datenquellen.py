@@ -209,21 +209,17 @@ class Datenquelle:
             if schluessel == "benzin":
                 wert = self.monat_mittel(schluessel, ids, jahr, monat)
             elif schluessel in ("pv", "wallbox"):
-                wert = self.monat_summe(schluessel, ids, jahr, monat, self.zaehlerart(schluessel))
+                wert = self.monat_summe(schluessel, ids, jahr, monat, reset_erkennen=True)
             else:
-                wert = self.monat_delta(schluessel, ids, jahr, monat, self.zaehlerart(schluessel))
+                # Kostenzaehler koennen zurueckgesetzt werden, der Kilometerstand nicht
+                wert = self.monat_delta(schluessel, ids, jahr, monat,
+                                        reset_erkennen=schluessel == "kosten")
         except Exception as e:
             wert = None
             self._warum = "Fehler: " + self.fehlertext(e)
         if wert is None:
             self.grund[schluessel] = self._warum
         return wert
-
-    def zaehlerart(self, schluessel: str) -> str:
-        """Zaehlerart aus den Einstellungen (kWh/Kosten); der Kilometerstand ist fortlaufend."""
-        if schluessel not in ("pv", "wallbox", "kosten"):
-            return "fortlaufend"
-        return zaehler.art_aus(self.cfg, SENSOREN[schluessel][0][0])
 
     def monat_stand(self, schluessel: str, jahr: int, monat: int) -> float | None:
         """Letzter Zaehlerstand im Monat (Kilometerstand am Monatsende); None ohne Werte."""
@@ -241,11 +237,11 @@ class Datenquelle:
         treffer = [x for x in (self._letzter(schl, k, von, bis) for k in kennungen) if x]
         return max(treffer, key=lambda x: (x[0], x[1])) if treffer else None
 
-    def monat_delta(self, schl, kennungen, jahr, monat, art="fortlaufend") -> float | None:
+    def monat_delta(self, schl, kennungen, jahr, monat, reset_erkennen=False) -> float | None:
         """Zaehlerstand am Monatsende minus letzter Stand vor dem Monat (bis 1 Jahr zurueck).
         Bei mehreren Namen zaehlt je Zeitpunkt der juengste Wert – so klappt auch der Monat
         einer Umbenennung (Stand unter dem neuen minus Stand unter dem alten Namen).
-        art (siehe zaehler.py): wird der Zaehler im Monat zurueckgesetzt, die Summe der
+        reset_erkennen (siehe zaehler.py): wird der Zaehler im Monat zurueckgesetzt, die Summe der
         Zuwaechse ueber alle Werte des Monats."""
         start, ende = _monat(jahr, monat)
         jetzt = self._letzter_von(schl, kennungen, start, ende)
@@ -253,11 +249,11 @@ class Datenquelle:
             self._warum = "keine Werte im Monat"
             return None
         vorher = self._letzter_von(schl, kennungen, start - timedelta(days=366), start)
-        if art != "fortlaufend":
+        if reset_erkennen:
             werte = sorted((x for k in kennungen for x in self._werte(schl, k, start, ende)),
                            key=lambda x: x[0])
-            wert, reset = zaehler.verbrauch(werte, vorher[1] if vorher else None, art)
-            if werte and (reset is not None or art == "reset"):
+            wert, reset = zaehler.verbrauch(werte, vorher[1] if vorher else None)
+            if werte and reset is not None:
                 # Mit Reset im Monat haengt das Ergebnis nicht am Stand davor – keine Luecke
                 self.reset_bei[schl] = reset
                 if wert is None or wert > MAX_DELTA:
@@ -287,10 +283,10 @@ class Datenquelle:
             return None
         return round(delta, 3)
 
-    def monat_summe(self, schl, kennungen, jahr, monat, art="fortlaufend") -> float | None:
+    def monat_summe(self, schl, kennungen, jahr, monat, reset_erkennen=False) -> float | None:
         """Differenz wie beim Zaehler; bei taeglich zurueckgesetzten Sensoren (Differenz
         leer oder 0) die Summe der Tagesmaxima."""
-        delta = self.monat_delta(schl, kennungen, jahr, monat, art)
+        delta = self.monat_delta(schl, kennungen, jahr, monat, reset_erkennen)
         if delta:
             return delta
         start, ende = _monat(jahr, monat)
