@@ -16,6 +16,12 @@ nicht auf ein bestimmtes Modell festgelegt. Oberfläche, Hilfe und Berichte gibt
 
 ![Dashboard des EV Trackers](https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-dashboard.png)
 
+## 🎬 Der EV Tracker in 60 Sekunden
+
+<a href="https://www.youtube.com/watch?v=IDclzYzTyR8"><img src="https://img.youtube.com/vi/IDclzYzTyR8/maxresdefault.jpg" alt="Video: Der EV Tracker in 60 Sekunden (YouTube)" width="60%"></a>
+
+*Zum Abspielen auf das Bild klicken – das Video läuft auf YouTube.*
+
 ## Einblicke
 
 *Alle Bilder mit Beispieldaten: 20 Monate, ein Elektroauto mit Wallbox und PV-Anlage.*
