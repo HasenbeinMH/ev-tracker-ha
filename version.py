@@ -19,10 +19,22 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "3.5.4"
+VERSION = "3.6.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.6.0",
+        "datum": "2026-10-18",
+        "titel": "Diagnose-Paket",
+        "aenderungen": [
+            "Neu auf der Backup-Seite: Diagnose-Paket fuer Importprobleme – eine ZIP-Datei mit Datenbank, Importprotokoll und den Rohdaten der eingetragenen HA-Sensoren (Stundenwerte der letzten drei Monate, Werte um jeden Monatswechsel). Erst damit laesst sich nachvollziehen, wie ein Monatswert zustande kam",
+            "In der Datenbank-Kopie sind HA-Token, Passwoerter und Mail-Adressen geleert",
+            "Mit Fehlerbeschreibung per Mail an den Support: der Knopf laedt das Paket herunter und oeffnet das Mailprogramm mit fertiger Vorlage; die ZIP-Datei haengt man selbst an",
+            "Behoben: der Einstellungs-Export „Ohne Token/Passwort“ enthielt das Mail-Passwort",
+            "Neuer Test diagnose_test.py",
+        ],
+    },
     {
         "version": "3.5.4",
         "datum": "2026-10-13",

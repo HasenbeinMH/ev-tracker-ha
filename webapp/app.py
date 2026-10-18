@@ -37,6 +37,7 @@ import charts
 import zeitraum as zeitraum_mod
 from version import VERSION, CHANGELOG
 import datenquellen
+import diagnose
 import heimladung
 import zaehler
 from ha_client import HAClient, IST_ADDON, ha_verbindung as _ha_verbindung
@@ -1440,7 +1441,7 @@ def _rechnung_apply(payload: dict):
 #  Einstellungen als Datei sichern / laden
 # ─────────────────────────────────────────────────────────────
 
-GEHEIM_KEYS = {"ha_token", heimladung.TOKEN_KEY} | datenquellen.GEHEIM
+GEHEIM_KEYS = diagnose.GEHEIM
 
 
 @app.get("/api/settings/export")
@@ -1449,7 +1450,7 @@ def settings_export(secrets: int = 1):
     import json
     werte = db.get_alle_einstellungen()
     if not secrets:
-        werte = {k: v for k, v in werte.items() if k not in GEHEIM_KEYS}
+        werte = {k: v for k, v in werte.items() if k.split("@", 1)[0] not in GEHEIM_KEYS}
 
     daten = {
         "typ": "ev-tracker-einstellungen",
@@ -2125,7 +2126,9 @@ def _sicherungskopie(praefix: str) -> str:
 @app.get("/backup", response_class=HTMLResponse)
 def backup_seite(request: Request):
     return render(request, "backup.html", aktiv="backup", db_pfad=db.DB_PATH,
-                  add_on_modus=IST_ADDON)
+                  add_on_modus=IST_ADDON, support_mail=diagnose.SUPPORT_MAIL, version=VERSION,
+                  datenquelle=datenquellen.QUELLEN.get(db.get_ha_settings().get("datasource"),
+                                                      "Home Assistant API"))
 
 
 @app.get("/api/backup/status")
@@ -2253,6 +2256,17 @@ def reset_messdaten(bereiche: str = Form(""), bestaetigt: str = Form("")):
                      for b, n in geloescht.items())
     return {"ok": True, "sicherung": sicherung,
             "geloescht": geloescht, "meldung": _("Zurückgesetzt – {0}", text)}
+
+
+@app.get("/api/diagnose/paket")
+def diagnose_paket():
+    """ZIP zum Weitergeben bei Importproblemen: Datenbank ohne Zugangsdaten,
+    Importprotokoll und die Rohdaten der eingetragenen HA-Sensoren (diagnose.py)."""
+    client = _ha_client()
+    inhalt = diagnose.paket_bauen(VERSION, {"import.log": IMPORT_LOG_DATEI}, client, IST_ADDON)
+    stamp = datetime.now().strftime("%Y-%m-%d_%H%M")
+    return Response(inhalt, media_type="application/zip", headers={
+        "Content-Disposition": f'attachment; filename="ev_tracker_diagnose_{stamp}.zip"'})
 
 
 @app.get("/api/backup")

@@ -45,6 +45,32 @@
 </div>
 {% endif %}
 
+<h2>{{ _("Diagnose-Paket") }}</h2>
+<div class="card">
+  <p class="hint" style="margin-top:0">
+    {{ _("Für die Fehlersuche bei Importproblemen: eine ZIP-Datei mit der Datenbank, dem Importprotokoll und den Rohdaten der eingetragenen Sensoren aus Home Assistant (Stundenwerte der letzten drei Monate und die Werte um jeden Monatswechsel).") }}
+  </p>
+  <div class="inline">
+    <a class="btn secondary" href="api/diagnose/paket" style="text-decoration:none">{{ _("⬇ Diagnose-Paket herunterladen") }}</a>
+    <span class="hint" style="align-self:center; margin:0">{{ _("Das Erstellen dauert einige Sekunden.") }}</span>
+  </div>
+  {% if support_mail %}
+  <label class="feld" style="display:block; margin-top:12px">{{ _("Was stimmt nicht? (für die Mail an den Support)") }}
+    <textarea id="diagnose-text" rows="5" style="width:100%; box-sizing:border-box"
+              placeholder="{{ _t("Welcher Monat, welcher Wert? Was zeigt die App, was hättest du erwartet?") }}"></textarea>
+  </label>
+  <div class="inline">
+    <button type="button" onclick="diagnoseMail()">{{ _("📧 Paket herunterladen und Mail öffnen") }}</button>
+  </div>
+  <p class="hint" id="diagnose-mail-hinweis" style="display:none">
+    {{ _("Bitte die eben heruntergeladene Datei <code>ev_tracker_diagnose_….zip</code> an die Mail anhängen – das Mailprogramm kann das nicht selbst. Öffnet sich kein Mailprogramm, schreib an <a href=\"mailto:{0}\">{0}</a>.", support_mail) }}
+  </p>
+  {% endif %}
+  <p class="hint" style="margin-bottom:0">
+    {{ _("HA-Token, Passwörter und Mail-Adressen sind in der Datenbank-Kopie geleert. Enthalten sind aber alle Ladungen, Kilometer und Kosten – nur an Personen weitergeben, denen du diese Daten zeigen möchtest.") }}
+  </p>
+</div>
+
 <h2>{{ _("Wiederherstellen") }}</h2>
 <div class="card">
   <p class="hint" style="margin-top:0">
@@ -90,6 +116,29 @@
 </div>
 
 <script>
+{% if support_mail %}
+function diagnoseMail() {
+  // mailto kann keinen Anhang mitgeben: erst das Paket laden, dann das Mailprogramm
+  // mit Vorlage oeffnen – den Anhang fuegt der Nutzer selbst hinzu
+  const laden = document.createElement("a");
+  laden.href = "api/diagnose/paket";
+  document.body.appendChild(laden); laden.click(); laden.remove();
+  const text = document.getElementById("diagnose-text").value.trim();
+  const betreff = {{ _t("EV Tracker {0} – Diagnose", version) | tojson }};
+  const inhalt = (text || {{ _t("(bitte beschreiben, was nicht stimmt)") | tojson }}) + "\n\n" +
+    "---\n" + {{ ("EV Tracker " ~ version ~ " · " ~ datenquelle ~ " · " ~ ("Add-on" if add_on_modus else "Docker")) | tojson }} +
+    "\n" + {{ _t("Anhang: ev_tracker_diagnose_….zip (bitte anhängen)") | tojson }} + "\n";
+  document.getElementById("diagnose-mail-hinweis").style.display = "block";
+  // kurz warten, sonst bricht mancher Browser den Download beim Wechsel ab
+  setTimeout(() => {
+    const mail = document.createElement("a");
+    mail.href = "mailto:" + {{ support_mail | tojson }} + "?subject=" + encodeURIComponent(betreff) +
+                "&body=" + encodeURIComponent(inhalt);
+    mail.target = "_top";   // im HA-Ingress-Rahmen sonst blockiert
+    document.body.appendChild(mail); mail.click(); mail.remove();
+  }, 1500);
+}
+{% endif %}
 async function ladeStatus() {
   if (!document.getElementById("stat-status")) return;   // Add-on: Kacheln nicht im Markup
   const r = await fetch("api/backup/status");
