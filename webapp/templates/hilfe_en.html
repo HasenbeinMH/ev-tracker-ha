@@ -296,7 +296,7 @@
   <tr><td>PV kWh</td><td>Charging session “Privat – PV”</td><td>Creates or updates</td></tr>
   <tr><td>Grid kWh</td><td>Charging session “Privat – Netzbezug”</td><td>Creates or updates</td></tr>
 </table>
-<div class="hb-info"><b>Manual entries stay untouched:</b> the automatic fetch only updates its own bookings on the first day of the month.</div>
+<div class="hb-info"><b>Manual entries stay untouched:</b> the automatic fetch only updates the imported monthly total on the first day of the month – also one from the period import, unless the value was changed by hand there.</div>
 <h3>Log</h3>
 <p>Every fetch is recorded with a time stamp – automatic and manual. For each month there are two lines:</p>
 <ul>
@@ -305,7 +305,7 @@
 </ul>
 <p>This lets you tell whether a sensor returns nothing or the value was just not applied. The log is shortened automatically when it gets too long. It is always written in German.</p>
 <h3>Retroactive fetch</h3>
-<p>Any months can be loaded via the period selection. The values first appear in a <b>preview</b> where they can be edited; an empty field is not applied. When applying, charging sessions that already exist are skipped as duplicates.</p>
+<p>Any months can be loaded via the period selection. The values first appear in a <b>preview</b> where they can be edited; an empty field is not applied. When applying, each value replaces the existing monthly total of that month – whether it came from an earlier period import or the nightly fetch. So no month is counted twice. Charging sessions entered by hand stay. A value changed by hand in the preview is not overwritten by the nightly fetch (note “von Hand”).</p>
 <h3>Data sources</h3>
 <p>The default is the <b>Home Assistant API</b> (long-term statistics). If you also collect your sensor data in a database, you can choose it as a source – each value is then looked up there first; if it returns nothing, the HA API steps in automatically. This is worthwhile above all if the database goes back further than HA.</p>
 <table>

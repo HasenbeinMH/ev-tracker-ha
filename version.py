@@ -19,10 +19,22 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "3.6.0"
+VERSION = "3.6.1"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.6.1",
+        "datum": "2026-10-18",
+        "titel": "Keine doppelten Monatssummen mehr",
+        "aenderungen": [
+            "Behoben: Zeitraum-Import und naechtlicher Abruf erkannten die Monatssumme des anderen nicht – derselbe Monat stand dann zweimal als „Privat – PV“ bzw. „Privat – Netzbezug“ in der Datenbank und zaehlte doppelt (gemeldet: PV im August zweimal 92 kWh)",
+            "Jetzt gibt es je Monat, Anbieter und Fahrzeug nur eine importierte Monatssumme: jeder Import ersetzt sie, egal welcher sie angelegt hat; von Hand erfasste Ladungen bleiben unberuehrt",
+            "Ein in der Import-Vorschau von Hand geaenderter Wert traegt die Notiz „von Hand“ und wird vom naechtlichen Abruf nicht ueberschrieben",
+            "Einmalig beim Start: vorhandene doppelte Monatssummen werden entfernt – behalten wird ein von Hand geaenderter Wert, sonst der zuletzt angelegte. Vorher Sicherung als vor_bereinigung_….db im Datenordner, jede Aenderung steht im Importprotokoll",
+            "Neuer Test monatssumme_test.py",
+        ],
+    },
     {
         "version": "3.6.0",
         "datum": "2026-10-18",

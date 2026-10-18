@@ -877,52 +877,107 @@ def get_lade_gesamt():
 
 
 AUTO_NOTIZ = "Auto-Import HA"
+# Zeitraum-Import: Notiz "Import 2026-09…". Beide Importe legen dieselbe Monatssumme an
+# (Datum = Monatserster, Anbieter "Privat – PV" bzw. "Privat – Netzbezug") – je Monat,
+# Anbieter und Fahrzeug darf es nur eine geben, sonst zaehlt der Monat doppelt.
+IMPORT_NOTIZ = "Import "
+# Im Zeitraum-Import von Hand geaenderter Wert: der naechtliche Abruf ueberschreibt ihn nicht
+VON_HAND = "von Hand"
+
+
+def _monatssummen(conn, datum, anbieter, fid) -> list:
+    """Importierte Monatssummen eines Monats (beide Importe), aelteste zuerst."""
+    return conn.execute(
+        """SELECT id, menge_kwh, preis_kwh, notiz FROM ladevorgang
+           WHERE datum=? AND anbieter=? AND fahrzeug_id=? AND (notiz LIKE ? OR notiz LIKE ?)
+           ORDER BY id""",
+        (datum, anbieter, fid, AUTO_NOTIZ + "%", IMPORT_NOTIZ + "%")).fetchall()
+
+
+def upsert_monatssumme(datum, menge_kwh, preis_kwh, gesamtpreis, anbieter, notiz,
+                       fahrzeug_id=None, von_hand_behalten=False) -> str:
+    """Legt die importierte Monatssumme an oder ersetzt die vorhandene – egal, ob sie aus
+    dem Zeitraum-Import oder dem naechtlichen Abruf stammt. Weitere Monatssummen
+    desselben Monats (Doppel aus frueheren Versionen) werden entfernt.
+    von_hand_behalten (naechtlicher Abruf): einen von Hand geaenderten Wert nicht anfassen.
+    Rueckgabe: "neu", "aktualisiert", "unveraendert" oder "von Hand"."""
+    fid = schreib_fahrzeug(fahrzeug_id)
+    with closing(get_connection()) as conn:
+        rows = _monatssummen(conn, datum, anbieter, fid)
+        hand = [r for r in rows if VON_HAND in (r["notiz"] or "")]
+        behalten = (hand or rows or [None])[-1]
+        for r in rows:
+            if r is not behalten:
+                conn.execute("DELETE FROM ladevorgang WHERE id=?", (r["id"],))
+        if behalten is None:
+            conn.execute(
+                """INSERT INTO ladevorgang (datum, menge_kwh, preis_kwh, gesamtpreis,
+                                            anbieter, ladeleistung_kw, ladetyp, notiz, fahrzeug_id)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                (datum, menge_kwh, preis_kwh, gesamtpreis, anbieter, 11, "AC", notiz, fid))
+            ergebnis = "neu"
+        elif von_hand_behalten and hand:
+            ergebnis = "von Hand"
+        elif (abs((behalten["menge_kwh"] or 0) - menge_kwh) < 0.01
+                and abs((behalten["preis_kwh"] or 0) - (preis_kwh or 0)) < 0.001
+                and behalten["notiz"] == notiz):
+            ergebnis = "unveraendert"
+        else:
+            conn.execute(
+                """UPDATE ladevorgang
+                   SET menge_kwh=?, preis_kwh=?, gesamtpreis=?, notiz=? WHERE id=?""",
+                (menge_kwh, preis_kwh, gesamtpreis, notiz, behalten["id"]))
+            ergebnis = "aktualisiert"
+        conn.commit()
+    return ergebnis
 
 
 def upsert_auto_ladevorgang(datum, menge_kwh, preis_kwh, gesamtpreis, anbieter,
                             notiz=AUTO_NOTIZ, fahrzeug_id=None):
-    """Legt einen automatisch importierten Ladevorgang an oder aktualisiert ihn.
-
-    Erkennungsmerkmal ist Datum + Anbieter + die Notiz `AUTO_NOTIZ` (die `notiz`
-    beginnt immer damit, z.B. mit Zusatz fuer den dynamischen Tarif); manuell
-    erfasste Vorgaenge bleiben davon unberuehrt.
-    Rueckgabe: "neu", "aktualisiert" oder "unveraendert".
-    """
-    fid = schreib_fahrzeug(fahrzeug_id)
-    with closing(get_connection()) as conn:
-        row = conn.execute(
-            """SELECT id, menge_kwh, preis_kwh, notiz FROM ladevorgang
-               WHERE datum=? AND anbieter=? AND notiz LIKE ? AND fahrzeug_id=?""",
-            (datum, anbieter, AUTO_NOTIZ + "%", fid)).fetchone()
-        if row:
-            if (abs((row["menge_kwh"] or 0) - menge_kwh) < 0.01
-                    and abs((row["preis_kwh"] or 0) - (preis_kwh or 0)) < 0.001
-                    and row["notiz"] == notiz):
-                return "unveraendert"
-            conn.execute(
-                """UPDATE ladevorgang
-                   SET menge_kwh=?, preis_kwh=?, gesamtpreis=?, notiz=? WHERE id=?""",
-                (menge_kwh, preis_kwh, gesamtpreis, notiz, row["id"]))
-            conn.commit()
-            return "aktualisiert"
-        conn.execute(
-            """INSERT INTO ladevorgang (datum, menge_kwh, preis_kwh, gesamtpreis,
-                                        anbieter, ladeleistung_kw, ladetyp, notiz, fahrzeug_id)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
-            (datum, menge_kwh, preis_kwh, gesamtpreis, anbieter, 11, "AC", notiz, fid))
-        conn.commit()
-        return "neu"
+    """Monatssumme aus dem naechtlichen Abruf (siehe upsert_monatssumme); von Hand
+    erfasste Ladevorgaenge und von Hand geaenderte Importwerte bleiben unberuehrt."""
+    return upsert_monatssumme(datum, menge_kwh, preis_kwh, gesamtpreis, anbieter, notiz,
+                              fahrzeug_id, von_hand_behalten=True)
 
 
 def delete_auto_ladevorgang(datum, anbieter, fahrzeug_id=None) -> bool:
-    """Entfernt die automatisch importierte Monatssumme (Notiz beginnt mit AUTO_NOTIZ) –
+    """Entfernt die importierte Monatssumme (beide Importe, ausser von Hand geaenderte) –
     wenn Einzelladungen aus HA den Monat schon ganz abdecken. True, wenn es eine gab."""
     with closing(get_connection()) as conn:
-        n = conn.execute("DELETE FROM ladevorgang WHERE datum=? AND anbieter=? AND notiz LIKE ? "
-                         "AND fahrzeug_id=?",
-                         (datum, anbieter, AUTO_NOTIZ + "%", schreib_fahrzeug(fahrzeug_id))).rowcount
+        ids = [r["id"] for r in _monatssummen(conn, datum, anbieter, schreib_fahrzeug(fahrzeug_id))
+               if VON_HAND not in (r["notiz"] or "")]
+        for i in ids:
+            conn.execute("DELETE FROM ladevorgang WHERE id=?", (i,))
         conn.commit()
-    return n > 0
+    return bool(ids)
+
+
+def doppelte_monatssummen(entfernen=False) -> list:
+    """Monate mit mehr als einer importierten Monatssumme je Anbieter und Fahrzeug
+    (Zeitraum-Import und naechtlicher Abruf erkannten sich bis 3.6.0 nicht).
+    Behalten wird ein von Hand geaenderter Wert, sonst der zuletzt angelegte.
+    Rueckgabe: [{"datum", "anbieter", "fahrzeug_id", "behalten", "entfernt": [...]}]
+    mit den kWh; entfernen=False listet nur auf."""
+    erg = []
+    with closing(get_connection()) as conn:
+        gruppen = conn.execute(
+            """SELECT datum, anbieter, fahrzeug_id FROM ladevorgang
+               WHERE notiz LIKE ? OR notiz LIKE ?
+               GROUP BY datum, anbieter, fahrzeug_id HAVING COUNT(*) > 1
+               ORDER BY datum""", (AUTO_NOTIZ + "%", IMPORT_NOTIZ + "%")).fetchall()
+        for g in gruppen:
+            rows = _monatssummen(conn, g["datum"], g["anbieter"], g["fahrzeug_id"])
+            hand = [r for r in rows if VON_HAND in (r["notiz"] or "")]
+            behalten = (hand or rows)[-1]
+            weg = [r for r in rows if r is not behalten]
+            erg.append({"datum": g["datum"], "anbieter": g["anbieter"],
+                        "fahrzeug_id": g["fahrzeug_id"], "behalten": behalten["menge_kwh"],
+                        "entfernt": [r["menge_kwh"] for r in weg]})
+            if entfernen:
+                for r in weg:
+                    conn.execute("DELETE FROM ladevorgang WHERE id=?", (r["id"],))
+        conn.commit()
+    return erg
 
 
 def upsert_extern_ladevorgang(extern_id, datum, menge_kwh, preis_kwh, gesamtpreis, anbieter,

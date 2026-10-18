@@ -14,7 +14,7 @@
     <span id="auto-meldung" style="align-self:center; font-size:12px"></span>
   </div>
   <p class="hint" style="margin-bottom:0">
-    {{ _("Jede Nacht um 0:00 Uhr holt die App km, geladene kWh und {0}preis für den laufenden Monat und den Vormonat automatisch aus der eingestellten Datenquelle (Home Assistant oder Datenbank) – bereits importierte Werte werden aktualisiert, manuelle Einträge bleiben unberührt.", kf.name) }}
+    {{ _("Jede Nacht um 0:00 Uhr holt die App km, geladene kWh und {0}preis für den laufenden Monat und den Vormonat automatisch aus der eingestellten Datenquelle (Home Assistant oder Datenbank) – bereits importierte Werte werden aktualisiert, auch aus dem Zeitraum-Import; manuelle Einträge und dort von Hand geänderte Werte bleiben unberührt.", kf.name) }}
     {% if mail.auto_import != "1" %}<br><span class="gelb">{{ _("Derzeit deaktiviert (Schalter im Reiter Berichte).") }}</span>{% endif %}
     {% if mail.auto_import_letzter %}{{ _("<br>Zuletzt: {0}", mail.auto_import_letzter) }}{% endif %}
   </p>

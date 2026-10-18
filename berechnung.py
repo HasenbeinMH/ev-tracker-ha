@@ -122,7 +122,7 @@ def ist_push(ladung: dict) -> bool:
 def ist_heim_import(ladung: dict) -> bool:
     """Monatssumme aus dem HA-Import (Zeitraum-Import oder naechtlicher Abruf)?"""
     notiz = ladung.get("notiz") or ""
-    return notiz.startswith("Import ") or notiz.startswith(db.AUTO_NOTIZ)
+    return notiz.startswith(db.IMPORT_NOTIZ) or notiz.startswith(db.AUTO_NOTIZ)
 
 
 def heimladungen_neu_bewerten() -> int:

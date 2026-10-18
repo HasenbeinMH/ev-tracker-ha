@@ -1160,13 +1160,14 @@ def _import_apply(payload: dict):
                     if not summe["kwh"]:
                         teile.append(mit_quelle(f"{key} {kwh:.1f} kWh", key) + summe["text"])
                         continue
-                    with db.fahrzeug_kontext(ziel):
-                        if db.ladevorgang_exists(f"{monat}-01", summe["kwh"], anbieter):
-                            teile.append(f"{key} übersprungen (Duplikat)")
-                            continue
-                        db.add_ladevorgang(f"{monat}-01", summe["kwh"], summe["ct"], summe["gesamt"],
-                                           anbieter, 11, "AC", f"Import {monat}{summe['zusatz']}")
-                    teile.append(mit_quelle(f"{key} {kwh:.1f} kWh", key) + summe["text"])
+                    # Ersetzt die Monatssumme beider Importe – sonst zaehlt der Monat doppelt.
+                    # Ein von Hand geaenderter Wert wird markiert: der naechtliche Abruf laesst ihn.
+                    hand = f" · {db.VON_HAND}" if herkunft.get(key) == "von Hand" else ""
+                    ergebnis = db.upsert_monatssumme(
+                        f"{monat}-01", summe["kwh"], summe["ct"], summe["gesamt"], anbieter,
+                        f"{db.IMPORT_NOTIZ}{monat}{summe['zusatz']}{hand}", fahrzeug_id=ziel)
+                    teile.append(mit_quelle(f"{key} {kwh:.1f} kWh", key) + summe["text"]
+                                 + ("" if ergebnis == "neu" else f" – {ergebnis}"))
         if teile:
             log.append(f"{monat}: " + ", ".join(teile))
     kopf = f"Zeitraum-Import übernommen ({len(log)} Monat(e))"
@@ -1850,7 +1851,10 @@ def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> lis
                     ergebnis = db.upsert_auto_ladevorgang(
                         f"{schluessel}-01", summe["kwh"], summe["ct"], summe["gesamt"], anbieter,
                         db.AUTO_NOTIZ + summe["zusatz"], fahrzeug_id=fid)
-                    if ergebnis != "unveraendert":
+                    if ergebnis == "von Hand":
+                        teile.append(f"{vor}{key} {kwh:.1f} kWh ({herkunft[key]}) nicht übernommen – "
+                                     f"Wert von Hand bleibt")
+                    elif ergebnis != "unveraendert":
                         teile.append(f"{vor}{key} {kwh:.1f} kWh ({ergebnis}, {herkunft[key]}{summe['text']})")
         zeile = ", ".join(teile) if teile else "keine neuen Werte"
         _log_import([f"{schluessel}: übernommen {zeile}"])
@@ -2121,6 +2125,28 @@ def _sicherungskopie(praefix: str) -> str:
         kopie.close()
         quelle.close()
     return os.path.basename(ziel)
+
+
+def _doppelte_monatssummen_bereinigen():
+    """Einmalig (ab 3.6.1): Zeitraum-Import und naechtlicher Abruf legten fuer denselben
+    Monat je eine Monatssumme an – der Monat zaehlte doppelt. Behalten wird je Monat eine
+    (siehe db.doppelte_monatssummen); vorher Sicherungskopie, Ergebnis im Importprotokoll."""
+    if db.SCHEMA_ZU_NEU or db.get_einstellung_str("migration_monatssumme_doppelt") == "1":
+        return
+    doppelt = db.doppelte_monatssummen()
+    if doppelt:
+        sicherung = _sicherungskopie("vor_bereinigung")
+        db.doppelte_monatssummen(entfernen=True)
+        zeilen = [f"Doppelte Monatssummen entfernt (Sicherung: {sicherung})"]
+        for d in doppelt:
+            weg = ", ".join(f"{k:.2f}" for k in d["entfernt"])
+            zeilen.append(f"{d['datum'][:7]}: {d['anbieter']} behalten {d['behalten']:.2f} kWh, "
+                          f"entfernt {weg} kWh")
+        _log_import(zeilen, trenner=True)
+    db.set_einstellung("migration_monatssumme_doppelt", "1")
+
+
+_doppelte_monatssummen_bereinigen()
 
 
 @app.get("/backup", response_class=HTMLResponse)

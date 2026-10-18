@@ -293,7 +293,7 @@
   <tr><td>PV-kWh</td><td>Ladung „Privat – PV"</td><td>Legt an oder aktualisiert</td></tr>
   <tr><td>Netz-kWh</td><td>Ladung „Privat – Netzbezug"</td><td>Legt an oder aktualisiert</td></tr>
 </table>
-<div class="hb-info"><b>Manuelle Einträge bleiben unberührt:</b> Der automatische Abruf aktualisiert nur seine eigenen Buchungen auf dem Monatsersten.</div>
+<div class="hb-info"><b>Manuelle Einträge bleiben unberührt:</b> Der automatische Abruf aktualisiert nur die importierte Monatssumme auf dem Monatsersten – auch eine aus dem Zeitraum-Import, außer der Wert wurde dort von Hand geändert.</div>
 <h3>Protokoll</h3>
 <p>Jeder Abruf wird mit Zeitstempel festgehalten – automatischer wie manueller. Pro Monat stehen dort zwei Zeilen:</p>
 <ul>
@@ -302,7 +302,7 @@
 </ul>
 <p>So lässt sich unterscheiden, ob ein Sensor nichts liefert oder der Wert nur nicht übernommen wurde. Das Protokoll wird automatisch gekürzt, wenn es zu lang wird.</p>
 <h3>Rückwirkender Abruf</h3>
-<p>Über die Zeitraumauswahl lassen sich beliebige Monate nachladen. Die Werte erscheinen erst in einer <b>Vorschau</b> und sind dort editierbar; ein leeres Feld wird nicht übernommen. Beim Übernehmen werden bereits vorhandene Ladungen als Duplikat übersprungen.</p>
+<p>Über die Zeitraumauswahl lassen sich beliebige Monate nachladen. Die Werte erscheinen erst in einer <b>Vorschau</b> und sind dort editierbar; ein leeres Feld wird nicht übernommen. Beim Übernehmen ersetzt jeder Wert die vorhandene Monatssumme des Monats – egal, ob sie aus einem früheren Zeitraum-Import oder dem nächtlichen Abruf stammt. So zählt kein Monat doppelt. Von Hand erfasste Ladungen bleiben stehen. Einen in der Vorschau von Hand geänderten Wert überschreibt der nächtliche Abruf nicht (Notiz „von Hand“).</p>
 <h3>Datenquellen</h3>
 <p>Standard ist die <b>Home-Assistant-API</b> (Langzeitstatistik). Wer seine Sensordaten zusätzlich in einer Datenbank sammelt, kann sie als Quelle wählen – pro Wert wird dann zuerst dort gesucht; liefert sie nichts, greift automatisch die HA-API. Das lohnt sich vor allem, wenn die Datenbank weiter zurückreicht als HA.</p>
 <table>
