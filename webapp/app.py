@@ -341,7 +341,8 @@ def dashboard(request: Request, zeitraum: str | None = None):
             co2_faktor=cfg["co2_faktor_benzin"],
             co2_je_monat=daten["co2_je_monat"] if gesamt else None),
         "verbrauch": charts.chart_verbrauch_100km(
-            f["lade"], f["fahrten"], ev_ref=cfg["ev_verbrauch"], akku_monate=f["akku"]),
+            f["lade"], f["fahrten"], ev_ref=cfg["ev_verbrauch"], akku_monate=f["akku"],
+            akku_entnahme=daten["akku_entnahme"]),
         "strommix": charts.chart_strommix(f["lade"]),
         "benzin": charts.chart_benzinpreise(f["benzin"]),
         "strom": charts.chart_stromtarif(daten["stromtarife"], von=z["von"], bis=z["bis"]),

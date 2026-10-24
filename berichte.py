@@ -96,6 +96,13 @@ def _zeitraum_kennzahlen(von: str, bis: str, monate: list) -> dict:
         a["kosten"] += l["gesamtpreis"]
         a["anzahl"] += 1
 
+    # Plus, was der Akku in den Monaten netto hergab (wie zeitraum.kennzahlen)
+    kwh_v = kwh
+    if kwh and not cfg["simulation"]:
+        import akkuverbrauch
+        entnahme = akkuverbrauch.entnahme_je_monat()
+        kwh_v += sum(entnahme.get(m, 0.0) for m in monate)
+
     return {
         "km": km,
         "kwh": kwh,
@@ -107,7 +114,8 @@ def _zeitraum_kennzahlen(von: str, bis: str, monate: list) -> dict:
         "avg_benzin": avg_benzin,
         "liter": liter,
         "co2": berechnung.co2_kg(liter, cfg["co2_faktor_benzin"]),
-        "verbrauch": (kwh / km * 100) if km > 0 else None,
+        "_kwh_v": kwh_v,
+        "verbrauch": (kwh_v / km * 100) if km > 0 and kwh_v > 0 else None,
         "kosten_pro_100km": (strom_kosten / km * 100) if km > 0 else None,
         "nach_anbieter": nach_anbieter,
     }
@@ -117,7 +125,7 @@ def _summe(liste: list, je: list) -> dict:
     """Berichtswerte mehrerer Fahrzeuge: Summen addiert, Verhaeltnisse neu gebildet."""
     s = {k: sum(x[k] for x in liste) for k in
          ("km", "kwh", "ladevorgaenge", "strom_kosten", "benzin_kosten", "ersparnis",
-          "thg", "liter", "co2")}
+          "thg", "liter", "co2", "_kwh_v")}
     nach_anbieter = {}
     for x in liste:
         for name, a in x["nach_anbieter"].items():
@@ -128,7 +136,7 @@ def _summe(liste: list, je: list) -> dict:
     return {
         **s,
         "avg_benzin": s["benzin_kosten"] / s["liter"] if s["liter"] else (preise[0] if preise else None),
-        "verbrauch": (s["kwh"] / s["km"] * 100) if s["km"] > 0 else None,
+        "verbrauch": (s["_kwh_v"] / s["km"] * 100) if s["km"] > 0 and s["_kwh_v"] > 0 else None,
         "kosten_pro_100km": (s["strom_kosten"] / s["km"] * 100) if s["km"] > 0 else None,
         "nach_anbieter": nach_anbieter,
         "je_fahrzeug": [{"name": fz["name"], **k} for fz, k in je],

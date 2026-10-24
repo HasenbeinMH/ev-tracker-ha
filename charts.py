@@ -337,9 +337,11 @@ def chart_co2_ersparnis(fahrten_daten, benziner_l=7.0, co2_faktor=2.37, co2_je_m
     return _bedienung(opt, len(monate))
 
 
-def chart_verbrauch_100km(lade_daten, fahrten_daten, ev_ref=15.0, akku_monate=None):
+def chart_verbrauch_100km(lade_daten, fahrten_daten, ev_ref=15.0, akku_monate=None,
+                          akku_entnahme=None):
     """Zwei Sichten auf den Verbrauch:
-    - laut Ladung: geladene kWh ÷ km – enthaelt die Ladeverluste
+    - laut Ladung: geladene kWh ÷ km – enthaelt die Ladeverluste; plus die kWh, die
+      der Akku im Monat netto hergab (akku_entnahme, akkuverbrauch.entnahme_je_monat)
     - laut Akku:   Akku-Abfall ÷ km aus akkuverbrauch.pro_monat() – ohne Ladeverluste
     """
     kwh_m = {}
@@ -349,8 +351,10 @@ def chart_verbrauch_100km(lade_daten, fahrten_daten, ev_ref=15.0, akku_monate=No
         m = l["datum"][:7]
         kwh_m[m] = kwh_m.get(m, 0) + l["menge_kwh"]
     km_m = {d["datum"]: d["km"] for d in fahrten_daten or []}
+    for m in kwh_m:
+        kwh_m[m] += (akku_entnahme or {}).get(m, 0.0)
     ladung = {m: round(kwh_m[m] / km_m[m] * 100, 2)
-              for m in set(kwh_m) & set(km_m) if km_m[m] > 0}
+              for m in set(kwh_m) & set(km_m) if km_m[m] > 0 and kwh_m[m] > 0}
     akku = {a["monat"]: a["verbrauch"] for a in akku_monate or []}
 
     monate = sorted(set(ladung) | set(akku))

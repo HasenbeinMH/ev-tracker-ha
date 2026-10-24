@@ -161,6 +161,10 @@ def laden() -> dict:
         for fz in db.fahrzeuge():
             with db.fahrzeug_kontext(fz["id"]):
                 daten["fahrzeuge"].append((fz, _laden_einzeln()))
+        daten["akku_entnahme"] = {}
+        for _f, d in daten["fahrzeuge"]:
+            for m, kwh in d["akku_entnahme"].items():
+                daten["akku_entnahme"][m] = daten["akku_entnahme"].get(m, 0) + kwh
     # Liter und CO2 des Vergleichs-Verbrenners je Monat – in der Gesamtsicht je Fahrzeug
     # mit dessen Verbrauch und CO2-Faktor, damit die Diagramme zu den Kennzahlen passen
     teile = [d for _f, d in daten["fahrzeuge"]] if daten.get("fahrzeuge") else [daten]
@@ -188,6 +192,8 @@ def _laden_einzeln() -> dict:
         "thg": sorted(db.get_thg_eintraege(), key=lambda t: t["datum"]),
         "stromtarife": db.get_stromtarife(),
         "akku": akkuverbrauch.pro_monat(),
+        # Korrektur fuer "Verbrauch laut Ladung"; simulierte Ladungen brauchen keine
+        "akku_entnahme": {} if cfg["simulation"] else akkuverbrauch.entnahme_je_monat(),
         "cfg": cfg,
         "kfz_steuer": db.get_einstellung("kfz_steuer_benziner") or 0.0,
         "kfz_steuer_eauto": db.get_einstellung("kfz_steuer_eauto") or 0.0,
@@ -271,7 +277,10 @@ def kennzahlen(z: dict, daten: dict) -> dict:
     # typisch im laufenden Monat bis zum naechsten Abruf der km
     ohne_km = sorted(m for m in kwh_m if not km_m.get(m))
     v_km = sum(km_m[m] for m in beide)
-    verbrauch = sum(kwh_m[m] for m in beide) / v_km * 100 if v_km else None
+    # Plus, was der Akku im Monat netto hergab: ohne das zaehlt z. B. ein voll
+    # uebernommenes Auto, das nur bis 80 % nachgeladen wird, viel zu wenig
+    v_kwh = sum(kwh_m[m] + _entnahme(daten, m) for m in beide)
+    verbrauch = v_kwh / v_km * 100 if v_km and v_kwh > 0 else None
 
     a_km = sum(a["km"] for a in f["akku"])
     verbrauch_akku = sum(a["kwh"] for a in f["akku"]) / a_km * 100 if a_km else None
@@ -282,7 +291,7 @@ def kennzahlen(z: dict, daten: dict) -> dict:
 
     return {
         # Zwischenwerte fuer die Summe ueber mehrere Fahrzeuge (kennzahlen_summe)
-        "_v_km": v_km, "_v_kwh": sum(kwh_m[m] for m in beide),
+        "_v_km": v_km, "_v_kwh": v_kwh,
         "_a_km": a_km, "_a_kwh": sum(a["kwh"] for a in f["akku"]),
         "_quellen": quellen,
         "titel":            z["titel"],
@@ -309,6 +318,14 @@ def kennzahlen(z: dict, daten: dict) -> dict:
         "anteile":          {q: (v / kwh * 100 if kwh else None) for q, v in quellen.items()},
         "ohne_km":          ohne_km,
     }
+
+
+def _entnahme(daten: dict, monat: str) -> float:
+    """kWh, die im Monat netto aus dem Akku kamen (akkuverbrauch.entnahme_je_monat) –
+    nur zu echten Ladungen, nicht zur Prognose aus der Simulation."""
+    if daten["lade"] is daten.get("lade_sim"):
+        return 0.0
+    return daten.get("akku_entnahme", {}).get(monat, 0.0)
 
 
 def steuer_eauto(mon: list, daten: dict) -> float:
@@ -633,13 +650,15 @@ def monatswerte(z: dict, daten: dict) -> list:
         # die monatlich erfassten Gesamtkilometer. Nur so passen km, kWh und
         # Verbrauch in einer Zeile zusammen.
         a = akku_m.get(m)
+        kwh_v = kwh + _entnahme(daten, m) if kwh else 0.0
         werte.append({
             "monat": m,
             "km": round(km, 1),
             "kwh": round(kwh, 1),
             "strom_kosten": round(kosten, 2),
             "ersparnis": round(benzin - kosten, 2),
-            "verbrauch": round(kwh / km * 100, 2) if km and kwh else None,
+            "verbrauch": round(kwh_v / km * 100, 2) if km and kwh_v > 0 else None,
+            "_kwh_v": kwh_v,
             "km_akku": a["km"] if a else None,
             "kwh_akku": a["kwh"] if a else None,
             "verbrauch_akku": a["verbrauch"] if a else None,
@@ -650,14 +669,14 @@ def monatswerte(z: dict, daten: dict) -> list:
 def _monatswerte_summe(z: dict, daten: dict) -> list:
     """Monatswerte der Gesamtsicht: je Fahrzeug gerechnet, Monat fuer Monat addiert."""
     summe = {m: {"monat": m, "km": 0.0, "kwh": 0.0, "strom_kosten": 0.0, "ersparnis": 0.0,
-                 "km_akku": None, "kwh_akku": None}
+                 "_kwh_v": 0.0, "km_akku": None, "kwh_akku": None}
              for m in monate(z, daten)}
     for _f, d in daten["fahrzeuge"]:
         for w in monatswerte(z, d):
             s = summe.get(w["monat"])
             if s is None:
                 continue
-            for k in ("km", "kwh", "strom_kosten", "ersparnis"):
+            for k in ("km", "kwh", "strom_kosten", "ersparnis", "_kwh_v"):
                 s[k] += w[k]
             for k in ("km_akku", "kwh_akku"):
                 if w[k]:
@@ -668,7 +687,7 @@ def _monatswerte_summe(z: dict, daten: dict) -> list:
             **s,
             "km": round(s["km"], 1), "kwh": round(s["kwh"], 1),
             "strom_kosten": round(s["strom_kosten"], 2), "ersparnis": round(s["ersparnis"], 2),
-            "verbrauch": round(s["kwh"] / s["km"] * 100, 2) if s["km"] and s["kwh"] else None,
+            "verbrauch": round(s["_kwh_v"] / s["km"] * 100, 2) if s["km"] and s["_kwh_v"] > 0 else None,
             "verbrauch_akku": (round(s["kwh_akku"] / s["km_akku"] * 100, 2)
                                if s["km_akku"] and s["kwh_akku"] else None),
         })

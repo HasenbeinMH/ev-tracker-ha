@@ -19,10 +19,21 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "3.6.1"
+VERSION = "3.6.2"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.6.2",
+        "datum": "2026-10-24",
+        "titel": "Verbrauch beruecksichtigt den Akkustand",
+        "aenderungen": [
+            "Behoben: „Verbrauch laut Ladung“ war zu niedrig (oder zu hoch), wenn der Akku am Ende des Zeitraums leerer (oder voller) war als am Anfang – z. B. Auto mit 96 % uebernommen, nach 109 km nur bis 80 % nachgeladen: 9,1 statt richtig etwa 21 kWh/100 km",
+            "Jetzt fliesst die Aenderung des Akkustands mit ein: (Akkustand Monatsanfang − Monatsende) ÷ 100 × Akkukapazitaet kommt zu den geladenen kWh dazu – in Statistik, Verbrauchsdiagramm und Berichten. Die Prognose aus der Simulation bleibt unveraendert",
+            "Den Akkustand am Monatsanfang und -ende merkt sich der naechtliche Abruf (Batterie-Sensor aus den Einstellungen); aeltere Monate bekommen ihn mit dem Knopf „Gesamte Historie aus Home Assistant neu berechnen“ auf der Seite Fahrten. Ohne Batterie-Sensor rechnet die App wie bisher",
+            "Behoben: Bei einem neu in Home Assistant eingebundenen Auto fehlte der erste Fahrtabschnitt in „Verbrauch laut Akku“",
+        ],
+    },
     {
         "version": "3.6.1",
         "datum": "2026-10-18",

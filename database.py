@@ -325,6 +325,7 @@ FAHRZEUG_SCHLUESSEL = {
     "erstzulassung", "zulassung_eigen", "km_bei_kauf",
     "akku_kapazitaet_kwh", "lade_min_anstieg", "heimladung",
     "ha_odometer", "ha_ev_battery", "ha_ev_range", "fn_odometer", "fn_ev_battery",
+    "akkustand_monate",
 }
 # Eigene Ladezaehler eines Fahrzeugs (Heimladung "eigen"): immer "<schluessel>@<id>",
 # ohne @ sind es die Zaehler der gemeinsamen Wallbox

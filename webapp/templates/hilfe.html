@@ -457,7 +457,7 @@
   <tr><td>Mehrpreis</td><td><code>Kaufpreis E-Auto − vergleichbarer {{ kf.fahrzeug }} − Förderung</code></td></tr>
   <tr><td>Amortisiert zu</td><td><code>Gesamt-Ersparnis (gesamter Zeitraum) ÷ Mehrpreis × 100</code></td></tr>
   <tr><td>Prognose Amortisation</td><td><code>(Mehrpreis − Gesamt-Ersparnis) ÷ Ø Gesamt-Ersparnis je Monat (letzte 12 abgeschlossene Monate)</code></td></tr>
-  <tr><td>Verbrauch je Monat</td><td><code>kWh (Monat) ÷ km (Monat) × 100</code></td></tr>
+  <tr><td>Verbrauch je Monat (laut Ladung)</td><td><code>(kWh (Monat) + Akkustand Monatsanfang − Monatsende [%] ÷ 100 × Akkukapazität) ÷ km (Monat) × 100</code> – der Akku-Teil gleicht aus, wenn der Akku am Monatsende leerer oder voller ist als am Anfang (z. B. Auto voll übernommen, nur bis 80 % nachgeladen). Ohne Batterie-Sensor entfällt er.</td></tr>
   <tr><td>Ø Verbrauch (gewichtet)</td><td><code>Σ kWh ÷ Σ km × 100</code></td></tr>
   <tr><td>Kosten je 100 km</td><td><code>Stromkosten ÷ km × 100</code></td></tr>
   <tr><td>Monatliche Ersparnis</td><td><code>{{ kf.name }}kosten (Monat) − Ladekosten (Monat)</code></td></tr>
@@ -503,7 +503,7 @@
   <tr><td>Monatliche Kosten &amp; Ersparnis</td><td>Balken {{ kf.fahrzeug }} und Strom je Monat, Linie (rechte Achse) die Differenz. Monate ohne {{ kf.name }}preis werden mit dem Ø aller erfassten Preise gerechnet; die Summe der Linie ergibt die Kachel „Kraftstoff-Ersparnis“.</td></tr>
   <tr><td>Kraftstoffkosten Vergleich</td><td>Zwei liegende Balken über den Gesamtzeitraum: {{ kf.fahrzeug }} hochgerechnet gegen E-Auto tatsächlich.</td></tr>
   <tr><td>CO2-Ersparnis</td><td>Balken je Monat plus kumulierte Linie.</td></tr>
-  <tr><td>Verbrauch kWh/100km</td><td>Zwei Linien: <b>laut Ladung</b> (geladene kWh ÷ km, inkl. Ladeverluste) und <b>laut Akku</b> (aus dem Batteriestand, siehe <a href="#akkuverbrauch">Verbrauch aus dem Akkustand</a>). Gestrichelt die Referenz aus den Einstellungen.</td></tr>
+  <tr><td>Verbrauch kWh/100km</td><td>Zwei Linien: <b>laut Ladung</b> (geladene kWh plus Änderung des Akkustands ÷ km, inkl. Ladeverluste) und <b>laut Akku</b> (aus dem Batteriestand, siehe <a href="#akkuverbrauch">Verbrauch aus dem Akkustand</a>). Gestrichelt die Referenz aus den Einstellungen.</td></tr>
   <tr><td>{{ kf.name }}preisentwicklung</td><td>Verlauf der erfassten Monatspreise.</td></tr>
   <tr><td>Stromtarifverlauf</td><td>Treppenkurve – ein Tarif gilt bis zum nächsten Eintrag, der letzte bis heute.</td></tr>
   <tr><td>Ladekosten nach Anbieter</td><td>Ringdiagramm der Kosten in €, nicht der kWh.</td></tr>

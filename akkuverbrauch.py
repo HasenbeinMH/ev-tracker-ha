@@ -212,11 +212,17 @@ def aktualisieren(tage: int | None = TAGE_NACHTLAUF) -> str:
         start = ende - timedelta(days=tage)
 
     v = verlaeufe(start, ende)
+    # Beginnt der Verlauf erst deutlich nach dem Fensterbeginn, gab es vorher keine
+    # Werte (Auto neu in HA) – dann ist der erste Wert wirklich der Anfang
+    von_anfang = tage is None or (
+        bool(v["soc"]) and v["soc"][0][0] > (start + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M"))
+    if v["soc"]:
+        _staende_speichern(monatsstaende(v["soc"], von_anfang))
     if not v["soc"] or not v["km"]:
         return _("Keine Daten: {0}", v["meldung"] or _("Batterie- oder Kilometerverlauf leer"))
 
     abschnitte = berechne_abschnitte(v["soc"], v["km"], kapazitaet, lade_schwelle)
-    if tage is not None:
+    if not von_anfang:
         # Der angeschnittene erste Abschnitt steht vollstaendig schon in der DB
         abschnitte = [a for a in abschnitte if not a["angeschnitten"]]
     if not abschnitte:
@@ -227,6 +233,52 @@ def aktualisieren(tage: int | None = TAGE_NACHTLAUF) -> str:
     gesamt_km = sum(a["km"] for a in abschnitte)
     return _("{0} Fahrtabschnitt(e) aus dem Akkustand berechnet ({1} km, Quelle: {2})",
              len(abschnitte), f"{gesamt_km:.0f}", v['quelle'])
+
+
+def monatsstaende(soc_verlauf: list, von_anfang: bool) -> dict:
+    """Akkustand am Anfang und Ende jedes Monats im Verlauf: {monat: [anfang, ende]}.
+
+    Anfang ist der letzte Wert vor dem Monat; gibt es keinen, der erste im Monat –
+    aber nur, wenn der Verlauf `von_anfang` vollstaendig ist (sonst None: der Stand
+    zu Monatsbeginn liegt vor dem abgerufenen Fenster)."""
+    staende = {}
+    vorher = None
+    for t, wert in soc_verlauf:
+        m = t[:7]
+        if m not in staende:
+            staende[m] = [vorher if vorher is not None else (wert if von_anfang else None), wert]
+        staende[m][1] = wert
+        vorher = wert
+    return staende
+
+
+def _staende_speichern(neu: dict):
+    """Mit den gespeicherten Monatsstaenden zusammenfuehren; ein unbekannter Anfang
+    ueberschreibt keinen bekannten."""
+    import json
+    try:
+        alt = json.loads(db.get_einstellung_str("akkustand_monate") or "{}")
+    except ValueError:
+        alt = {}
+    for m, (anfang, ende) in neu.items():
+        anfang = anfang if anfang is not None else (alt.get(m) or [None])[0]
+        alt[m] = [None if anfang is None else round(anfang, 1), round(ende, 1)]
+    db.set_einstellung("akkustand_monate", json.dumps(alt, sort_keys=True))
+
+
+def entnahme_je_monat() -> dict:
+    """kWh, die je Monat mehr aus dem Akku kamen als hineingeladen wurden:
+    (Akkustand Anfang − Ende) ÷ 100 × Kapazitaet. Negativ, wenn der Akku am
+    Monatsende voller ist. Damit wird "Verbrauch laut Ladung" korrigiert – sonst
+    zaehlt z. B. ein voll uebernommenes Auto, das erst spaeter geladen wird, zu wenig."""
+    import json
+    try:
+        staende = json.loads(db.get_einstellung_str("akkustand_monate") or "{}")
+        kapazitaet = float(db.get_einstellung("akku_kapazitaet_kwh") or 58.3)
+    except ValueError:
+        return {}
+    return {m: (a - e) / 100 * kapazitaet for m, (a, e) in staende.items()
+            if a is not None and e is not None}
 
 
 def pro_monat() -> list:
