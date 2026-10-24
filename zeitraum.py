@@ -192,7 +192,7 @@ def _laden_einzeln() -> dict:
         "thg": sorted(db.get_thg_eintraege(), key=lambda t: t["datum"]),
         "stromtarife": db.get_stromtarife(),
         "akku": akkuverbrauch.pro_monat(),
-        # Korrektur fuer "Verbrauch laut Ladung"; simulierte Ladungen brauchen keine
+        # Korrektur fuer "Verbrauch laut Wallbox/Ladesaeule"; simulierte Ladungen brauchen keine
         "akku_entnahme": {} if cfg["simulation"] else akkuverbrauch.entnahme_je_monat(),
         "cfg": cfg,
         "kfz_steuer": db.get_einstellung("kfz_steuer_benziner") or 0.0,
@@ -267,7 +267,7 @@ def kennzahlen(z: dict, daten: dict) -> dict:
     st_mon = steuer_monate(mon, daten)
     kfz = daten["kfz_steuer"] * st_mon / 12 - kfz_eauto
 
-    # Verbrauch laut Ladung nur ueber Monate, in denen km und Ladung vorliegen
+    # Verbrauch laut Wallbox/Ladesaeule nur ueber Monate, in denen km und Ladung vorliegen
     kwh_m = {}
     for l in f["lade"]:
         if l["menge_kwh"]:          # Grundgebuehr-Eintraege haben keine kWh
@@ -557,8 +557,8 @@ VERGLEICH_ZEILEN = [
     (N_("Gefahrene Strecke"), "gesamt_km", 0, "km", None),
     (N_("Ladevorgänge"), "ladevorgaenge", 0, "", None),
     (N_("Geladene Energie"), "gesamt_kwh", 1, "kWh", None),
-    (N_("Verbrauch laut Ladung"), "verbrauch", 1, "kWh/100 km", "niedrig"),
-    (N_("Verbrauch laut Akku"), "verbrauch_akku", 1, "kWh/100 km", "niedrig"),
+    (N_("Verbrauch laut Wallbox/Ladesäule"), "verbrauch", 1, "kWh/100 km", "niedrig"),
+    (N_("Verbrauch laut Auto-Akku"), "verbrauch_akku", 1, "kWh/100 km", "niedrig"),
     (N_("Stromkosten"), "strom_kosten", 2, "€", None),
     (N_("Kosten je 100 km"), "kosten_pro_100km", 2, "€", "niedrig"),
     (N_("Ø Strompreis"), "strompreis_ct", 1, "ct/kWh", "niedrig"),

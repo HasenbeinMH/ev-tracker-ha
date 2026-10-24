@@ -118,7 +118,7 @@
   {% endfor %}
 </table></div>
 <p class="hint">
-  {{ _("Akku-Abfall × Akkukapazität ÷ gefahrene km – der Verbrauch <b>ohne Ladeverluste</b>, daher niedriger als „Verbrauch laut Ladung“. Die km sind hier nur die der gewerteten Fahrtabschnitte, nicht die monatlich erfassten Gesamtkilometer: Abschnitte unter {0} km und solche ohne Akku-Abfall bleiben draußen, weil das Stundenmittel aus Home Assistant sie zu ungenau macht. Die Summenzeile ist über Σ kWh ÷ Σ km gewichtet. Die Abschnitte einzeln stehen unter <a href=\"fahrten#akku\">Fahrten</a>.", "%.0f"|format(akku_min_km)) }}
+  {{ _("Akku-Abfall × Akkukapazität ÷ gefahrene km – der Verbrauch <b>ohne Ladeverluste</b>, daher niedriger als „Verbrauch laut Wallbox/Ladesäule“. Die km sind hier nur die der gewerteten Fahrtabschnitte, nicht die monatlich erfassten Gesamtkilometer: Abschnitte unter {0} km und solche ohne Akku-Abfall bleiben draußen, weil das Stundenmittel aus Home Assistant sie zu ungenau macht. Die Summenzeile ist über Σ kWh ÷ Σ km gewichtet. Die Abschnitte einzeln stehen unter <a href=\"fahrten#akku\">Fahrten</a>.", "%.0f"|format(akku_min_km)) }}
 </p>
 {% else %}
 <div class="card">

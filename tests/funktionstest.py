@@ -253,7 +253,7 @@ for key, (mon, kfz_mon) in FAELLE.items():
     ant = sum(v for v in kz["anteile"].values() if v)
     check(b, "Stromquellen-Anteile summieren auf 100 %", nah(ant, 100, 0.01), f"{ant:.2f} %")
     # Plausibilitaet
-    check(b, "Verbrauch laut Ladung plausibel (12–30 kWh/100km)",
+    check(b, "Verbrauch laut Wallbox/Ladesäule plausibel (12–30 kWh/100km)",
           kz["verbrauch"] and 12 <= kz["verbrauch"] <= 30, f'{kz["verbrauch"]:.1f} kWh/100km')
     check(b, "Ø Strompreis plausibel (10–60 ct)", kz["strompreis_ct"] and 10 <= kz["strompreis_ct"] <= 60,
           f'{kz["strompreis_ct"]:.1f} ct/kWh')

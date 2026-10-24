@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.6.3] - 2026-10-24
+
+### Klarere Namen fuer die beiden Verbrauchswerte
+- „Verbrauch laut Ladung“ heisst jetzt „Verbrauch laut Wallbox/Ladesaeule“, „Verbrauch laut Akku“ heisst „Verbrauch laut Auto-Akku“ – in Statistik, Diagrammen, Fahrten und Hilfe
+- Damit ist klar, wo gemessen wird: an der Wallbox bzw. der oeffentlichen Saeule (mit Ladeverlusten) oder am Akkustand des Autos (ohne)
+
 ## [3.6.2] - 2026-10-24
 
 ### Verbrauch beruecksichtigt den Akkustand

@@ -19,10 +19,19 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "3.6.2"
+VERSION = "3.6.3"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.6.3",
+        "datum": "2026-10-24",
+        "titel": "Klarere Namen fuer die beiden Verbrauchswerte",
+        "aenderungen": [
+            "„Verbrauch laut Ladung“ heisst jetzt „Verbrauch laut Wallbox/Ladesaeule“, „Verbrauch laut Akku“ heisst „Verbrauch laut Auto-Akku“ – in Statistik, Diagrammen, Fahrten und Hilfe",
+            "Damit ist klar, wo gemessen wird: an der Wallbox bzw. der oeffentlichen Saeule (mit Ladeverlusten) oder am Akkustand des Autos (ohne)",
+        ],
+    },
     {
         "version": "3.6.2",
         "datum": "2026-10-24",

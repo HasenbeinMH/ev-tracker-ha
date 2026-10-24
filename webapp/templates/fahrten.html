@@ -91,7 +91,7 @@
     <div>
       <span class="wert" style="color:#3a9aaa">{{ "%.1f"|format(akku_schnitt)|replace(".", ",") if akku_schnitt else "–" }}</span>
       <span class="einheit">{{ _("kWh/100km") }}</span>
-      <div class="label">{{ _("Ø laut Akku (nach km gewichtet)") }}</div>
+      <div class="label">{{ _("Ø laut Auto-Akku (nach km gewichtet)") }}</div>
     </div>
   </div>
   {% if verbrauch.schnitt %}
@@ -99,7 +99,7 @@
     <div>
       <span class="wert" style="color:#7a6aaa">{{ "%.1f"|format(verbrauch.schnitt)|replace(".", ",") }}</span>
       <span class="einheit">{{ _("kWh/100km") }}</span>
-      <div class="label">{{ _("Ø laut Ladung (inkl. Ladeverluste)") }}</div>
+      <div class="label">{{ _("Ø laut Wallbox/Ladesäule (inkl. Ladeverluste)") }}</div>
     </div>
   </div>
   {% endif %}
@@ -108,7 +108,7 @@
     <div>
       <span class="wert" style="color:#c4963a">{{ "%.0f"|format(akku_differenz) }}</span>
       <span class="einheit">%</span>
-      <div class="label">{{ _("weniger laut Akku – etwa die Ladeverluste ({0} gemeinsame Monate)", akku_gemeinsam) }}</div>
+      <div class="label">{{ _("weniger laut Auto-Akku – etwa die Ladeverluste ({0} gemeinsame Monate)", akku_gemeinsam) }}</div>
     </div>
   </div>
   {% endif %}

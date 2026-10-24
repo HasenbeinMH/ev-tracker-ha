@@ -340,9 +340,9 @@ def chart_co2_ersparnis(fahrten_daten, benziner_l=7.0, co2_faktor=2.37, co2_je_m
 def chart_verbrauch_100km(lade_daten, fahrten_daten, ev_ref=15.0, akku_monate=None,
                           akku_entnahme=None):
     """Zwei Sichten auf den Verbrauch:
-    - laut Ladung: geladene kWh ÷ km – enthaelt die Ladeverluste; plus die kWh, die
+    - laut Wallbox/Ladesaeule: geladene kWh ÷ km – enthaelt die Ladeverluste; plus die kWh, die
       der Akku im Monat netto hergab (akku_entnahme, akkuverbrauch.entnahme_je_monat)
-    - laut Akku:   Akku-Abfall ÷ km aus akkuverbrauch.pro_monat() – ohne Ladeverluste
+    - laut Auto-Akku:   Akku-Abfall ÷ km aus akkuverbrauch.pro_monat() – ohne Ladeverluste
     """
     kwh_m = {}
     for l in lade_daten or []:
@@ -363,10 +363,10 @@ def chart_verbrauch_100km(lade_daten, fahrten_daten, ev_ref=15.0, akku_monate=No
 
     serien = []
     if ladung:
-        serien.append(_linie(_("laut Ladung"), "purple", [ladung.get(m) for m in monate],
+        serien.append(_linie(_("laut Wallbox/Ladesäule"), "purple", [ladung.get(m) for m in monate],
                              "fn:kwh100", flaeche=not akku))
     if akku:
-        serien.append(_linie(_("laut Akku"), "teal", [akku.get(m) for m in monate],
+        serien.append(_linie(_("laut Auto-Akku"), "teal", [akku.get(m) for m in monate],
                              "fn:kwh100", flaeche=not ladung))
     serie = serien[0]
     serie["markLine"] = {
@@ -405,8 +405,8 @@ def monatskuerzel(monat: int) -> str:
 # Kennzahlen des Verlaufsvergleichs: schluessel -> (Beschriftung, Formatierer, Balken?)
 VERGLEICH_METRIKEN = {
     "km":             (N_("Kilometer"), "fn:km0", True),
-    "verbrauch":      (N_("Verbrauch laut Ladung"), "fn:kwh100", False),
-    "verbrauch_akku": (N_("Verbrauch laut Akku"), "fn:kwh100", False),
+    "verbrauch":      (N_("Verbrauch laut Wallbox/Ladesäule"), "fn:kwh100", False),
+    "verbrauch_akku": (N_("Verbrauch laut Auto-Akku"), "fn:kwh100", False),
     "kwh":            (N_("Geladene kWh"), "fn:kwh1", True),
     "strom_kosten":   (N_("Stromkosten"), "fn:euro2", True),
     "ersparnis":      (N_("Kraftstoff-Ersparnis"), "fn:euro2", True),

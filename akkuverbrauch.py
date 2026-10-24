@@ -269,7 +269,7 @@ def _staende_speichern(neu: dict):
 def entnahme_je_monat() -> dict:
     """kWh, die je Monat mehr aus dem Akku kamen als hineingeladen wurden:
     (Akkustand Anfang − Ende) ÷ 100 × Kapazitaet. Negativ, wenn der Akku am
-    Monatsende voller ist. Damit wird "Verbrauch laut Ladung" korrigiert – sonst
+    Monatsende voller ist. Damit wird "Verbrauch laut Wallbox/Ladesaeule" korrigiert – sonst
     zaehlt z. B. ein voll uebernommenes Auto, das erst spaeter geladen wird, zu wenig."""
     import json
     try:
