@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.6.4] - 2026-10-25
+
+### Menues auf dem Handy wieder bedienbar
+- Behoben: Auf dem Handy lagen die aufgeklappten Untermenues unter den Menuepunkten der naechsten Zeile – ein Tipp auf z. B. „Ladetarife“ traf stattdessen „Verwaltung“ oder „Hilfe“
+- Auf schmalen Bildschirmen klappt das Untermenue jetzt ueber die volle Breite unter der ganzen Menueleiste auf, mit etwas groesseren Eintraegen zum Antippen
+- Auf Touch-Geraeten oeffnen und schliessen sich die Menues nur noch per Tipp – ein zuvor angetipptes Menue bleibt nicht mehr offen und liegt nicht mehr ueber dem naechsten
+
 ## [3.6.3] - 2026-10-24
 
 ### Klarere Namen fuer die beiden Verbrauchswerte

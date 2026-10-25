@@ -68,10 +68,24 @@ nav a.version:hover { color: var(--blau-hell); }
   box-shadow: 0 10px 24px rgba(0, 0, 0, .45);
   padding: 6px 0;
 }
-.navgruppe:hover .untermenue,
-.navgruppe:focus-within .untermenue,
+/* Ueber den Menuepunkten der naechsten Zeile liegen (Leiste bricht um) */
+.navgruppe .untermenue { z-index: 10; }
+/* Drueberfahren/Fokus nur mit Maus: auf Touch-Geraeten bleibt sonst ein
+   angetipptes Menue offen und liegt ueber dem naechsten */
+@media (hover: hover) {
+  .navgruppe:hover .untermenue,
+  .navgruppe:focus-within .untermenue { display: flex; }
+  .navgruppe:hover > a { color: var(--text); }
+}
 .navgruppe.offen .untermenue { display: flex; }
-.navgruppe:hover > a { color: var(--text); }
+.navgruppe.offen > a { color: var(--text); }
+/* Handy: Untermenue klappt ueber die volle Breite unter der ganzen Leiste auf
+   statt unter dem Hauptpunkt – verdeckt keine anderen Menuepunkte */
+@media (max-width: 640px) {
+  .navgruppe { position: static; }
+  .navgruppe .untermenue { left: 0; right: 0; min-width: 0; border-radius: 0 0 8px 8px; }
+  .untermenue a { padding: 13px 18px; font-size: 14px; }
+}
 .untermenue a {
   padding: 10px 18px;
   border-bottom: none;
