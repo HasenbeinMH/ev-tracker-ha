@@ -270,8 +270,16 @@ def entnahme_je_monat() -> dict:
     """kWh, die je Monat mehr aus dem Akku kamen als hineingeladen wurden:
     (Akkustand Anfang − Ende) ÷ 100 × Kapazitaet. Negativ, wenn der Akku am
     Monatsende voller ist. Damit wird "Verbrauch laut Wallbox/Ladesaeule" korrigiert – sonst
-    zaehlt z. B. ein voll uebernommenes Auto, das erst spaeter geladen wird, zu wenig."""
+    zaehlt z. B. ein voll uebernommenes Auto, das erst spaeter geladen wird, zu wenig.
+    In der Gesamtsicht mehrerer Fahrzeuge die Summe aller."""
     import json
+    if db.aktuelles_fahrzeug() is None:
+        summe = {}
+        for fz in db.fahrzeuge():
+            with db.fahrzeug_kontext(fz["id"]):
+                for m, kwh in entnahme_je_monat().items():
+                    summe[m] = summe.get(m, 0.0) + kwh
+        return summe
     try:
         staende = json.loads(db.get_einstellung_str("akkustand_monate") or "{}")
         kapazitaet = float(db.get_einstellung("akku_kapazitaet_kwh") or 58.3)

@@ -245,12 +245,19 @@ def benzin_kosten(km_je_monat: dict, preise: dict, benziner_verbrauch: float,
 
 def verbrauch_pro_monat() -> list:
     """Verbrauch je Monat in kWh/100km, nur Monate mit km und Ladung.
+    Zu den geladenen kWh kommt, was der Akku im Monat netto hergab
+    (akkuverbrauch.entnahme_je_monat) – wie in zeitraum.kennzahlen.
     Rueckgabe: [{"monat", "km", "kwh", "verbrauch"}] aufsteigend nach Monat."""
+    import akkuverbrauch
     fahrten = {f["monat"]: f["km"] for f in db.get_fahrten_monate()}
     kwh_je_monat = {}
     for l in ladevorgaenge():
         monat = (l["datum"] or "")[:7]
         kwh_je_monat[monat] = kwh_je_monat.get(monat, 0.0) + l["menge_kwh"]
+    if not db.get_config()["simulation"]:
+        for monat, kwh in akkuverbrauch.entnahme_je_monat().items():
+            if kwh_je_monat.get(monat):
+                kwh_je_monat[monat] += kwh
 
     ergebnis = []
     for monat in sorted(set(fahrten) & set(kwh_je_monat)):

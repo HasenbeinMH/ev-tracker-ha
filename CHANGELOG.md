@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.7.0] - 2026-10-26
+
+### Ladeverluste in Prozent und Euro
+- Neu in der Statistik: „Ladeverluste (geschaetzt)“ in Prozent und „davon Ladeverluste“ in Euro – 1 − Verbrauch laut Auto-Akku ÷ Verbrauch laut Wallbox/Ladesaeule, aus den Monaten mit beiden Werten. Ueber 35 % gilt als Messfehler und wird nicht angezeigt
+- Hinweis unter der Vergleichstabelle: Stromkosten und Ersparnis rechnen mit den an Wallbox oder Ladesaeule bezahlten kWh, die Ladeverluste sind darin also schon enthalten
+- Kenntlich gemacht: Die Kacheln fuer Stromkosten, Ersparnis, Ø Verbrauch und Ø Strompreis im Dashboard tragen eine Fussnote ¹ und einen Tooltip – gerechnet mit den an Wallbox oder Ladesaeule bezahlten kWh, inkl. Ladeverluste; dasselbe als Hinweis im Mail-Bericht, dort heisst die Zeile jetzt „Verbrauch laut Wallbox/Ladesaeule“
+- Hilfe: Formel der Ladeverluste und Vergleichswerte aus ADAC-Messungen (Wallbox etwa 5–10 %, wenig Leistung 9–13 %, Haushaltssteckdose 15–25 %, Schnellladen 5–15 %)
+- Behoben: Der Verbrauch auf der Seite Fahrten rechnete noch ohne die Aenderung des Akkustands
+
 ## [3.6.4] - 2026-10-25
 
 ### Menues auf dem Handy wieder bedienbar

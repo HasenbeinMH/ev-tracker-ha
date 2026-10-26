@@ -248,7 +248,7 @@ def als_html(bericht: dict) -> str:
         (_("Geladene Energie"), fmt(d["kwh"], 1, "kWh"),
          _delta_text(d["kwh"], v["kwh"], 1, "kWh")),
         (_("Ladevorgänge"), str(d["ladevorgaenge"]), ""),
-        (_("Verbrauch"), verbrauch, ""),
+        (_("Verbrauch laut Wallbox/Ladesäule"), verbrauch, ""),
         (_("Stromkosten"), fmt(d["strom_kosten"], 2, "&euro;"),
          _delta_text(d["strom_kosten"], v["strom_kosten"], 2, "&euro;", "niedrig")),
         (_("Kosten je 100 km"), pro100, ""),
@@ -319,6 +319,7 @@ def als_html(bericht: dict) -> str:
            f'&#9888; {bericht["hinweis"]}</div>' if bericht.get("hinweis") else '')
         + f'<div style="margin:0 -1%">{kacheln}</div>'
         f'<h2>{_("Kennzahlen")}</h2><table>{tabelle}</table>'
+        f'<p class="grau" style="font-size:12px">{_("Stromkosten, Verbrauch und Ersparnis rechnen mit den kWh, die an Wallbox oder Ladesäule gemessen und bezahlt wurden – die Ladeverluste sind darin enthalten.")}</p>'
         f'{fahrzeug_html}{anbieter_html}{monats_html}</div>'
         f'<div class="fuss">{_("Automatisch erstellt vom EV Tracker am {0}.", date.today().strftime("%d.%m.%Y"))}</div>'
         '</div></body></html>')
@@ -339,4 +340,6 @@ def als_text(bericht: dict) -> str:
         f"{_('Ersparnis:'):<19} {fmt(d['ersparnis'], 2, 'EUR')}",
         f"{_('THG-Ertrag:'):<19} {fmt(d['thg'], 2, 'EUR')}",
         f"{_('CO2 gespart:'):<19} {fmt(d['co2'], 1, 'kg')}",
+        "",
+        _("Stromkosten, Verbrauch und Ersparnis rechnen mit den kWh, die an Wallbox oder Ladesäule gemessen und bezahlt wurden – die Ladeverluste sind darin enthalten."),
     ])

@@ -6,7 +6,7 @@
     <div class="hero-kicker">{{ fahrzeug_name }}</div>
     <h1>{{ _("Übersicht") }}</h1>
     <div class="hero-wert">{{ kz.ersparnis_gesamt | de(2) }}<span> €</span></div>
-    <div class="hero-label">{{ _("Gesamt-Ersparnis gegenüber") }} {% if kz.je_fahrzeug %}{{ _("den Vergleichs-Verbrennern") }}{% else %}{{ _("einem {0}", kf.fahrzeug) }}{% endif %}{% if zeitraum.von %} · {{ zeitraum.titel }}{% endif %}</div>
+    <div class="hero-label" title="{{ _t('Gerechnet mit den kWh, die an Wallbox oder Ladesäule gemessen und bezahlt wurden – die Ladeverluste sind enthalten') }}">{{ _("Gesamt-Ersparnis gegenüber") }} {% if kz.je_fahrzeug %}{{ _("den Vergleichs-Verbrennern") }}{% else %}{{ _("einem {0}", kf.fahrzeug) }}{% endif %}{% if zeitraum.von %} · {{ zeitraum.titel }}{% endif %}</div>
   </div>
   <img class="hero-auto" src="api/auto-bild?v={{ bild_v }}{% if fahrzeug_aktuell %}&fz={{ fahrzeug_aktuell }}{% endif %}" alt="{{ _t("Fahrzeugbild") }}"
        {%- if galerie_aktiv and galerie_aktiv.nachweis %} title="{{ _t('Bild nach einer Vorlage von {0}, {1} (Wikimedia Commons)', galerie_aktiv.nachweis.autor, galerie_aktiv.nachweis.lizenz) }}"{% endif %}>
@@ -122,6 +122,10 @@
     'kosten_100km':      ('ic-beleg',      '#c47a3a', kz.kosten_pro_100km | de(2) if kz.kosten_pro_100km else '–', '€', _t('Stromkosten je 100 km')),
     'ersparnis_100km':   ('ic-strecke',    '#5aaa78', kz.ersparnis_100km | de(2) if kz.ersparnis_100km else '–', '€', _t('Ersparnis je 100 km')),
     'pv_anteil':         ('ic-sonne',      '#c4963a', pv | de(0) if pv is not none else '–', '%', _t('PV-Anteil'))} %}
+{# Kacheln, die mit den an Wallbox/Ladesaeule bezahlten kWh rechnen – mit Tooltip und Fussnote #}
+{% set WALLBOX_KACHELN = ('stromkosten', 'ersparnis_kraft', 'ersparnis_gesamt', 'kosten_100km',
+                          'ersparnis_100km', 'verbrauch', 'strompreis') %}
+{% set wallbox_tipp = _t('Gerechnet mit den kWh, die an Wallbox oder Ladesäule gemessen und bezahlt wurden – die Ladeverluste sind enthalten') %}
 {% set DIAGRAMM = {
     'monatlich': _t('Monatliche Kosten & Ersparnis'),
     'kosten':    _t('Kraftstoffkosten Vergleich'),
@@ -149,15 +153,19 @@
   {% for k in layout.kacheln %}
   {% set icon, farbe, wert, einheit, label = KACHEL[k.id] %}
   <div class="stat mit-icon dash-el{{ ' aus' if not k.an }}" style="--farbe: {{ farbe }}" data-gruppe="kacheln"
-       data-id="{{ k.id }}" data-an="{{ 1 if k.an else 0 }}" data-name="{{ label }}">
+       data-id="{{ k.id }}" data-an="{{ 1 if k.an else 0 }}" data-name="{{ label }}"
+       {%- if k.id in WALLBOX_KACHELN %} title="{{ wallbox_tipp }}"{% endif %}>
     <span class="stat-icon"><svg viewBox="0 0 24 24"><use href="#{{ icon }}"></use></svg></span>
     <div>
       <span class="wert">{{ wert }}</span><span class="einheit">{{ einheit }}</span>
-      <div class="label">{{ label }}</div>
+      <div class="label">{{ label }}{% if k.id in WALLBOX_KACHELN %} <sup>¹</sup>{% endif %}</div>
     </div>
   </div>
   {% endfor %}
 </div>
+{% if layout.kacheln | selectattr("an") | selectattr("id", "in", WALLBOX_KACHELN) | list %}
+<p class="hint">{{ _("¹ Laut Wallbox/Ladesäule: gerechnet mit den dort gemessenen und bezahlten kWh, die Ladeverluste sind also enthalten. Wie hoch sie etwa sind, steht in der <a href=\"statistik\">Statistik</a>.") }}</p>
+{% endif %}
 
 {% elif b.id == "amortisation" %}
 {% if amo %}

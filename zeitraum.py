@@ -161,10 +161,6 @@ def laden() -> dict:
         for fz in db.fahrzeuge():
             with db.fahrzeug_kontext(fz["id"]):
                 daten["fahrzeuge"].append((fz, _laden_einzeln()))
-        daten["akku_entnahme"] = {}
-        for _f, d in daten["fahrzeuge"]:
-            for m, kwh in d["akku_entnahme"].items():
-                daten["akku_entnahme"][m] = daten["akku_entnahme"].get(m, 0) + kwh
     # Liter und CO2 des Vergleichs-Verbrenners je Monat – in der Gesamtsicht je Fahrzeug
     # mit dessen Verbrauch und CO2-Faktor, damit die Diagramme zu den Kennzahlen passen
     teile = [d for _f, d in daten["fahrzeuge"]] if daten.get("fahrzeuge") else [daten]
@@ -285,6 +281,17 @@ def kennzahlen(z: dict, daten: dict) -> dict:
     a_km = sum(a["km"] for a in f["akku"])
     verbrauch_akku = sum(a["kwh"] for a in f["akku"]) / a_km * 100 if a_km else None
 
+    # Ladeverluste: Abstand zwischen Wallbox/Saeule und Auto-Akku, nur ueber Monate
+    # mit beiden Werten. Bezahlt werden die kWh an Wallbox/Saeule – Stromkosten und
+    # Ersparnis enthalten die Verluste also schon; hier nur, welcher Teil davon es ist.
+    gemeinsam = [a for a in f["akku"] if a["monat"] in beide]
+    lv = {"_lv_km": sum(km_m[a["monat"]] for a in gemeinsam),
+          "_lv_kwh": sum(kwh_m[a["monat"]] + _entnahme(daten, a["monat"]) for a in gemeinsam),
+          "_lv_akm": sum(a["km"] for a in gemeinsam),
+          "_lv_akwh": sum(a["kwh"] for a in gemeinsam)}
+    verlust = _ladeverlust(lv)
+    kwh_kosten = sum(l["gesamtpreis"] for l in f["lade"] if l["menge_kwh"])
+
     quellen = {"PV-Strom": 0.0, "Netzbezug": 0.0, berechnung.OEFFENTLICH: 0.0}
     for l in f["lade"]:
         quellen[berechnung.stromquelle(l["anbieter"])] += l["menge_kwh"]
@@ -294,6 +301,9 @@ def kennzahlen(z: dict, daten: dict) -> dict:
         "_v_km": v_km, "_v_kwh": v_kwh,
         "_a_km": a_km, "_a_kwh": sum(a["kwh"] for a in f["akku"]),
         "_quellen": quellen,
+        **lv, "_kwh_kosten": kwh_kosten,
+        "ladeverlust_anteil": verlust * 100 if verlust is not None else None,
+        "ladeverlust_kosten": kwh_kosten * verlust if verlust is not None else None,
         "titel":            z["titel"],
         "monate":           len(mon),
         "steuer_monate":    st_mon,
@@ -318,6 +328,20 @@ def kennzahlen(z: dict, daten: dict) -> dict:
         "anteile":          {q: (v / kwh * 100 if kwh else None) for q, v in quellen.items()},
         "ohne_km":          ohne_km,
     }
+
+
+# Anteile ausserhalb sind keine Ladeverluste, sondern Messfehler (zu wenige oder
+# fehlende Fahrtabschnitte, falsche Akkukapazitaet) – dann lieber kein Wert
+LADEVERLUST_MAX = 0.35
+
+
+def _ladeverlust(lv: dict):
+    """Anteil der Ladeverluste (0–1) aus den Zwischenwerten _lv_* oder None:
+    1 − Verbrauch laut Auto-Akku ÷ Verbrauch laut Wallbox/Saeule."""
+    if not (lv["_lv_km"] and lv["_lv_kwh"] > 0 and lv["_lv_akm"] and lv["_lv_akwh"] > 0):
+        return None
+    anteil = 1 - (lv["_lv_akwh"] / lv["_lv_akm"]) / (lv["_lv_kwh"] / lv["_lv_km"])
+    return anteil if 0 <= anteil <= LADEVERLUST_MAX else None
 
 
 def _entnahme(daten: dict, monat: str) -> float:
@@ -498,7 +522,8 @@ def _ersetzt(gesamt: dict, einzeln: dict) -> list:
 # Kennzahlen, die sich ueber Fahrzeuge einfach addieren
 _SUMMEN = ("gesamt_km", "gesamt_kwh", "ladevorgaenge", "strom_kosten", "benzin_kosten",
            "liter", "thg_gesamt", "kfz_steuer", "kfz_steuer_eauto", "ersparnis_kraft",
-           "ersparnis_gesamt", "co2_gespart", "_v_km", "_v_kwh", "_a_km", "_a_kwh")
+           "ersparnis_gesamt", "co2_gespart", "_v_km", "_v_kwh", "_a_km", "_a_kwh",
+           "_lv_km", "_lv_kwh", "_lv_akm", "_lv_akwh", "_kwh_kosten")
 
 
 def kennzahlen_summe(liste: list, titel: str) -> dict:
@@ -512,6 +537,7 @@ def kennzahlen_summe(liste: list, titel: str) -> dict:
             quellen[q] = quellen.get(q, 0) + v
     km, kwh, kosten = s["gesamt_km"], s["gesamt_kwh"], s["strom_kosten"]
     preise = [x["avg_benzin"] for x in liste if x.get("avg_benzin")]
+    verlust = _ladeverlust(s)
     return {
         **s,
         "titel": titel,
@@ -521,6 +547,8 @@ def kennzahlen_summe(liste: list, titel: str) -> dict:
                        else (preise[0] if preise else None)),
         "verbrauch": s["_v_kwh"] / s["_v_km"] * 100 if s["_v_km"] else None,
         "verbrauch_akku": s["_a_kwh"] / s["_a_km"] * 100 if s["_a_km"] else None,
+        "ladeverlust_anteil": verlust * 100 if verlust is not None else None,
+        "ladeverlust_kosten": s["_kwh_kosten"] * verlust if verlust is not None else None,
         "kosten_pro_100km": kosten / km * 100 if km and kosten else None,
         "ersparnis_100km": s["ersparnis_kraft"] / km * 100 if km else None,
         "strompreis_ct": kosten / kwh * 100 if kwh else None,
@@ -559,7 +587,9 @@ VERGLEICH_ZEILEN = [
     (N_("Geladene Energie"), "gesamt_kwh", 1, "kWh", None),
     (N_("Verbrauch laut Wallbox/Ladesäule"), "verbrauch", 1, "kWh/100 km", "niedrig"),
     (N_("Verbrauch laut Auto-Akku"), "verbrauch_akku", 1, "kWh/100 km", "niedrig"),
+    (N_("Ladeverluste (geschätzt)"), "ladeverlust_anteil", 0, "%", "niedrig"),
     (N_("Stromkosten"), "strom_kosten", 2, "€", None),
+    (N_("davon Ladeverluste (geschätzt)"), "ladeverlust_kosten", 2, "€", None),
     (N_("Kosten je 100 km"), "kosten_pro_100km", 2, "€", "niedrig"),
     (N_("Ø Strompreis"), "strompreis_ct", 1, "ct/kWh", "niedrig"),
     (N_("Anteil PV-Strom"), ("anteile", "PV-Strom"), 0, "%", "hoch"),
@@ -597,6 +627,8 @@ def vergleich_zeilen(ka: dict, kb: dict, nur: tuple | None = None) -> list:
             a, b = ka.get(schluessel), kb.get(schluessel)
         if schluessel == "kfz_steuer_eauto" and not a and not b:
             continue        # solange das E-Auto steuerfrei ist, nur Rauschen
+        if schluessel in ("ladeverlust_anteil", "ladeverlust_kosten") and a is None and b is None:
+            continue        # ohne Akkustand in beiden Zeitraeumen nicht schaetzbar
         diff = prozent = None
         wertung = ""
         if a is not None and b is not None:
