@@ -38,6 +38,8 @@ RAUSCHEN = 0.5
 MIN_KM = 5.0
 # Der naechtliche Lauf berechnet diesen Zeitraum neu
 TAGE_NACHTLAUF = 45
+# Mehr km an einem Tag sind ein Messfehler (Tages-km fuer das Nutzungsprofil)
+MAX_TAG_KM = 2000.0
 
 
 def _stundenwerte(client, entity: str, start: datetime, ende: datetime,
@@ -218,6 +220,9 @@ def aktualisieren(tage: int | None = TAGE_NACHTLAUF) -> str:
         bool(v["soc"]) and v["soc"][0][0] > (start + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M"))
     if v["soc"]:
         _staende_speichern(monatsstaende(v["soc"], von_anfang))
+    tage_km = tages_km(v["km"])
+    if tage_km:
+        db.ersetze_fahrten_tag(None if tage is None else min(tage_km), tage_km)
     if not v["soc"] or not v["km"]:
         return _("Keine Daten: {0}", v["meldung"] or _("Batterie- oder Kilometerverlauf leer"))
 
@@ -233,6 +238,34 @@ def aktualisieren(tage: int | None = TAGE_NACHTLAUF) -> str:
     gesamt_km = sum(a["km"] for a in abschnitte)
     return _("{0} Fahrtabschnitt(e) aus dem Akkustand berechnet ({1} km, Quelle: {2})",
              len(abschnitte), f"{gesamt_km:.0f}", v['quelle'])
+
+
+def tages_km(km_verlauf: list) -> dict:
+    """Gefahrene km je Tag aus dem stuendlichen Kilometerstand: {'YYYY-MM-DD': km}.
+
+    km eines Tages = letzter Stand des Tages − letzter Stand davor. Der erste Tag fehlt
+    (kein Stand davor), Tage ohne Werte zaehlen 0 km – meldet das Auto erst spaeter
+    wieder, landen die km am Tag des naechsten Werts. Ein Ruecksprung des Zaehlers oder
+    mehr als MAX_TAG_KM gelten als Messfehler (0 km)."""
+    letzte = {}
+    for t, km in sorted(km_verlauf):
+        letzte[t[:10]] = km
+    if len(letzte) < 2:
+        return {}
+    tage = sorted(letzte)
+    tag, ende = datetime.strptime(tage[0], "%Y-%m-%d"), datetime.strptime(tage[-1], "%Y-%m-%d")
+    vorher = letzte[tage[0]]
+    erg = {}
+    while tag < ende:
+        tag += timedelta(days=1)
+        k = tag.strftime("%Y-%m-%d")
+        if k not in letzte:
+            erg[k] = 0.0
+            continue
+        diff = letzte[k] - vorher
+        erg[k] = round(diff, 1) if 0 <= diff <= MAX_TAG_KM else 0.0
+        vorher = letzte[k]
+    return erg
 
 
 def monatsstaende(soc_verlauf: list, von_anfang: bool) -> dict:

@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block titel %}{{ _("Profil") }}{% endblock %}
+{% block inhalt %}
+{% macro datum(d) %}{{ d[8:10] ~ "." ~ d[5:7] ~ "." ~ d[:4] }}{% endmacro %}
+<h1>{{ _("📊 Profil – wie du fährst und lädst") }}</h1>
+
+{% for fz, p in autos %}
+{% set n = p.nutzung %}
+{% set l = p.laden %}
+{% if autos | length > 1 %}<h2 class="fz-titel">🚗 {{ fz.name }}</h2>{% endif %}
+
+<h2>{{ _("Nutzungsprofil") }}</h2>
+{% if n %}
+<div class="statgrid">
+  <div class="stat"><span class="wert">{{ n.km_je_tag | de(1) }}</span><span class="einheit">km</span>
+    <div class="label">{{ _("Ø je Tag") }}</div></div>
+  <div class="stat"><span class="wert">{{ n.km_je_fahrtag | de(1) if n.km_je_fahrtag else "–" }}</span><span class="einheit">km</span>
+    <div class="label">{{ _("Ø je Fahrtag") }}</div></div>
+  <div class="stat"><span class="wert">{{ n.anteil_fahrtage | de(0) }}</span><span class="einheit">%</span>
+    <div class="label">{{ _("Tage mit Fahrten") }}</div></div>
+  <div class="stat"><span class="wert">{{ n.laengster.km | de(0) if n.laengster else "–" }}</span><span class="einheit">km</span>
+    <div class="label">{{ _("Längster Tag") }}{% if n.laengster %} · {{ datum(n.laengster.datum) }}{% endif %}</div></div>
+  <div class="stat"><span class="wert">{{ n.quantil_akku | de(0) if n.quantil_akku else "–" }}</span><span class="einheit">%</span>
+    <div class="label">{{ _("Akku reicht an 95 % der Fahrtage") }}</div></div>
+</div>
+<div class="chartgrid">
+  <div class="chart">
+    <div class="titel">{{ _("Ø km je Wochentag") }}</div>
+    <div class="echart" data-echart="opt-wt-{{ fz.id }}"></div>
+    <script type="application/json" id="opt-wt-{{ fz.id }}">{{ p.charts.wochentage | tojson }}</script>
+  </div>
+  <div class="chart">
+    <div class="titel">{{ _("Tage nach Strecke") }}</div>
+    <div class="echart" data-echart="opt-kl-{{ fz.id }}"></div>
+    <script type="application/json" id="opt-kl-{{ fz.id }}">{{ p.charts.klassen | tojson }}</script>
+  </div>
+</div>
+<p class="hint">
+  {{ _("Aus dem Kilometerstand je Tag, {0} bis {1} ({2} Tage).", datum(n.von), datum(n.bis), n.tage) }}
+  {% if n.quantil_km %}{{ _("An 95 % der Fahrtage bist du höchstens {0} km gefahren.", n.quantil_km | de(0)) }}{% endif %}
+  {% if n.quantil_akku %}{{ _("Das sind etwa {0} % Akku bei einer Reichweite von {1} km in diesem Monat.", n.quantil_akku | de(0), p.reichweite | de(0)) }}{% endif %}
+  {% if n.langstrecke %}{{ _("Tage über 200 km:") }} {% for j, anz in n.langstrecke.items() %}{{ j }}: {{ anz }}{% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}
+</p>
+{% else %}
+<div class="card">
+  <span class="gelb">{{ _("Noch keine km je Tag.") }}</span>
+  {{ _("Sie entstehen aus dem Kilometerstand beim nächtlichen Abruf zusammen mit den Fahrtabschnitten aus dem Akkustand – für die Vergangenheit per Knopf „Gesamte Historie aus Home Assistant neu berechnen“ unter <a href=\"fahrten#akku\">Fahrten</a>. Dafür müssen Kilometerstand und Batteriestand in den Einstellungen eingetragen sein.") }}
+</div>
+{% endif %}
+
+<h2>{{ _("Ladeprofil") }}</h2>
+<div class="statgrid">
+  <div class="stat"><span class="wert">{{ l.anteil_zuhause | de(0) if l.anteil_zuhause is not none else "–" }}</span><span class="einheit">%</span>
+    <div class="label">{{ _("der kWh zuhause geladen") }}</div></div>
+  <div class="stat"><span class="wert">{{ l.unterwegs | de(0) }}</span>
+    <div class="label">{{ _("Ladungen unterwegs") }}</div></div>
+  <div class="stat"><span class="wert">{{ l.anteil_dc | de(0) if l.anteil_dc is not none else "–" }}</span><span class="einheit">%</span>
+    <div class="label">{{ _("DC-Anteil unterwegs (kWh)") }}</div></div>
+</div>
+<div class="chartgrid">
+  <div class="chart">
+    <div class="titel">{{ _("Geladene kWh nach Stromquelle") }}</div>
+    <div class="echart" data-echart="opt-orte-{{ fz.id }}"></div>
+    <script type="application/json" id="opt-orte-{{ fz.id }}">{{ p.charts.orte | tojson }}</script>
+  </div>
+  <div class="chart">
+    <div class="titel">{{ _("Ladebeginn nach Uhrzeit") }}</div>
+    <div class="echart" data-echart="opt-std-{{ fz.id }}"></div>
+    <script type="application/json" id="opt-std-{{ fz.id }}">{{ p.charts.ladestunden | tojson }}</script>
+  </div>
+  <div class="chart">
+    <div class="titel">{{ _("Ladungen nach Wochentag") }}</div>
+    <div class="echart" data-echart="opt-lwt-{{ fz.id }}"></div>
+    <script type="application/json" id="opt-lwt-{{ fz.id }}">{{ p.charts.ladetage | tojson }}</script>
+  </div>
+</div>
+<p class="hint">{{ _("Wann: Ladungen aus dem Akkustand ({0}), Beginn auf die Stunde genau. Wo und wie: alle erfassten Ladevorgänge in kWh.", l.ladungen) }}</p>
+{% endfor %}
+
+<h2 id="jahre">{{ _("Entwicklung über die Jahre") }}</h2>
+<div class="kennzahl-tabs">
+  {% for schluessel, metrik in metriken.items() %}
+  <button type="button" class="tab{% if loop.first %} aktiv{% endif %}"
+          onclick="kennzahlWaehlen(this, 'jahre-{{ schluessel }}')">{{ _t(metrik[0]) }}</button>
+  {% endfor %}
+</div>
+<div class="chart">
+  <div class="echart" id="jahre-chart" data-echart="jahre-km" data-umschaltbar></div>
+</div>
+{% for schluessel in metriken %}
+<script type="application/json" id="jahre-{{ schluessel }}">{{ jahre_charts[schluessel] | tojson }}</script>
+{% endfor %}
+
+{% if jv.jahre %}
+<div class="tabelle-scroll"><table class="vergleich">
+  <tr><th>{{ _("Kennzahl") }}</th>{% for j in jv.jahre %}<th class="zahl">{{ j }}<div class="muted klein">{{ _("{0} Monat", jv.kennzahlen[j].monate) if jv.kennzahlen[j].monate == 1 else _("{0} Monate", jv.kennzahlen[j].monate) }}</div></th>{% endfor %}</tr>
+  {% for key, text, stellen, einheit in [
+      ("gesamt_km", _t("Kilometer"), 0, "km"),
+      ("gesamt_kwh", _t("Geladene kWh"), 0, "kWh"),
+      ("verbrauch", _t("Verbrauch laut Wallbox/Ladesäule"), 1, "kWh/100 km"),
+      ("verbrauch_akku", _t("Verbrauch laut Auto-Akku"), 1, "kWh/100 km"),
+      ("strom_kosten", _t("Stromkosten"), 0, "€"),
+      ("kosten_pro_100km", _t("Stromkosten je 100 km"), 2, "€"),
+      ("ersparnis_gesamt", _t("Gesamt-Ersparnis"), 0, "€"),
+      ("co2_gespart", _t("CO2 gespart"), 0, "kg")] %}
+  <tr>
+    <td>{{ text }}</td>
+    {% for j in jv.jahre %}{% set w = jv.kennzahlen[j][key] %}
+    <td class="zahl">{{ (w | de(stellen) ~ " " ~ einheit) if w is not none else "–" }}</td>
+    {% endfor %}
+  </tr>
+  {% endfor %}
+  <tr>
+    <td>{{ _("PV-Anteil") }}</td>
+    {% for j in jv.jahre %}{% set w = jv.kennzahlen[j].anteile.get("PV-Strom") %}
+    <td class="zahl">{{ (w | de(0) ~ " %") if w is not none else "–" }}</td>
+    {% endfor %}
+  </tr>
+</table></div>
+<p class="hint">{{ _("Kennzahlen je Kalenderjahr wie in der <a href=\"statistik\">Statistik</a> – das laufende Jahr ist noch nicht vollständig. Zwei Zeiträume im Detail vergleicht die Statistik-Seite.") }}</p>
+{% endif %}
+
+<script src="static/echarts.min.js"></script>
+<script src="static/charts.js"></script>
+<script>
+function kennzahlWaehlen(knopf, quelleId) {
+  document.querySelectorAll(".kennzahl-tabs .tab").forEach(t => t.classList.remove("aktiv"));
+  knopf.classList.add("aktiv");
+  chartWechseln(document.getElementById("jahre-chart"), quelleId);
+}
+</script>
+{% endblock %}

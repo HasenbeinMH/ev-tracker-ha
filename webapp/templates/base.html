@@ -28,6 +28,8 @@ window.T = function (text) {
   {% for label, eintraege in [
       (_t('Dashboard'), [('dashboard', '.', _t('Dashboard'))]),
       (_t('Auswertung'), [('statistik', 'statistik', _t('Statistik')),
+                      ('akku', 'akku', _t('Akku')),
+                      ('profil', 'profil', _t('Profil')),
                       ('berichte', 'berichte', _t('Berichte'))]),
       (_t('Fahrten'), [('fahrten', 'fahrten', _t('Fahrten')),
                    ('benzin', 'benzin', _t('{0}preise', kf.name))]),

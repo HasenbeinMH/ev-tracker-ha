@@ -734,3 +734,214 @@ def chart_amortisation(a):
     )
     opt["legend"]["show"] = True
     return _bedienung(opt, len(monate), umschalten=False)
+
+
+# ─────────────────────────────────────────────────────────────
+#  Akku, Profil, Leasing (akku.py, profil.py, leasing.py)
+# ─────────────────────────────────────────────────────────────
+
+def _monate_von_bis(von: str, bis: str) -> list:
+    """Alle Monate 'YYYY-MM' von bis einschliesslich."""
+    erg, j, m = [], int(von[:4]), int(von[5:7])
+    while f"{j}-{m:02d}" <= bis:
+        erg.append(f"{j}-{m:02d}")
+        j, m = (j, m + 1) if m < 12 else (j + 1, 1)
+    return erg
+
+
+def chart_soh(a):
+    """SoH ueber die Zeit: geschaetzt mit Spanne, Sensor, von Hand eingetragene Werte und
+    die Vergleichskurve (Ø ~1,8 % je Jahr ab Erstzulassung)."""
+    import akku
+    schaetzung = a["schaetzung"]
+    sensor = {s["monat"]: s["soh"] for s in a["sensor"]}
+    hand = {}
+    for m in a["messungen"]:
+        hand[m["datum"][:7]] = m["soh"]
+    alle = sorted({s["monat"] for s in schaetzung} | set(sensor) | set(hand))
+    if not alle:
+        return _leer(_("Noch kein SoH – Werte von Hand eintragen oder mehr Monate mit Akkustand abwarten"))
+    monate = _monate_von_bis(alle[0], alle[-1])
+    geschaetzt = {s["monat"]: s for s in schaetzung}
+    serien = []
+    if geschaetzt:
+        unten = [geschaetzt[m]["unten"] if m in geschaetzt else None for m in monate]
+        spanne = [round(geschaetzt[m]["oben"] - geschaetzt[m]["unten"], 1) if m in geschaetzt else None
+                  for m in monate]
+        unsichtbar = {"opacity": 0}
+        serien += [
+            {"name": "_unten", "type": "line", "data": unten, "stack": "spanne", "symbol": "none",
+             "lineStyle": unsichtbar, "tooltip": {"show": False}, "silent": True},
+            {"name": _("Spanne der Schätzung"), "type": "line", "data": spanne, "stack": "spanne",
+             "symbol": "none", "lineStyle": unsichtbar, "silent": True, "tooltip": {"show": False},
+             "areaStyle": {"color": _rgba(COLORS["orange"], 0.18)},
+             "itemStyle": {"color": _rgba(COLORS["orange"], 0.4)}},
+            _linie(_("geschätzt"), "orange", [geschaetzt[m]["soh"] if m in geschaetzt else None
+                                              for m in monate], "fn:prozent1",
+                   lineStyle={"width": 2, "type": "dashed", "color": COLORS["orange"]}),
+        ]
+    if sensor:
+        serien.append(_linie(_("Sensor"), "teal", [sensor.get(m) for m in monate], "fn:prozent1",
+                             connectNulls=True))
+    if hand:
+        serien.append({"name": _("von Hand"), "type": "scatter", "symbolSize": 12,
+                       "data": [hand.get(m) for m in monate],
+                       "itemStyle": {"color": COLORS["green"], "borderColor": "#fff", "borderWidth": 1},
+                       "tooltip": {"valueFormatter": "fn:prozent1"}, "z": 5})
+    ref = a.get("referenz")
+    if ref:
+        from datetime import date
+        beginn = date.fromisoformat(ref["beginn"])
+        serien.append(_linie(
+            _("Vergleich Ø {0} % je Jahr", f"{akku.REFERENZ_PRO_JAHR:.1f}".replace(".", ",")), "red",
+            [round(100 - akku.REFERENZ_PRO_JAHR
+                   * max(0.0, (date(int(m[:4]), int(m[5:7]), 15) - beginn).days / 365.25), 1)
+             for m in monate], "fn:prozent1", showSymbol=False,
+            lineStyle={"width": 1.5, "type": "dotted", "color": COLORS["subtext"]},
+            itemStyle={"color": COLORS["subtext"]}))
+    werte = [v for s in serien[2 if geschaetzt else 0:] for v in s["data"] if v is not None]
+    werte += [s["oben"] for s in schaetzung] + [s["unten"] for s in schaetzung]
+    opt = _basis(
+        xAxis=_achse_kategorie(monate, boundaryGap=False),
+        yAxis=_achse_wert(min=max(0, math.floor(min(werte) / 5) * 5 - 5),
+                          max=max(105, math.ceil(max(werte) / 5) * 5),
+                          axisLabel={"color": COLORS["subtext"], "fontSize": 10,
+                                     "formatter": "fn:prozent0"}),
+        series=serien,
+    )
+    opt["legend"]["show"] = True
+    opt["legend"]["data"] = [s["name"] for s in serien if s["name"] != "_unten"]
+    return _bedienung(opt, len(monate), umschalten=False)
+
+
+def chart_zyklen(je_monat):
+    """Vollzyklen je Monat (Balken) und aufsummiert (Linie, rechte Achse)."""
+    if not je_monat:
+        return _leer(_("Noch keine Ladezyklen"))
+    monate = _monate_von_bis(min(je_monat), max(je_monat))
+    werte = [je_monat.get(m, 0.0) for m in monate]
+    summe, kum = 0.0, []
+    for w in werte:
+        summe += w
+        kum.append(round(summe, 1))
+    opt = _basis(
+        xAxis=_achse_kategorie(monate),
+        yAxis=[_achse_wert(), _achse_wert(splitLine={"show": False})],
+        series=[_balken(_("Vollzyklen im Monat"), "purple", werte, "fn:zahl1"),
+                _linie(_("Vollzyklen gesamt"), "teal", kum, "fn:zahl1", yAxisIndex=1)],
+    )
+    opt["legend"]["show"] = True
+    return _bedienung(opt, len(monate), umschalten=False)
+
+
+def chart_ladefenster(z):
+    """Wie voll der Akku vor und nach dem Laden war – Anzahl Ladungen je Klasse."""
+    import akku
+    if not z["ladungen"]:
+        return _leer(_("Noch keine Ladungen aus dem Akkustand"))
+    klassen = [f"{u}–{min(o, 100)} %" for u, o in akku.KLASSEN]
+    opt = _basis(
+        xAxis=_achse_kategorie(klassen, formatter=None),
+        yAxis=_achse_wert(minInterval=1),
+        series=[_balken(_("Akku vor dem Laden"), "orange", z["von_klassen"], "fn:zahl"),
+                _balken(_("Akku nach dem Laden"), "green", z["bis_klassen"], "fn:zahl")],
+    )
+    opt["legend"]["show"] = True
+    opt["tooltip"]["axisPointer"] = {"type": "shadow",
+                                     "shadowStyle": {"color": "rgba(255,255,255,0.03)"}}
+    return opt
+
+
+def chart_reichweite(r):
+    """Reichweite bei 100 % je Monat aus dem Verbrauch laut Auto-Akku, dazu 80 → 10 %
+    (typische Langstrecke) und gestrichelt die Prognose der naechsten zwoelf Monate."""
+    rm, voraus = r["monate"], r["prognose"]
+    if not rm:
+        return _leer(_("Fahrtabschnitte aus dem Akkustand erforderlich"))
+    bisher = {x["monat"]: x for x in rm}
+    zukunft = {x["monat"]: x["km_100"] for x in voraus if x["monat"] not in bisher}
+    monate = _monate_von_bis(rm[0]["monat"], max([rm[-1]["monat"]] + list(zukunft)))
+    serien = [
+        _linie(_("bei 100 %"), "blue", [bisher[m]["km_100"] if m in bisher else None for m in monate],
+               "fn:km0", flaeche=True),
+        _linie(_("80 → 10 %"), "teal", [bisher[m]["km_80_10"] if m in bisher else None for m in monate],
+               "fn:km0"),
+    ]
+    if zukunft:
+        letzter = rm[-1]["monat"]
+        serien.append(_linie(_("Prognose bei 100 %"), "orange",
+                             [bisher[m]["km_100"] if m == letzter else zukunft.get(m) for m in monate],
+                             "fn:km0", lineStyle={"width": 2, "type": "dashed", "color": COLORS["orange"]}))
+    opt = _basis(xAxis=_achse_kategorie(monate, boundaryGap=False),
+                 yAxis=_achse_wert(min=0), series=serien)
+    opt["legend"]["show"] = True
+    return _bedienung(opt, len(monate), umschalten=False)
+
+
+def chart_balken_liste(kategorien, werte, name, farbe="blue", formatter="fn:zahl"):
+    """Einfache Balken ueber feste Kategorien (Wochentage, Stunden, Tagesstrecken)."""
+    if not any(werte):
+        return _leer(_("Noch keine Daten"))
+    opt = _basis(xAxis=_achse_kategorie(kategorien, formatter=None),
+                 yAxis=_achse_wert(), series=[_balken(name, farbe, werte, formatter)])
+    opt["grid"]["top"] = 16
+    opt["tooltip"]["axisPointer"] = {"type": "shadow",
+                                     "shadowStyle": {"color": "rgba(255,255,255,0.03)"}}
+    return opt
+
+
+JAHR_FARBEN = ["blue", "orange", "green", "purple", "teal", "red"]
+
+
+def chart_jahre(jv, metrik):
+    """Je Jahr eine Linie (bzw. Balkengruppe) ueber Januar bis Dezember."""
+    import profil
+    _beschriftung, formatierer, balken = profil.JAHR_METRIKEN[metrik]
+    if not jv["jahre"]:
+        return _leer(_("Keine Monate mit Daten"))
+    serien = []
+    for i, j in enumerate(jv["jahre"][-len(JAHR_FARBEN):]):
+        farbe = JAHR_FARBEN[i % len(JAHR_FARBEN)]
+        werte = jv["werte"][j][metrik]
+        if balken:
+            serien.append(_balken(j, farbe, werte, formatierer))
+        else:
+            serien.append(_linie(j, farbe, werte, formatierer, connectNulls=False, showSymbol=True))
+    opt = _basis(xAxis=_achse_kategorie([monatskuerzel(m) for m in range(1, 13)], formatter=None,
+                                        boundaryGap=balken),
+                 yAxis=_achse_wert(), series=serien)
+    opt["legend"]["show"] = True
+    if balken:
+        opt["tooltip"]["axisPointer"] = {"type": "shadow",
+                                         "shadowStyle": {"color": "rgba(255,255,255,0.03)"}}
+    return opt
+
+
+def chart_leasing(l):
+    """Leasing: Soll (gleichmaessig ueber die Laufzeit), gefahrene km und Prognose bis
+    Vertragsende, dazu die vereinbarten km plus Freigrenze."""
+    monate = _monate_von_bis(l["start"][:7], l["ende"][:7])
+    n = len(monate)
+    soll = [round(l["vertrag_km"] * (i + 1) / n) for i in range(n)]
+    ist = {v["monat"]: v["km"] for v in l["verlauf"]}
+    serien = [
+        _linie(_("Soll"), "subtext", soll, "fn:km0", showSymbol=False,
+               lineStyle={"width": 1.5, "type": "dotted", "color": COLORS["subtext"]}),
+        _linie(_("Gefahren"), "blue", [ist.get(m) for m in monate], "fn:km0", flaeche=True),
+    ]
+    if l["verlauf"] and not l["beendet"]:
+        letzter = l["verlauf"][-1]["monat"]
+        i0 = monate.index(letzter) if letzter in monate else None
+        if i0 is not None and i0 < n - 1:
+            schritt = (l["prognose"] - l["ist"]) / (n - 1 - i0)
+            serien.append(_linie(_("Prognose"), "orange",
+                                 [None] * i0 + [round(l["ist"] + schritt * k) for k in range(n - i0)],
+                                 "fn:km0", showSymbol=False,
+                                 lineStyle={"width": 2, "type": "dashed", "color": COLORS["orange"]}))
+    grenze = round(l["vertrag_km"] + l["toleranz"])
+    serien.append(_linie(_("Vertrag + Freigrenze"), "red", [grenze] * n, "fn:km0", showSymbol=False,
+                         lineStyle={"width": 1.5, "type": "dashed", "color": COLORS["red"]}))
+    opt = _basis(xAxis=_achse_kategorie(monate, boundaryGap=False),
+                 yAxis=_achse_wert(min=0), series=serien)
+    opt["legend"]["show"] = True
+    return _bedienung(opt, n, umschalten=False)

@@ -16,12 +16,15 @@ SCHLUESSEL = "dashboard_layout"
 
 # (id, im Standard sichtbar) in Standard-Reihenfolge
 BEREICHE = [("kacheln", True), ("amortisation", True), ("je_fahrzeug", True),
-            ("abo", False), ("diagramme", True)]
+            ("abo", False), ("diagramme", True), ("leasing", False)]
 KACHELN = [("strecke", True), ("energie", True), ("ersparnis_kraft", True),
            ("steuer", True), ("thg", True), ("co2", True),
            ("ersparnis_gesamt", False), ("ladevorgaenge", False), ("stromkosten", False),
            ("verbrenner_kosten", False), ("verbrauch", False), ("strompreis", False),
-           ("kosten_100km", False), ("ersparnis_100km", False), ("pv_anteil", False)]
+           ("kosten_100km", False), ("ersparnis_100km", False), ("pv_anteil", False),
+           ("soh", False), ("reichweite", False), ("zyklen", False)]
+# Kacheln aus der Akku-Auswertung (akku.py) – nur gerechnet, wenn eine davon sichtbar ist
+AKKU_KACHELN = {"soh", "reichweite", "zyklen"}
 DIAGRAMME = [("monatlich", True), ("kosten", True), ("co2", True), ("verbrauch", True),
              ("benzin", True), ("strom", True), ("anbieter", True), ("strommix", True),
              ("thg", True)]

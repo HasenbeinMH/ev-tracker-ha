@@ -59,6 +59,9 @@
   <a href="#konzept">Basic concept</a>
   <a href="#dashboard">Dashboard</a>
   <a href="#statistik">Statistics</a>
+  <a href="#akku">Battery</a>
+  <a href="#profil">Profile</a>
+  <a href="#leasing">Leasing</a>
   <a href="#fahrten">Trips</a>
   <a href="#laden">Charging</a>
   <a href="#ladetarife">Charging tariffs</a>
@@ -157,6 +160,41 @@
 <p><b>Month by month:</b> chart with a selectable key figure. The first month of one period is shown next to the first month of the other; for summer against winter, April next to October (“Apr · Oct”).</p>
 <p><b>Consumption from the battery level per month:</b> the same pairing as a table with the figures behind it – per month and period the counted km, the kWh from the battery and the consumption. The total row is weighted via Σ kWh ÷ Σ km and matches the row “Consumption from battery” in the table above.</p>
 <div class="hb-warn"><b>Different km than in the chart:</b> this table only counts the km of the counted trip segments, not the monthly recorded total kilometres – otherwise km, kWh and consumption in one row would not match. Which segments are left out is explained under <a href="#akkuverbrauch">Consumption from the battery level</a>.</div>
+
+<h2 id="akku">Battery <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p>Battery health, charge cycles and range – under <b>Analysis → Battery</b>. The basis are the <a href="#akkuverbrauch">trip segments from the battery level</a>: between two segments there is a charge, from the level at the end of one to the start of the next.</p>
+<h3 id="soh">Battery health (SoH)</h3>
+<p>SoH (state of health) = today's usable capacity relative to new condition. Three sources, <b>measured values always take precedence</b>:</p>
+<ul>
+  <li><b>By hand:</b> readings from the workshop, an OBD app (e.g. Car Scanner, EVNotify) or a battery certificate – enter, change or delete them on the Battery page under “SoH values entered by hand”.</li>
+  <li><b>Sensor:</b> if the car reports the SoH to Home Assistant (e.g. via an OBD dongle), enter it under Settings → Sensors “Battery health SoH”. The nightly fetch stores the monthly average.</li>
+  <li><b>Estimated:</b> from the gap between wallbox kWh and battery level, rolling over up to 6 months with both values, from 3 months on.</li>
+</ul>
+<div class="hb-warn"><b>The estimate is rough:</b> consumption according to the car battery uses the configured (new) capacity. If the battery has less, the measured charging losses come out too low. An aged battery and lower charging losses look the same in the data, though – so the estimate depends on an <b>assumption for the charging losses</b> (default 10 %, adjustable on the Battery page) and shows a range of ± 5 percentage points. A <b>value entered by hand calibrates the estimate</b>: the assumption is chosen so that the estimate exactly matches the measured value in the month of the measurement; the range shrinks to ± 2 percentage points.</div>
+<p><b>Usable capacity</b> = battery capacity (Reports → charge detection settings) × SoH. The configured capacity remains the basis for consumption and charging losses – the SoH is for display only, so nothing is calculated in circles.</p>
+<p><b>Ageing:</b> linear change of the SoH per year – from the measured values, otherwise from the estimate, from two values at least 90 days apart. For comparison, the chart shows a curve of 1.8 % per year on average from the first registration (analysis of around 10,000 EVs by Geotab, 2024) – an average, not a measure for a particular car. <b>Warranty forecast:</b> SoH at the end of the battery warranty (default 8 years from first registration or 160,000 km, whichever comes first) with your own ageing, without a measurable decline with the reference value.</p>
+<h3 id="zyklen">Charge cycles and charging window</h3>
+<p>One <b>full cycle</b> = 100 % of the battery charged, no matter in how many sessions. Counted are the rises of the battery level between two trip segments; months before the first battery level are estimated from the charged kWh (<code>kWh × (1 − charging losses) ÷ capacity</code>). The <b>charging window</b> shows how full the battery was before and after charging, plus the share of charges to ≥ 95 % and from below 20 %.</p>
+<h3 id="reichweite">Range</h3>
+<p><code>Range at 100 % = battery capacity ÷ consumption according to car battery × 100</code> – equivalent to km per percent of battery × 100, the capacity cancels out. The car's battery level already refers to today's usable capacity, so an aged battery is already included. In addition “80 → 10 %” (70 % of it, a typical leg on long trips), summer against winter and a forecast for twelve months (average of the same month in previous years, otherwise of all months). With one vehicle, the page fetches the current battery level live and shows the range according to the car next to it (sensor “Range according to car”, optional).</p>
+
+<h2 id="profil">Profile <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p>Under <b>Analysis → Profile</b>:</p>
+<ul>
+  <li><b>Usage profile:</b> from the km per day (last odometer reading of the day − last one before; created together with the trip segments, so it needs odometer and battery level). Average km per day and driving day, share of days with trips, average per weekday, days by distance, longest day – and how much battery covers 95 % of your driving days (95 % quantile of the daily km ÷ range of the month).</li>
+  <li><b>Charging profile:</b> when you charge (charges from the battery level by time of day and weekday) and where and how (all charging sessions: at home solar/grid or on the road, AC or DC).</li>
+  <li><b>Development over the years:</b> one line per year from January to December (km, both consumption values, electricity cost per 100 km, savings) and a table with the key figures per calendar year as in the Statistics.</li>
+</ul>
+
+<h2 id="leasing">Leasing <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p>For leased cars under <b>Settings → Leasing</b>: contract start and end, km per year, odometer at handover (empty = km at purchase), tolerance and the rates for excess and unused km. Shown under <a href="#fahrten">Trips</a>, as a section on the dashboard and in the monthly report.</p>
+<table>
+  <tr><th style="width:34%">Value</th><th>Formula</th></tr>
+  <tr><td>Target today</td><td><code>km per year × days since contract start ÷ 365.25</code></td></tr>
+  <tr><td>Driven</td><td><code>odometer − odometer at handover</code> (without battery history from the monthly km, the first month pro rata)</td></tr>
+  <tr><td>Forecast</td><td><code>driven + for each remaining month the km of the same month a year earlier</code> – without a previous year the average km per day of the last 12 months</td></tr>
+  <tr><td>Excess km</td><td><code>forecast − contract km − tolerance</code>, in euros <code>× rate ÷ 100</code>; unused km accordingly</td></tr>
+</table>
 
 <h2 id="fahrten">Trips <a class="hb-oben" href="#oben">↑ back to top</a></h2>
 <p class="hint">Heading: <b>“🚗 Kilometres driven (monthly)”</b></p>
@@ -468,6 +506,10 @@
   <tr><td>Detected amount charged</td><td><code>battery rise [%] ÷ 100 × battery capacity</code></td></tr>
   <tr><td>Consumption from battery</td><td><code>battery drop [%] ÷ 100 × battery capacity ÷ km × 100</code></td></tr>
   <tr><td>Share of power source</td><td><code>kWh of the source ÷ Σ kWh charged</code></td></tr>
+  <tr><td>SoH estimated</td><td><code>(1 − assumed charging losses) ÷ (1 − measured charging losses)</code> – rolling over up to 6 months, see <a href="#soh">Battery health</a></td></tr>
+  <tr><td>Usable capacity</td><td><code>battery capacity × SoH</code></td></tr>
+  <tr><td>Full cycles</td><td><code>Σ rises of the battery level [%] ÷ 100</code></td></tr>
+  <tr><td>Range at 100 %</td><td><code>battery capacity ÷ consumption according to car battery × 100</code></td></tr>
 </table>
 
 <h2 id="kennzahlen">Key figures in detail <a class="hb-oben" href="#oben">↑ back to top</a></h2>

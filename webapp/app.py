@@ -25,11 +25,14 @@ import database as db
 import i18n
 from i18n import _, N_
 import galerie
+import akku as akku_mod
 import akkuverbrauch
 import berechnung
 import berichte
 import ladeerkennung
 import ladetarife as ladetarife_mod
+import leasing as leasing_mod
+import profil as profil_mod
 import dashboard_layout
 import unterhalt
 import mailer
@@ -356,8 +359,14 @@ def dashboard(request: Request, zeitraum: str | None = None):
     layout = dashboard_layout.laden()
     # Lade-Abo (Break-even) – auch ausgeblendet, damit es im Bearbeiten-Modus erscheint
     abo = ladetarife_mod.seite_daten()["rentabilitaet"]
+    # Akku-Kacheln nur fuer ein einzelnes Fahrzeug und nur, wenn eine sichtbar ist
+    akku = None
+    if not gesamt and any(k["an"] and k["id"] in dashboard_layout.AKKU_KACHELN
+                          for k in layout["kacheln"]):
+        akku = akku_mod.auswertung()
+    leasing = [(fz, l) for fz, l in _je_fahrzeug(leasing_mod.auswertung) if l]
     antwort = render(request, "dashboard.html", kz=kz, charts=charts_html, amo=amo,
-                     layout=layout, abo=abo,
+                     layout=layout, abo=abo, akku=akku, leasing=leasing,
                      zeitraum=z, zeitraum_optionen=zeitraum_mod.optionen(daten),
                      fahrzeug_name=(_("Alle Fahrzeuge") if gesamt else
                                     db.get_einstellung_str("fahrzeug_name") or "Mein Elektroauto"),
@@ -414,6 +423,131 @@ def statistik(request: Request, a: str | None = None, b: str | None = None):
 
 
 # ─────────────────────────────────────────────────────────────
+#  Akku: SoH, Ladezyklen, Reichweite – und Profil: Nutzung, Laden, Jahresvergleich
+# ─────────────────────────────────────────────────────────────
+
+def _je_fahrzeug(funktion) -> list:
+    """[(fahrzeug, ergebnis)] – das gewaehlte Fahrzeug bzw. in der Gesamtsicht jedes
+    sichtbare (SoH, Zyklen und Reichweite lassen sich nicht addieren)."""
+    fid = db.aktuelles_fahrzeug()
+    liste = [f for f in db.fahrzeuge() if fid is None or f["id"] == fid] or db.fahrzeuge()[:1]
+    erg = []
+    for fz in liste:
+        with db.fahrzeug_kontext(fz["id"]):
+            erg.append((fz, funktion()))
+    return erg
+
+
+def _akku_seite(fz: dict, a: dict) -> dict:
+    return {"fz": fz, "a": a, "charts": {
+        "soh": charts.chart_soh(a),
+        "zyklen": charts.chart_zyklen(a["zyklen"]["je_monat"]),
+        "ladefenster": charts.chart_ladefenster(a["zyklen"]),
+        "reichweite": charts.chart_reichweite(a["reichweite"]),
+    }}
+
+
+@app.get("/akku", response_class=HTMLResponse)
+def akku_seite(request: Request, bearbeiten: int | None = None):
+    autos = [_akku_seite(fz, a) for fz, a in _je_fahrzeug(akku_mod.auswertung)]
+    # Akkustand jetzt nur fuer ein einzelnes Fahrzeug – fragt Home Assistant live
+    live = {}
+    if len(autos) == 1:
+        with db.fahrzeug_kontext(autos[0]["fz"]["id"]):
+            live = akku_mod.live(autos[0]["a"]["reichweite"]["jetzt"])
+    eintrag = None
+    if bearbeiten:
+        eintrag = next((m for x in autos for m in x["a"]["messungen"] if m["id"] == bearbeiten), None)
+    return render(request, "akku.html", autos=autos, live=live, eintrag=eintrag,
+                  quellen=akku_mod.QUELLEN, soh_quellen=db.SOH_QUELLEN,
+                  heute=datetime.now().strftime("%Y-%m-%d"), aktiv="akku")
+
+
+def _soh_werte(form) -> dict | None:
+    """Formularfelder -> DB-Werte; None ohne Datum oder plausiblen SoH (1–120 %)."""
+    werte = {k: (str(form.get(k) or "").strip() or None) for k in ("datum", "quelle", "notiz")}
+    werte["soh"] = parse_de(form.get("soh"))
+    werte["km_stand"] = parse_de(form.get("km_stand"), tausender=True)
+    if werte["quelle"] not in db.SOH_QUELLEN:
+        werte["quelle"] = "sonstiges"
+    if (not werte["datum"] or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", werte["datum"])
+            or werte["soh"] is None or not 1 <= werte["soh"] <= 120):
+        return None
+    return werte
+
+
+@app.post("/akku/soh")
+@mit_fahrzeug
+async def akku_soh_add(request: Request):
+    werte = _soh_werte(await request.form())
+    if werte:
+        db.add_soh_messung(werte)
+    return RedirectResponse("../akku#soh", status_code=303)
+
+
+@app.post("/akku/soh/update")
+async def akku_soh_update(request: Request):
+    form = await request.form()
+    werte = _soh_werte(form)
+    if werte and str(form.get("id") or "").isdigit():
+        db.update_soh_messung(int(form["id"]), werte)
+    return RedirectResponse("../../akku#soh", status_code=303)
+
+
+@app.post("/akku/soh/delete")
+def akku_soh_delete(id: int = Form(...)):
+    db.delete_soh_messung(id)
+    return RedirectResponse("../../akku#soh", status_code=303)
+
+
+@app.post("/akku/einstellungen")
+@mit_fahrzeug
+def akku_einstellungen(verlust: str = Form(""), garantie_jahre: str = Form(""),
+                       garantie_km: str = Form(""), garantie_soh: str = Form("")):
+    """Ladeverlust-Annahme der SoH-Schaetzung und Akku-Garantie (leer = Standard)."""
+    for key, raw, grenzen, tausender in [
+            ("akku_verlust_annahme", verlust, (0, akku_mod.VERLUST_MAX), False),
+            ("akku_garantie_jahre", garantie_jahre, (1, 30), False),
+            ("akku_garantie_km", garantie_km, (1000, 2000000), True),
+            ("akku_garantie_soh", garantie_soh, (1, 100), False)]:
+        if not raw.strip():
+            db.set_einstellung(key, "")
+            continue
+        v = parse_de(raw, tausender=tausender)
+        if v is not None and grenzen[0] <= v <= grenzen[1]:
+            db.set_einstellung(key, v)
+    return RedirectResponse("../akku#einstellungen", status_code=303)
+
+
+@app.get("/profil", response_class=HTMLResponse)
+def profil_seite(request: Request):
+    def je_auto():
+        a = akku_mod.auswertung()
+        n = profil_mod.nutzung(db.get_fahrten_tage(), a["reichweite"]["jetzt"])
+        l = profil_mod.laden(a["ladungen"], db.get_ladevorgaenge(limit=100000))
+        return {"nutzung": n, "laden": l, "reichweite": a["reichweite"]["jetzt"],
+                "charts": {
+                    "wochentage": charts.chart_balken_liste(
+                        [_(t) for t in profil_mod.WOCHENTAGE], n["je_wochentag"] if n else [],
+                        _("Ø km je Tag"), "blue", "fn:km0"),
+                    "klassen": charts.chart_balken_liste(
+                        [_(t) for t, _b in profil_mod.KLASSEN], n["klassen"] if n else [],
+                        _("Tage"), "teal"),
+                    "ladetage": charts.chart_balken_liste(
+                        [_(t) for t in profil_mod.WOCHENTAGE], l["je_wochentag"], _("Ladungen"), "purple"),
+                    "ladestunden": charts.chart_balken_liste(
+                        [f"{h}" for h in range(24)], l["je_stunde"], _("Ladungen"), "purple"),
+                    "orte": charts.chart_strommix(db.get_ladevorgaenge(limit=100000)),
+                }}
+    autos = _je_fahrzeug(je_auto)
+    daten = zeitraum_mod.laden()
+    jv = profil_mod.jahresvergleich(daten)
+    jahre_charts = {m: charts.chart_jahre(jv, m) for m in profil_mod.JAHR_METRIKEN}
+    return render(request, "profil.html", autos=autos, jv=jv, jahre_charts=jahre_charts,
+                  metriken=profil_mod.JAHR_METRIKEN, aktiv="profil")
+
+
+# ─────────────────────────────────────────────────────────────
 #  Hilfe / Handbuch
 # ─────────────────────────────────────────────────────────────
 
@@ -445,14 +579,15 @@ def einrichtung(request: Request):
     mail = db.get_mail_settings()
     simulation = db.get_config()["simulation"]
     influx = ha.get("datasource") in ("influxdb", "influxdb2", "influxdb3")
+    felder = [s for s in SENSOR_FELDER if s[0] not in SENSOR_NUR_AKKU]
     sensoren = [(_sensor_label(label), *_sensor_stand(ha, h, f, influx))
-                for h, f, label in SENSOR_FELDER]
+                for h, f, label in felder]
     # Zweiter Preis-Sensor und Akkustand sind optional – leer ist dort kein Mangel
     optional = {"ha_tankerkoenig_2", "ha_ev_battery", "ha_wallbox_cost"}
     if simulation:              # ohne E-Auto gibt es keine Ladezaehler
         optional |= {"ha_pv_production", "ha_wallbox_energy"}
     sensoren = [(l, "optional" if st == "fehlt" and h in optional else st, t)
-                for (l, st, t), (h, _f, _l) in zip(sensoren, SENSOR_FELDER)]
+                for (l, st, t), (h, _f, _l) in zip(sensoren, felder)]
     return render(request, "einrichtung.html", aktiv="einrichtung",
                   fahrzeug_name=db.get_einstellung_str("fahrzeug_name") or "",
                   verbunden=_ha_verbindung(ha) is not None,
@@ -505,8 +640,10 @@ def fahrten(request: Request):
         if l_km and a_km and l_kwh:
             differenz = (1 - (a_kwh / a_km) / (l_kwh / l_km)) * 100
 
+    leasing = [(fz, l, charts.chart_leasing(l)) for fz, l in _je_fahrzeug(leasing_mod.auswertung)
+               if l]
     return render(request, "fahrten.html", rows=rows, aktiv="fahrten",
-                  verbrauch=verbrauch,
+                  verbrauch=verbrauch, leasing=leasing,
                   abschnitte=db.get_akku_abschnitte(limit=40),
                   akku_schnitt=akku_schnitt, akku_differenz=differenz,
                   akku_gemeinsam=len(gemeinsam), akku_min_km=akkuverbrauch.MIN_KM,
@@ -517,11 +654,17 @@ def fahrten(request: Request):
 @mit_fahrzeug
 def fahrten_akku_berechnen(zeitraum: str = Form("alles")):
     """Fahrtabschnitte aus dem Akkustand neu berechnen (ganze Historie oder 45 Tage)."""
+    tage = None if zeitraum == "alles" else akkuverbrauch.TAGE_NACHTLAUF
     try:
-        meldung = akkuverbrauch.aktualisieren(
-            tage=None if zeitraum == "alles" else akkuverbrauch.TAGE_NACHTLAUF)
+        meldung = akkuverbrauch.aktualisieren(tage=tage)
     except Exception as e:
         meldung = _("Fehler beim Abruf: {0}", e)
+    try:
+        soh = akku_mod.soh_aktualisieren(tage=tage)
+    except Exception as e:
+        soh = _("SoH-Sensor: Fehler ({0})", e)
+    if soh:
+        meldung += " · " + soh
     from urllib.parse import quote
     return RedirectResponse(f"../fahrten?akku={quote(meldung)}#akku", status_code=303)
 
@@ -1872,6 +2015,13 @@ def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> lis
                 meldung = f"Fehler ({e})"
             _log_import([f"Akkuverbrauch{vor}: {meldung}"])
             protokoll.append(f"Akkuverbrauch{vor}: {meldung}")
+            try:
+                with db.fahrzeug_kontext(fz["id"]):
+                    soh = akku_mod.soh_aktualisieren()
+            except Exception as e:
+                soh = f"SoH-Sensor: Fehler ({e})"
+            if soh:
+                _log_import([f"Akku{vor}: {soh}"])
 
     _log_import([f"Abruf beendet – {len(monate)} Monat(e), {fehler} Fehler"])
     return protokoll
@@ -2342,7 +2492,12 @@ SENSOR_FELDER = [
     ("ha_tankerkoenig_2", "fn_tankerkoenig_2", N_("{0}preis Sensor 2 (€/L)")),
     # Fuer Ladeerkennung und Verbrauch aus dem Akkustand
     ("ha_ev_battery",     "fn_ev_battery",     N_("Batteriestand Auto (%)")),
+    # Optional, fuer die Akku-Seite: Reichweite laut Auto und Akku-Gesundheit (SoH)
+    ("ha_ev_range",       "fn_ev_range",       N_("Reichweite laut Auto (km, optional)")),
+    ("ha_ev_soh",         "fn_ev_soh",         N_("Akku-Gesundheit SoH (%, optional)")),
 ]
+# Nur auf der Akku-Seite genutzt – in der Einrichtung kein eigener Schritt
+SENSOR_NUR_AKKU = {"ha_ev_range", "ha_ev_soh"}
 
 
 def _sensor_label(label: str) -> str:
@@ -2375,6 +2530,8 @@ def einstellungen(request: Request, meldung: str = ""):
                   zulassung={"erst": zeitraum_mod.erstzulassung(),
                              "eigen": zeitraum_mod.zulassung_eigen(),
                              "km": db.get_einstellung("km_bei_kauf") or 0.0},
+                  leasing={k: db.get_einstellung_str(f"leasing_{k}") or ""
+                           for k in LEASING_FELDER},
                   kraftstoffe=berechnung.kraftstoffe(),
                   galerie=galerie.bilder(),
                   galerie_aktiv=auto_bild_galerie(),
@@ -2437,6 +2594,32 @@ def einstellungen_anschaffung(eauto: str = Form(""), verbrenner: str = Form(""),
         if not raw or re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw):
             db.set_einstellung(key, raw)
     return RedirectResponse("../einstellungen#anschaffung", status_code=303)
+
+
+LEASING_FELDER = ("aktiv", "start", "ende", "km_jahr", "km_start", "toleranz_km",
+                  "mehr_ct", "minder_ct")
+
+
+@app.post("/einstellungen/leasing")
+@mit_fahrzeug
+def einstellungen_leasing(aktiv: str = Form(""), start: str = Form(""), ende: str = Form(""),
+                          km_jahr: str = Form(""), km_start: str = Form(""),
+                          toleranz_km: str = Form(""), mehr_ct: str = Form(""),
+                          minder_ct: str = Form("")):
+    """Leasingvertrag des Fahrzeugs: Laufzeit, km je Jahr, Freigrenze, Saetze je km."""
+    db.set_einstellung("leasing_aktiv", "1" if aktiv else "0")
+    for key, raw in [("start", start), ("ende", ende)]:
+        raw = raw.strip()
+        if not raw or re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw):
+            db.set_einstellung(f"leasing_{key}", raw)
+    for key, raw in [("km_jahr", km_jahr), ("km_start", km_start), ("toleranz_km", toleranz_km),
+                     ("mehr_ct", mehr_ct), ("minder_ct", minder_ct)]:
+        v = parse_de(raw, tausender=key.startswith("km") or key == "toleranz_km") if raw.strip() else None
+        if not raw.strip():
+            db.set_einstellung(f"leasing_{key}", "")
+        elif v is not None and v >= 0:
+            db.set_einstellung(f"leasing_{key}", v)
+    return RedirectResponse("../einstellungen#leasing", status_code=303)
 
 
 @app.post("/einstellungen/sprache")

@@ -18,6 +18,25 @@
   </form>
 </div>
 
+{% if leasing %}
+<h2 id="leasing">{{ _("📋 Leasing-Kilometer") }}</h2>
+{% for fz, l, chart in leasing %}
+<div class="card amortisation">
+  {% include "_leasing.html" %}
+  <div class="chart" style="margin-top:4px">
+    <div class="echart" data-echart="opt-leasing-{{ fz.id }}"></div>
+    <script type="application/json" id="opt-leasing-{{ fz.id }}">{{ chart | tojson }}</script>
+  </div>
+  <p class="hint" style="margin-bottom:0">
+    {{ _("Soll = {0} km je Jahr, gleichmäßig über die Laufzeit. Gefahren = km-Stand − km-Stand bei Übernahme ({1} km). Prognose: je Monat so viel wie im selben Monat des Vorjahres, ohne Vorjahr der Ø der letzten 12 Monate. Freigrenze {2} km.", l.km_jahr | de(0), l.km_start | de(0), l.toleranz | de(0)) }}
+    <a href="einstellungen#leasing">{{ _("Vertrag ändern") }}</a>
+  </p>
+</div>
+{% endfor %}
+<script src="static/echarts.min.js"></script>
+<script src="static/charts.js"></script>
+{% endif %}
+
 {% if verbrauch.niedrigster %}
 <h2>{{ _("Verbrauchsauswertung (kWh/100 km)") }}</h2>
 <div class="statgrid">

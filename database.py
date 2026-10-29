@@ -209,6 +209,30 @@ def init_db():
             )
         """)
 
+        # Gefahrene km je Tag aus dem stuendlichen Kilometerstand (siehe akkuverbrauch.py) –
+        # Grundlage des Nutzungsprofils (profil.py)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS fahrten_tag (
+                datum TEXT NOT NULL,
+                km REAL NOT NULL,
+                fahrzeug_id INTEGER NOT NULL DEFAULT 1,
+                PRIMARY KEY (fahrzeug_id, datum)
+            )
+        """)
+
+        # Von Hand eingetragene SoH-Werte (Werkstatt, OBD-App, Akku-Zertifikat) – siehe akku.py
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS soh_messung (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                datum TEXT NOT NULL,
+                soh REAL NOT NULL,
+                km_stand REAL,
+                quelle TEXT,
+                notiz TEXT,
+                fahrzeug_id INTEGER NOT NULL DEFAULT 1
+            )
+        """)
+
         c.execute("""CREATE INDEX IF NOT EXISTS idx_ladevorgang_datum
                      ON ladevorgang(datum)""")
 
@@ -312,7 +336,7 @@ def init_db():
 # --- Fahrzeuge ---
 # Tabellen mit Zeilen je Fahrzeug (Spalte fahrzeug_id, Standard 1)
 FAHRZEUG_TABELLEN = ("fahrten_monat", "ladevorgang", "akku_abschnitt", "thg_quote",
-                     "instandhaltung")
+                     "instandhaltung", "fahrten_tag", "soh_messung")
 
 # Einstellungen, die jedes Fahrzeug fuer sich hat. Fahrzeug 1 nutzt die bisherigen
 # Schluessel unveraendert, weitere Fahrzeuge "<schluessel>@<id>" – so aendert sich fuer
@@ -326,6 +350,12 @@ FAHRZEUG_SCHLUESSEL = {
     "akku_kapazitaet_kwh", "lade_min_anstieg", "heimladung",
     "ha_odometer", "ha_ev_battery", "ha_ev_range", "fn_odometer", "fn_ev_battery",
     "akkustand_monate",
+    # Akku-Gesundheit und Reichweite (akku.py)
+    "ha_ev_soh", "fn_ev_soh", "fn_ev_range", "soh_monate", "akku_verlust_annahme",
+    "akku_garantie_jahre", "akku_garantie_km", "akku_garantie_soh",
+    # Leasing (leasing.py)
+    "leasing_aktiv", "leasing_start", "leasing_ende", "leasing_km_jahr", "leasing_km_start",
+    "leasing_toleranz_km", "leasing_mehr_ct", "leasing_minder_ct",
 }
 # Eigene Ladezaehler eines Fahrzeugs (Heimladung "eigen"): immer "<schluessel>@<id>",
 # ohne @ sind es die Zaehler der gemeinsamen Wallbox
@@ -1058,6 +1088,65 @@ def get_akku_abschnitte(limit: int | None = None):
         return [dict(r) for r in conn.execute(sql, p).fetchall()]
 
 
+# --- km je Tag (Nutzungsprofil) ---
+def ersetze_fahrten_tag(ab: str | None, tage: dict, fahrzeug_id=None):
+    """Ersetzt die Tages-km des Fahrzeugs ab Datum `ab` ('YYYY-MM-DD', None = alle)
+    durch {datum: km}."""
+    fid = schreib_fahrzeug(fahrzeug_id)
+    with closing(get_connection()) as conn:
+        if ab is None:
+            conn.execute("DELETE FROM fahrten_tag WHERE fahrzeug_id=?", (fid,))
+        else:
+            conn.execute("DELETE FROM fahrten_tag WHERE datum >= ? AND fahrzeug_id=?", (ab, fid))
+        conn.executemany("INSERT OR REPLACE INTO fahrten_tag (datum, km, fahrzeug_id) VALUES (?,?,?)",
+                         [(d, km, fid) for d, km in sorted(tage.items())])
+        conn.commit()
+
+
+def get_fahrten_tage(fahrzeug_id=None) -> list:
+    """[{datum, km}] aufsteigend – eines Fahrzeugs (Standard: aktuelles bzw. Hauptfahrzeug)."""
+    fid = schreib_fahrzeug(fahrzeug_id)
+    with closing(get_connection()) as conn:
+        return [dict(r) for r in conn.execute(
+            "SELECT datum, km FROM fahrten_tag WHERE fahrzeug_id=? ORDER BY datum", (fid,))]
+
+
+# --- SoH von Hand ---
+SOH_FELDER = ["datum", "soh", "km_stand", "quelle", "notiz"]
+SOH_QUELLEN = {"werkstatt": N_("Werkstatt"), "obd": N_("OBD-App / Dongle"),
+               "zertifikat": N_("Akku-Zertifikat"), "sonstiges": N_("Sonstiges")}
+
+
+def add_soh_messung(werte: dict):
+    felder = SOH_FELDER + ["fahrzeug_id"]
+    werte = {**werte, "fahrzeug_id": schreib_fahrzeug(werte.get("fahrzeug_id"))}
+    with closing(get_connection()) as conn:
+        conn.execute(f"INSERT INTO soh_messung ({','.join(felder)}) "
+                     f"VALUES ({','.join('?' * len(felder))})", [werte.get(f) for f in felder])
+        conn.commit()
+
+
+def update_soh_messung(id, werte: dict):
+    with closing(get_connection()) as conn:
+        conn.execute(f"UPDATE soh_messung SET {','.join(f + '=?' for f in SOH_FELDER)} WHERE id=?",
+                     [werte.get(f) for f in SOH_FELDER] + [id])
+        conn.commit()
+
+
+def get_soh_messungen(fahrzeug_id=None) -> list:
+    """Von Hand eingetragene SoH-Werte eines Fahrzeugs, aelteste zuerst."""
+    fid = schreib_fahrzeug(fahrzeug_id)
+    with closing(get_connection()) as conn:
+        return [dict(r) for r in conn.execute(
+            "SELECT * FROM soh_messung WHERE fahrzeug_id=? ORDER BY datum, id", (fid,))]
+
+
+def delete_soh_messung(id):
+    with closing(get_connection()) as conn:
+        conn.execute("DELETE FROM soh_messung WHERE id=?", (id,))
+        conn.commit()
+
+
 def get_thg_zeitraum(von: str, bis: str):
     """THG-Eintraege zwischen zwei Datumsangaben (inklusive)."""
     f, p = _filter()
@@ -1398,6 +1487,10 @@ HA_ENTITY_DEFAULTS = {
     "fn_tankerkoenig":           "",
     "fn_tankerkoenig_2":         "",
     "fn_ev_battery":             "",
+    # Optional: Akku-Gesundheit (SoH, %) – nur wenn das Auto sie liefert, z.B. ueber OBD
+    "ha_ev_soh":                 "",
+    "fn_ev_soh":                 "",
+    "fn_ev_range":               "",
     # InfluxDB Verbindung
     "influx_url":                "http://localhost",
     "influx_port":               "8086",

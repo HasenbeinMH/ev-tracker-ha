@@ -183,6 +183,41 @@
   {% endif %}
 </div>
 
+<h2 id="leasing">{{ _("📋 Leasing") }}{% if mehrere and fahrzeuge | length > 1 %} · {{ fahrzeug_name or _("Fahrzeug") }}{% endif %}</h2>
+<div class="card">
+  <p class="hint" style="margin-top:0">{{ _("Für geleaste Autos: vereinbarte km gegen gefahrene km, mit Prognose bis Vertragsende und den Kosten für Mehr-km. Zu sehen unter <a href=\"fahrten#leasing\">Fahrten</a> und als Bereich im Dashboard.") }}</p>
+  {% macro zahl(wert, stellen=0) %}{{ (wert | float) | de(stellen) if wert else '' }}{% endmacro %}
+  <form class="inline" method="post" action="einstellungen/leasing">
+    {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ einstellungs_fahrzeug }}">{% endif %}
+    <label class="feld" style="flex-direction:row; align-items:center; gap:6px">
+      <input type="checkbox" name="aktiv" value="1" {% if leasing.aktiv == "1" %}checked{% endif %}> {{ _("Leasing aktiv") }}
+    </label>
+    <label class="feld">{{ _("Vertragsbeginn") }}
+      <input type="date" name="start" value="{{ leasing.start }}">
+    </label>
+    <label class="feld">{{ _("Vertragsende") }}
+      <input type="date" name="ende" value="{{ leasing.ende }}">
+    </label>
+    <label class="feld">{{ _("km je Jahr") }}
+      <input name="km_jahr" value="{{ zahl(leasing.km_jahr) }}" placeholder="{{ _t("z.B. 15.000") }}" inputmode="decimal" style="width:100px">
+    </label>
+    <label class="feld">{{ _("km-Stand bei Übernahme") }}
+      <input name="km_start" value="{{ zahl(leasing.km_start) }}" placeholder="{{ _t("leer = km bei Kauf") }}" inputmode="decimal" style="width:120px">
+    </label>
+    <label class="feld">{{ _("Freigrenze km") }}
+      <input name="toleranz_km" value="{{ zahl(leasing.toleranz_km) }}" placeholder="{{ _t("z.B. 2.500") }}" inputmode="decimal" style="width:90px">
+    </label>
+    <label class="feld">{{ _("Mehr-km ct/km") }}
+      <input name="mehr_ct" value="{{ zahl(leasing.mehr_ct, 2) }}" placeholder="{{ _t("z.B. 8") }}" inputmode="decimal" style="width:80px">
+    </label>
+    <label class="feld">{{ _("Minder-km ct/km") }}
+      <input name="minder_ct" value="{{ zahl(leasing.minder_ct, 2) }}" placeholder="{{ _t("z.B. 4") }}" inputmode="decimal" style="width:80px">
+    </label>
+    <button type="submit">{{ _("💾 Speichern") }}</button>
+  </form>
+  <p class="hint">{{ _("Die <b>Freigrenze</b> (oft 2.500 km) wird weder als Mehr- noch als Minder-km abgerechnet. Ohne km-Stand bei Übernahme gilt der km-Stand bei Kauf (Neuwagen: 0). Gefahren wird aus dem Kilometerstand gerechnet, ohne Akkustand-Verlauf aus den Monats-km.") }}</p>
+</div>
+
 <h2 id="simulation">{{ _("🧪 Simulationsmodus – noch kein E-Auto") }}</h2>
 <div class="card">
   <p class="hint" style="margin-top:0">

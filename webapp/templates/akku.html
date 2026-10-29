@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block titel %}{{ _("Akku") }}{% endblock %}
+{% block inhalt %}
+{% macro datum(d) %}{{ d[8:10] ~ "." ~ d[5:7] ~ "." ~ d[:4] if d | length >= 10 else d[5:7] ~ "/" ~ d[:4] }}{% endmacro %}
+<h1>{{ _("🔋 Akku – Gesundheit, Ladezyklen, Reichweite") }}</h1>
+<p class="hint">{{ _("Aus dem Akkustand des Autos (Fahrtabschnitte, siehe <a href=\"fahrten#akku\">Fahrten</a>), den Ladungen und – falls vorhanden – einem SoH-Sensor oder von Hand eingetragenen Werten.") }}</p>
+
+{% for x in autos %}
+{% set a = x.a %}
+{% set fz = x.fz %}
+{% if autos | length > 1 %}<h2 class="fz-titel">🚗 {{ fz.name }}</h2>{% endif %}
+
+<div class="statgrid">
+  <div class="stat">
+    <span class="wert {{ 'gruen' if a.soh and a.soh.quelle != 'geschaetzt' }}">{{ a.soh.wert | de(1) if a.soh else "–" }}</span><span class="einheit">%</span>
+    <div class="label">{{ _("Akku-Gesundheit (SoH)") }}{% if a.soh %} · {{ _(quellen[a.soh.quelle]) }}{% if a.soh.band %} {{ _("({0}–{1} %)", a.soh.band[0] | de(0), a.soh.band[1] | de(0)) }}{% endif %}{% endif %}</div>
+  </div>
+  <div class="stat">
+    <span class="wert">{{ a.nutzbar | de(1) if a.nutzbar else "–" }}</span><span class="einheit">kWh</span>
+    <div class="label">{{ _("Nutzbare Kapazität (neu {0} kWh)", a.kapazitaet | de(1)) }}</div>
+  </div>
+  <div class="stat">
+    <span class="wert">{{ a.zyklen.vollzyklen | de(1) }}</span>
+    <div class="label">{{ _("Vollzyklen") }}</div>
+  </div>
+  <div class="stat">
+    <span class="wert">{{ a.reichweite.jetzt | de(0) if a.reichweite.jetzt else "–" }}</span><span class="einheit">km</span>
+    <div class="label">{{ _("Reichweite bei 100 % (diesen Monat)") }}</div>
+  </div>
+  <div class="stat">
+    <span class="wert">{% if a.trend is not none %}{{ [-a.trend, 0] | max | de(1) }}{% else %}–{% endif %}</span><span class="einheit">{{ _("%/Jahr") }}</span>
+    <div class="label">{{ _("Alterung") }}{% if a.trend is not none and a.trend >= 0 %} · {{ _("kein Rückgang messbar") }}{% elif a.trend_quelle == "gemessen" %} · {{ _("gemessen") }}{% elif a.trend_quelle %} · {{ _("geschätzt") }}{% endif %}</div>
+  </div>
+</div>
+
+{% if live and autos | length == 1 %}
+<div class="card">
+  {{ _("<b>Jetzt:</b> Akku {0} %", live.soc | de(0)) }}{% if live.km %} · {{ _("≈ {0} km bei deinem Verbrauch in diesem Monat", live.km | de(0)) }}{% endif %}{% if live.auto_km %} · {{ _("laut Auto {0} km", live.auto_km | de(0)) }}{% endif %}
+</div>
+{% endif %}
+
+{# ── SoH ── #}
+<h2{% if loop.first %} id="soh"{% endif %}>{{ _("Akku-Gesundheit (SoH)") }}</h2>
+<div class="chart">
+  <div class="echart" data-echart="opt-soh-{{ fz.id }}"></div>
+  <script type="application/json" id="opt-soh-{{ fz.id }}">{{ x.charts.soh | tojson }}</script>
+</div>
+<p class="hint">
+  {{ _("SoH = heute nutzbare Kapazität im Verhältnis zum Neuzustand. <b>Gemessene Werte gehen vor</b>: von Hand eingetragen (Werkstatt, OBD-App, Akku-Zertifikat) oder vom SoH-Sensor (Einstellungen → Sensoren). Ohne sie wird der SoH <b>geschätzt</b>: (1 − angenommene Ladeverluste) ÷ (1 − gemessene Ladeverluste), gleitend über bis zu {0} Monate mit beiden Verbrauchswerten.", 6) }}
+  {% if a.kalibriert %}
+    {{ _("Die Schätzung ist am Wert vom {0} ({1} %) geeicht: angenommene Ladeverluste {2} % statt {3} %, Spanne ± {4} Prozentpunkte.", datum(a.kalibriert.messung.datum), a.kalibriert.messung.soh | de(1), a.annahme | de(1), a.annahme_eingestellt | de(1), a.band | de(0)) }}
+  {% else %}
+    {{ _("Angenommene Ladeverluste {0} %, Spanne ± {1} Prozentpunkte – ein von Hand eingetragener Wert eicht die Schätzung und macht sie genauer.", a.annahme | de(1), a.band | de(0)) }}
+  {% endif %}
+  {% if a.paare < 3 and not a.sensor and not a.messungen %}<span class="gelb">{{ _("Für eine Schätzung braucht es mindestens 3 Monate mit Ladungen und Fahrtabschnitten aus dem Akkustand (bisher {0}).", a.paare) }}</span>{% endif %}
+</p>
+{% if a.prognose %}
+<div class="card">
+  {% set p = a.prognose %}
+  {% if p.vorbei %}
+    {{ _("Die Akku-Garantie ({0} Jahre / {1} km) ist abgelaufen.", a.garantie.jahre | de(0), a.garantie.km | de(0)) }}
+  {% else %}
+    {{ _("<b>Garantie-Ende</b> voraussichtlich {0} ({1}):", datum(p.ende), _("nach Jahren") if p.grund == "jahre" else _("nach km")) }}
+    <b class="{{ 'gruen' if p.ok else 'orange' }}">{{ _("SoH etwa {0} %", p.soh | de(0)) }}</b>
+    {{ _("– Grenze {0} %.", a.garantie.soh | de(0)) }}
+    <span class="muted">{% if p.aus_referenz %}{{ _("Gerechnet mit dem Vergleichswert {0} % je Jahr, weil sich aus den eigenen Werten noch kein Rückgang ablesen lässt.", (-p.rate) | de(1)) }}{% else %}{{ _("Gerechnet mit der eigenen Alterung von {0} % je Jahr.", (-p.rate) | de(1)) }}{% endif %}</span>
+  {% endif %}
+</div>
+{% elif not a.referenz %}
+<p class="hint">{{ _("Mit der Erstzulassung (<a href=\"einstellungen#anschaffung\">Einstellungen → Anschaffung</a>) erscheinen die Vergleichskurve und eine Prognose bis zum Ende der Akku-Garantie.") }}</p>
+{% endif %}
+
+<h2>{{ _("SoH-Werte von Hand") }}</h2>
+<div class="card">
+  {% set e = eintrag if eintrag and eintrag.fahrzeug_id == fz.id else none %}
+  <form class="inline" method="post" action="{{ 'akku/soh/update' if e else 'akku/soh' }}">
+    {% if e %}<input type="hidden" name="id" value="{{ e.id }}">{% endif %}
+    {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ fz.id }}">{% endif %}
+    <label class="feld">{{ _("Datum") }}
+      <input type="date" name="datum" value="{{ e.datum if e else heute }}" required>
+    </label>
+    <label class="feld">{{ _("SoH %") }}
+      <input name="soh" value="{{ e.soh | de(1) if e else '' }}" placeholder="{{ _t("z.B. 96,5") }}" required inputmode="decimal" style="width:80px">
+    </label>
+    <label class="feld">{{ _("km-Stand") }}
+      <input name="km_stand" value="{{ e.km_stand | de(0) if e and e.km_stand else '' }}" placeholder="{{ _t("optional") }}" inputmode="decimal" style="width:90px">
+    </label>
+    <label class="feld">{{ _("Quelle") }}
+      <select name="quelle">
+        {% for k, text in soh_quellen.items() %}<option value="{{ k }}" {% if e and e.quelle == k %}selected{% endif %}>{{ _(text) }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="feld">{{ _("Notiz") }}
+      <input name="notiz" value="{{ e.notiz or '' if e else '' }}" placeholder="{{ _t("optional") }}">
+    </label>
+    <button type="submit">{{ _("💾 Speichern") if e else _("➕ Hinzufügen") }}</button>
+    {% if e %}<a class="secondary-link" href="akku#soh">{{ _("✕ Abbrechen") }}</a>{% endif %}
+  </form>
+  {% if a.messungen %}
+  <div class="tabelle-scroll"><table style="margin-top:10px">
+    <tr><th>{{ _("Datum") }}</th><th>{{ _("SoH") }}</th><th>{{ _("km-Stand") }}</th><th>{{ _("Quelle") }}</th><th>{{ _("Notiz") }}</th><th></th></tr>
+    {% for m in a.messungen | reverse %}
+    <tr>
+      <td>{{ datum(m.datum) }}</td>
+      <td>{{ m.soh | de(1) }} %</td>
+      <td>{{ m.km_stand | de(0) if m.km_stand else "–" }}</td>
+      <td>{{ _(soh_quellen.get(m.quelle, "Sonstiges")) }}</td>
+      <td>{{ m.notiz or "" }}</td>
+      <td style="white-space:nowrap">
+        <a class="secondary-link" href="akku?bearbeiten={{ m.id }}#soh" title="{{ _t("Bearbeiten") }}">✏️</a>
+        <form method="post" action="akku/soh/delete" style="display:inline"
+              onsubmit="return confirm({{ _t("SoH-Wert vom {0} löschen?", datum(m.datum)) | tojson | forceescape }})">
+          <input type="hidden" name="id" value="{{ m.id }}">
+          <button class="danger">🗑</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}
+  <p class="hint" style="margin-bottom:0">{{ _("Ausgelesen hast du einen SoH zum Beispiel in der Werkstatt, mit einer OBD-App (Car Scanner, EVNotify …) oder über ein Akku-Zertifikat. Jeder Wert erscheint im Diagramm und eicht die Schätzung.") }}</p>
+  {% endif %}
+</div>
+
+{# ── Ladezyklen ── #}
+{% set z = a.zyklen %}
+<h2>{{ _("Ladezyklen und Ladefenster") }}</h2>
+<div class="statgrid">
+  <div class="stat"><span class="wert">{{ z.ladungen | de(0) }}</span><div class="label">{{ _("Ladungen aus dem Akkustand") }}</div></div>
+  <div class="stat"><span class="wert">{% if z.von_schnitt is not none %}{{ z.von_schnitt | de(0) }} → {{ z.bis_schnitt | de(0) }}{% else %}–{% endif %}</span><span class="einheit">%</span>
+    <div class="label">{{ _("Ø Akku vor → nach dem Laden") }}</div></div>
+  <div class="stat"><span class="wert">{{ z.anteil_voll | de(0) if z.anteil_voll is not none else "–" }}</span><span class="einheit">%</span>
+    <div class="label">{{ _("der Ladungen bis ≥ 95 %") }}</div></div>
+  <div class="stat"><span class="wert">{{ z.anteil_tief[20.0] | de(0) if z.anteil_tief else "–" }}</span><span class="einheit">%</span>
+    <div class="label">{{ _("der Ladungen ab unter 20 %") }}</div></div>
+  <div class="stat"><span class="wert">{{ (a.km_gesamt / z.vollzyklen) | de(0) if z.vollzyklen else "–" }}</span><span class="einheit">km</span>
+    <div class="label">{{ _("je Vollzyklus") }}</div></div>
+</div>
+<div class="chartgrid">
+  <div class="chart">
+    <div class="titel">{{ _("Vollzyklen") }}</div>
+    <div class="echart" data-echart="opt-zyklen-{{ fz.id }}"></div>
+    <script type="application/json" id="opt-zyklen-{{ fz.id }}">{{ x.charts.zyklen | tojson }}</script>
+  </div>
+  <div class="chart">
+    <div class="titel">{{ _("Ladefenster") }}</div>
+    <div class="echart" data-echart="opt-fenster-{{ fz.id }}"></div>
+    <script type="application/json" id="opt-fenster-{{ fz.id }}">{{ x.charts.ladefenster | tojson }}</script>
+  </div>
+</div>
+<p class="hint">
+  {{ _("Ein Vollzyklus = 100 % Akku geladen, egal in wie vielen Ladungen (z. B. viermal 25 %). Gezählt werden die Anstiege des Akkustands zwischen zwei Fahrtabschnitten; Zwischenladungen unter der Mindestschwelle (Berichte → Einstellungen) fehlen dabei.") }}
+  {% if z.geschaetzte_monate %}{{ _("{0} Monat(e) vor dem ersten Akkustand sind aus den geladenen kWh geschätzt: kWh × (1 − Ladeverluste) ÷ Kapazität.", z.geschaetzte_monate) }}{% endif %}
+  {{ _("Schonend für den Akku: meist zwischen etwa 20 und 80 % bleiben, voll nur vor langen Fahrten (bei LFP-Akkus empfehlen Hersteller dagegen regelmäßig 100 %).") }}
+</p>
+
+{# ── Reichweite ── #}
+{% set r = a.reichweite %}
+<h2>{{ _("Reichweite") }}</h2>
+<div class="statgrid">
+  <div class="stat"><span class="wert">{{ r.saison.sommer | de(0) if r.saison.sommer else "–" }}</span><span class="einheit">km</span>
+    <div class="label">{{ _("Ø Sommer (Jun–Aug)") }}</div></div>
+  <div class="stat"><span class="wert">{{ r.saison.winter | de(0) if r.saison.winter else "–" }}</span><span class="einheit">km</span>
+    <div class="label">{{ _("Ø Winter (Dez–Feb)") }}</div></div>
+  {% if r.saison.sommer and r.saison.winter %}
+  <div class="stat"><span class="wert orange">{{ ((1 - r.saison.winter / r.saison.sommer) * 100) | de(0) }}</span><span class="einheit">%</span>
+    <div class="label">{{ _("weniger im Winter") }}</div></div>
+  {% endif %}
+</div>
+<div class="chart">
+  <div class="echart" data-echart="opt-reichweite-{{ fz.id }}"></div>
+  <script type="application/json" id="opt-reichweite-{{ fz.id }}">{{ x.charts.reichweite | tojson }}</script>
+</div>
+<p class="hint">{{ _("Reichweite = km je Prozent Akku × 100, aus dem Verbrauch laut Auto-Akku des Monats. Der Akkustand des Autos bezieht sich schon auf die heute nutzbare Kapazität – ein gealterter Akku steckt also bereits darin. 80 → 10 % ist eine typische Etappe auf Langstrecke. Prognose: Ø desselben Monats in den Vorjahren, ohne Vorjahr der Ø aller Monate.") }}</p>
+
+{# ── Einstellungen ── #}
+<h2{% if loop.first %} id="einstellungen"{% endif %}>{{ _("Einstellungen Akku") }}</h2>
+<div class="card">
+  <form class="inline" method="post" action="akku/einstellungen">
+    {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ fz.id }}">{% endif %}
+    <label class="feld">{{ _("Angenommene Ladeverluste %") }}
+      <input name="verlust" value="{{ a.annahme_eingestellt | de(1) }}" inputmode="decimal" style="width:80px">
+    </label>
+    <label class="feld">{{ _("Akku-Garantie Jahre") }}
+      <input name="garantie_jahre" value="{{ a.garantie.jahre | de(0) }}" inputmode="decimal" style="width:70px">
+    </label>
+    <label class="feld">{{ _("Akku-Garantie km") }}
+      <input name="garantie_km" value="{{ a.garantie.km | de(0) }}" inputmode="decimal" style="width:100px">
+    </label>
+    <label class="feld">{{ _("Garantie-Grenze SoH %") }}
+      <input name="garantie_soh" value="{{ a.garantie.soh | de(0) }}" inputmode="decimal" style="width:70px">
+    </label>
+    <button type="submit">{{ _("💾 Speichern") }}</button>
+  </form>
+  <p class="hint" style="margin-bottom:0">{{ _("Die Akkukapazität ({0} kWh) steht unter <a href=\"berichte\">Berichte</a> bei den Einstellungen der Ladeerkennung, der SoH-Sensor unter <a href=\"einstellungen\">Einstellungen → Sensoren</a>. Garantie: viele Hersteller geben 8 Jahre bzw. 160.000 km auf mindestens 70 % SoH.", a.kapazitaet | de(1)) }}</p>
+</div>
+{% endfor %}
+
+<script src="static/echarts.min.js"></script>
+<script src="static/charts.js"></script>
+{% endblock %}

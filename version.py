@@ -19,10 +19,28 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "3.7.0"
+VERSION = "3.8.0"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.8.0",
+        "datum": "2026-10-29",
+        "titel": "Akku-Gesundheit, Reichweite, Leasing und Nutzungsprofil",
+        "aenderungen": [
+            "Neue Seite Auswertung → Akku: Akku-Gesundheit (SoH), nutzbare Kapazitaet, Alterung je Jahr, Ladezyklen, Ladefenster und Reichweite",
+            "SoH aus drei Quellen, gemessene Werte gehen vor: von Hand eingetragen (Werkstatt, OBD-App, Akku-Zertifikat – mit Aendern und Loeschen), optionaler SoH-Sensor aus Home Assistant oder grob geschaetzt aus Wallbox-kWh und Akkustand mit sichtbarer Spanne. Ein von Hand eingetragener Wert eicht die Schaetzung",
+            "Alterung mit Vergleichskurve (Ø 1,8 % je Jahr ab Erstzulassung) und Prognose des SoH zum Ende der Akku-Garantie (Standard 8 Jahre bzw. 160.000 km, einstellbar)",
+            "Vollzyklen je Monat und gesamt, Ø Akkustand vor und nach dem Laden, Anteil der Ladungen bis ≥ 95 % und ab unter 20 % – aus den vorhandenen Fahrtabschnitten, auch rueckwirkend",
+            "Reichweite bei 100 % und fuer 80 → 10 % je Monat, Sommer gegen Winter, Prognose fuer die naechsten zwoelf Monate und – bei einem Fahrzeug – der Akkustand jetzt mit der Reichweite laut Auto",
+            "Neue Seite Auswertung → Profil: km je Wochentag, Tage nach Strecke, wie viel Akku an 95 % der Fahrtage reicht, wann und wo geladen wird, dazu die Entwicklung ueber die Jahre (je Jahr eine Linie von Januar bis Dezember und eine Jahrestabelle)",
+            "Leasing-Kilometer: Vertrag unter Einstellungen → Leasing, Soll gegen gefahren mit Prognose bis Vertragsende und Mehr- oder Minder-km in Euro – auf der Seite Fahrten, als Dashboard-Bereich und im Monatsbericht",
+            "Neue Dashboard-Kacheln (anfangs aus): Akku-Gesundheit, Reichweite und Vollzyklen",
+            "Neue optionale Sensoren: Reichweite laut Auto und Akku-Gesundheit (SoH). Der naechtliche Abruf merkt sich zusaetzlich die km je Tag; fuer die Vergangenheit per Knopf „Gesamte Historie aus Home Assistant neu berechnen“ unter Fahrten",
+            "Hilfe: neue Abschnitte Akku, Profil und Leasing mit allen Formeln",
+            "Neue Tests akku_test.py, profil_test.py und leasing_test.py",
+        ],
+    },
     {
         "version": "3.7.0",
         "datum": "2026-10-26",

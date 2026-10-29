@@ -108,7 +108,9 @@ Danach holt der nächtliche Abruf km, kWh und Kraftstoffpreis jeden Monat von se
 | Seite | Beschreibung |
 |-------|-------------|
 | 📊 Dashboard | Gesamtübersicht, Kennzahlen, alle Charts, Amortisation des Mehrpreises – je Fahrzeug oder für alle zusammen |
-| 🚗 Fahrten | km erfassen, Kraftstoff-Äquivalent, Verbrauch kWh/100 km |
+| 🔋 Akku | Akku-Gesundheit (SoH: von Hand, Sensor oder geschätzt), nutzbare Kapazität, Alterung mit Garantie-Prognose, Ladezyklen, Ladefenster, Reichweite je Monat mit Prognose |
+| 📈 Profil | Nutzungsprofil (km je Wochentag, Tage nach Strecke), Ladeprofil (wann, wo, AC/DC), Entwicklung über die Jahre |
+| 🚗 Fahrten | km erfassen, Kraftstoff-Äquivalent, Verbrauch kWh/100 km, Leasing-Kilometer mit Prognose und Mehr-km |
 | 🔌 Laden | Ladevorgänge mit kWh, Preis, Anbieter, AC/DC, Blockiergebühr |
 | 🔋 Ladetarife | Eigene Lade-Abos mit Preisverlauf |
 | ⛽ Kraftstoffpreise | Benzin, Diesel oder Autogas: Monatsdurchschnitte + Preisverlauf |

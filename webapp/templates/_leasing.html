@@ -1,0 +1,27 @@
+{# Stand eines Leasingvertrags (leasing.auswertung) – fuer Dashboard und Fahrten.
+   Erwartet fz (Fahrzeug) und l (Auswertung). #}
+{% if mehrere and fahrzeuge | length > 1 %}<div class="muted" style="margin-top:6px">{{ fz.name }}</div>{% endif %}
+<div class="amo-wert" style="font-size:15px">
+  {{ _("{0} von {1} km gefahren", l.ist | de(0), l.vertrag_km | de(0)) }}
+  · {% if l.differenz > 0 %}<span class="orange">{{ _("{0} km über Soll", l.differenz | de(0)) }}</span>{% else %}<span class="gruen">{{ _("{0} km unter Soll", (-l.differenz) | de(0)) }}</span>{% endif %}
+</div>
+<div class="amo-balken" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+     aria-valuenow="{{ [l.anteil_km, 100] | min | round(0) }}"><span style="width: {{ [[l.anteil_km, 100] | min, 0] | max }}%"></span></div>
+<p class="hint" style="margin:6px 0 12px">
+  {{ _("{0} % der km bei {1} % der Laufzeit (Soll heute: {2} km).", l.anteil_km | de(0), l.anteil_zeit | de(0), l.soll | de(0)) }}
+  {% if l.beendet %}
+    {{ _("Vertrag beendet am {0}.", l.ende[8:10] ~ "." ~ l.ende[5:7] ~ "." ~ l.ende[:4]) }}
+  {% else %}
+    {{ _("Prognose bis Vertragsende ({0}): {1} km.", l.ende[8:10] ~ "." ~ l.ende[5:7] ~ "." ~ l.ende[:4], l.prognose | de(0)) }}
+  {% endif %}
+  {% if l.mehr_km > 0 %}
+    <b class="orange">{{ _("≈ {0} Mehr-km", l.mehr_km | de(0)) }}{% if l.mehr_ct %} · {{ _("≈ {0} € Nachzahlung", l.mehr_eur | de(0)) }}{% endif %}</b>
+  {% elif l.minder_km > 0 %}
+    <b class="gruen">{{ _("≈ {0} Minder-km", l.minder_km | de(0)) }}{% if l.minder_ct %} · {{ _("≈ {0} € Erstattung", l.minder_eur | de(0)) }}{% endif %}</b>
+  {% else %}
+    <span class="gruen">{{ _("Innerhalb der Freigrenze.") }}</span>
+  {% endif %}
+  {% if l.noch_je_monat is not none %}
+    {{ _("Ab jetzt noch {0} km je Monat ohne Mehr-km.", l.noch_je_monat | de(0)) }}
+  {% endif %}
+</p>

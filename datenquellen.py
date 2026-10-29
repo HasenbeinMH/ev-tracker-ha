@@ -16,6 +16,7 @@ Jede Quelle beantwortet dieselben Fragen ueber einen Sensor-Schluessel:
     "kosten"   Netz ins Auto (EUR)       -> Monatsdifferenz (optional, dynamischer Tarif)
     "benzin"   1–2 Preissensoren (€/L)   -> Monatsmittel ohne Nullwerte
     "soc"      Akkustand (%)             -> Stundenwerte (Akkuverbrauch, Ladeerkennung)
+    "soh"      Akku-Gesundheit (%)       -> Stundenwerte (optional, akku.py)
 
 Welcher Sensor dahintersteht, kommt aus den Einstellungen: InfluxDB sucht ueber
 einen Tag-Wert (Standard friendly_name, Spalte "Friendly Name") im Measurement der
@@ -58,6 +59,7 @@ SENSOREN = {
     "benzin":  (["ha_tankerkoenig", "ha_tankerkoenig_2"], ["fn_tankerkoenig", "fn_tankerkoenig_2"],
                 "influx_measurement_eur_l", "EUR/L"),
     "soc":     (["ha_ev_battery"], ["fn_ev_battery"], "influx_measurement_prozent", "%"),
+    "soh":     (["ha_ev_soh"], ["fn_ev_soh"], "influx_measurement_prozent", "%"),
 }
 
 PROM_SELEKTOR_STANDARD = ('{__name__=~"homeassistant_sensor_.+",'

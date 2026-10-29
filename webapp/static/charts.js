@@ -28,6 +28,8 @@
     kwh100: (v) => (v == null ? "–" : f1.format(v) + " kWh/100 km"),
     kwh1: (v) => (v == null ? "–" : f1.format(v) + " kWh"),
     km0: (v) => (v == null ? "–" : f0.format(v) + " km"),
+    prozent0: (v) => f0.format(v) + " %",
+    prozent1: (v) => (v == null ? "–" : f1.format(v) + " %"),
     monat: (v) => { const s = String(v); return s.slice(5, 7) + "/" + s.slice(0, 4); },
     datumMonat: (v) => { const d = alsDatum(v); return zweistellig(d.getMonth() + 1) + "/" + d.getFullYear(); },
     tag: (v) => String(v) + ".",

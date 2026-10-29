@@ -4,6 +4,7 @@ Monats- und Jahresberichte: Kennzahlen sammeln und als HTML-Mail aufbereiten.
 Wird von der Webapp genutzt (Vorschau, Versand, Zeitplan).
 """
 import calendar
+import html
 from datetime import date
 
 import database as db
@@ -155,6 +156,35 @@ def _sim_zusatz() -> str:
     return zusatz
 
 
+def _leasing() -> list:
+    """Stand der Leasingvertraege fuer den Bericht: [(fahrzeugname, leasing.auswertung)] –
+    das gewaehlte Fahrzeug bzw. alle sichtbaren."""
+    import leasing
+    fid = db.aktuelles_fahrzeug()
+    erg = []
+    for fz in db.fahrzeuge():
+        if fid is not None and fz["id"] != fid:
+            continue
+        with db.fahrzeug_kontext(fz["id"]):
+            l = leasing.auswertung()
+        if l:
+            erg.append((fz["name"], l))
+    return erg
+
+
+def leasing_text(name: str, l: dict) -> str:
+    """Eine Zeile zum Leasingstand (Mail und Text)."""
+    text = _("{0} von {1} km gefahren (Soll heute {2} km), Prognose bis Vertragsende {3} km",
+             fmt(l["ist"]), fmt(l["vertrag_km"]), fmt(l["soll"]), fmt(l["prognose"]))
+    if l["mehr_km"] > 0:
+        text += " · " + _("≈ {0} Mehr-km", fmt(l["mehr_km"]))
+        if l["mehr_ct"]:
+            text += " · " + _("≈ {0} € Nachzahlung", fmt(l["mehr_eur"]))
+    elif l["minder_km"] > 0:
+        text += " · " + _("≈ {0} Minder-km", fmt(l["minder_km"]))
+    return (f"{name}: " if name else "") + text
+
+
 def monatsbericht(jahr: int, monat: int) -> dict:
     """Kennzahlen eines Monats inklusive Vergleich zum Vormonat."""
     letzter = calendar.monthrange(jahr, monat)[1]
@@ -171,7 +201,7 @@ def monatsbericht(jahr: int, monat: int) -> dict:
     return {"typ": "monat", "titel": f"{monatsname(monat)} {jahr}" + _sim_zusatz(),
             "jahr": jahr, "monat": monat,
             "daten": daten, "vergleich": vormonat,
-            "vergleich_titel": f"{monatsname(v_monat)} {v_jahr}"}
+            "vergleich_titel": f"{monatsname(v_monat)} {v_jahr}", "leasing": _leasing()}
 
 
 def jahresbericht(jahr: int) -> dict:
@@ -308,6 +338,14 @@ def als_html(bericht: dict) -> str:
                        f'<th class="z">{_("Ersparnis &euro;")}</th></tr>'
                        + reihen + '</table>')
 
+    mehrere_namen = len(bericht.get("leasing") or []) > 1
+    leasing_html = ""
+    if bericht.get("leasing"):
+        leasing_html = (f'<h2>{_("Leasing-Kilometer")}</h2>'
+                        + "".join(f'<p style="font-size:13px">'
+                                  f'{html.escape(leasing_text(name if mehrere_namen else "", l))}</p>'
+                                  for name, l in bericht["leasing"]))
+
     return (
         f'<!DOCTYPE html><html lang="{db.sprache()}"><head><meta charset="utf-8">'
         f'<style>{_STIL}</style></head><body><div class="rahmen">'
@@ -320,7 +358,7 @@ def als_html(bericht: dict) -> str:
         + f'<div style="margin:0 -1%">{kacheln}</div>'
         f'<h2>{_("Kennzahlen")}</h2><table>{tabelle}</table>'
         f'<p class="grau" style="font-size:12px">{_("Stromkosten, Verbrauch und Ersparnis rechnen mit den kWh, die an Wallbox oder Ladesäule gemessen und bezahlt wurden – die Ladeverluste sind darin enthalten.")}</p>'
-        f'{fahrzeug_html}{anbieter_html}{monats_html}</div>'
+        f'{fahrzeug_html}{anbieter_html}{monats_html}{leasing_html}</div>'
         f'<div class="fuss">{_("Automatisch erstellt vom EV Tracker am {0}.", date.today().strftime("%d.%m.%Y"))}</div>'
         '</div></body></html>')
 
@@ -342,4 +380,5 @@ def als_text(bericht: dict) -> str:
         f"{_('CO2 gespart:'):<19} {fmt(d['co2'], 1, 'kg')}",
         "",
         _("Stromkosten, Verbrauch und Ersparnis rechnen mit den kWh, die an Wallbox oder Ladesäule gemessen und bezahlt wurden – die Ladeverluste sind darin enthalten."),
-    ])
+    ] + [_("Leasing: {0}", leasing_text(name if len(bericht.get("leasing") or []) > 1 else "", l))
+         for name, l in bericht.get("leasing") or []])

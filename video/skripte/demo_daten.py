@@ -111,6 +111,23 @@ with sqlite3.connect(DB) as conn:
                           km_stand, km_stand + km, round(kwh, 2), round(km, 1)))
             km_stand += km
 
+# km je Tag fuer das Nutzungsprofil: werktags Pendeln, am Wochenende mal weiter, mal gar nicht
+import calendar
+from datetime import date
+tage_km = {}
+for m in monate:
+    j, mon = int(m[:4]), int(m[5:7])
+    for t in range(1, calendar.monthrange(j, mon)[1] + 1):
+        wt = date(j, mon, t).weekday()
+        if wt < 5:
+            km = random.uniform(28, 48)
+        else:
+            km = random.choice((0.0, 0.0, random.uniform(40, 120), random.uniform(180, 320)))
+        tage_km[f"{m}-{t:02d}"] = round(km, 1)
+db.ersetze_fahrten_tag(None, tage_km)
+post("/akku/soh", datum="2026-06-18", soh="97,5", km_stand="21.400", quelle="werkstatt",
+     notiz="Inspektion")
+
 import zeitraum
 a = zeitraum.amortisation(zeitraum.laden())
 k = zeitraum.kennzahlen(zeitraum.aufloesen("alles"), zeitraum.laden())

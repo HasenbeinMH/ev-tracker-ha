@@ -49,9 +49,9 @@ std = dl.standard()
 check("Standard: Kacheln wie bisher",
       [k["id"] for k in std["kacheln"] if k["an"]] ==
       ["strecke", "energie", "ersparnis_kraft", "steuer", "thg", "co2"])
-check("Standard: zusaetzliche Kacheln aus", sum(1 for k in std["kacheln"] if not k["an"]) == 9)
-check("Standard: Lade-Abo aus, Rest an",
-      [b["id"] for b in std["bereiche"] if not b["an"]] == ["abo"])
+check("Standard: zusaetzliche Kacheln aus", sum(1 for k in std["kacheln"] if not k["an"]) == 12)
+check("Standard: Lade-Abo und Leasing aus, Rest an",
+      [b["id"] for b in std["bereiche"] if not b["an"]] == ["abo", "leasing"])
 check("Standard: alle Diagramme an und schmal",
       all(d["an"] and not d["breit"] for d in std["diagramme"]) and len(std["diagramme"]) == 9)
 check("Ohne Eintrag gilt der Standard", dl.laden() == std)

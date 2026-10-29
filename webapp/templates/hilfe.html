@@ -58,6 +58,9 @@
   <a href="#konzept">Grundkonzept</a>
   <a href="#dashboard">Dashboard</a>
   <a href="#statistik">Statistik</a>
+  <a href="#akku">Akku</a>
+  <a href="#profil">Profil</a>
+  <a href="#leasing">Leasing</a>
   <a href="#fahrten">Fahrten</a>
   <a href="#laden">Laden</a>
   <a href="#ladetarife">Ladetarife</a>
@@ -154,6 +157,41 @@
 <p><b>Verlauf Monat für Monat:</b> Diagramm mit wählbarer Kennzahl. Der erste Monat des einen Zeitraums steht neben dem ersten des anderen; bei Sommer gegen Winter also April neben Oktober („Apr · Okt“).</p>
 <p><b>Verbrauch aus dem Akkustand je Monat:</b> Dieselbe Paarung als Tabelle mit den Zahlen dahinter – je Monat und Zeitraum die gewerteten km, die kWh aus dem Akku und der Verbrauch. Die Summenzeile ist über Σ kWh ÷ Σ km gewichtet und entspricht der Zeile „Verbrauch laut Auto-Akku“ in der Tabelle oben.</p>
 <div class="hb-warn"><b>Andere km als im Diagramm:</b> In dieser Tabelle zählen nur die km der gewerteten Fahrtabschnitte, nicht die monatlich erfassten Gesamtkilometer – sonst passten km, kWh und Verbrauch in einer Zeile nicht zusammen. Welche Abschnitte draußen bleiben, steht unter <a href="#akkuverbrauch">Verbrauch aus dem Akkustand</a>.</div>
+
+<h2 id="akku">Akku <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<p>Akku-Gesundheit, Ladezyklen und Reichweite – unter <b>Auswertung → Akku</b>. Grundlage sind die <a href="#akkuverbrauch">Fahrtabschnitte aus dem Akkustand</a>: Zwischen zwei Abschnitten liegt eine Ladung, vom Akkustand am Ende des einen bis zum Start des nächsten.</p>
+<h3 id="soh">Akku-Gesundheit (SoH)</h3>
+<p>SoH (State of Health) = heute nutzbare Kapazität im Verhältnis zum Neuzustand. Drei Quellen, <b>gemessene Werte gehen immer vor</b>:</p>
+<ul>
+  <li><b>Von Hand:</b> ausgelesene Werte aus der Werkstatt, einer OBD-App (z. B. Car Scanner, EVNotify) oder einem Akku-Zertifikat – auf der Akku-Seite unter „SoH-Werte von Hand“ eintragen, ändern oder löschen.</li>
+  <li><b>Sensor:</b> liefert das Auto den SoH an Home Assistant (z. B. über einen OBD-Dongle), unter Einstellungen → Sensoren „Akku-Gesundheit SoH“ eintragen. Der nächtliche Abruf merkt sich den Monatsmittelwert.</li>
+  <li><b>Geschätzt:</b> aus dem Abstand zwischen Wallbox-kWh und Akkustand, gleitend über bis zu 6 Monate mit beiden Werten, ab 3 Monaten.</li>
+</ul>
+<div class="hb-warn"><b>Die Schätzung ist grob:</b> Der Verbrauch laut Auto-Akku rechnet mit der eingestellten (neuen) Kapazität. Hat der Akku weniger, fallen die gemessenen Ladeverluste zu niedrig aus. Ein gealterter Akku und geringere Ladeverluste sehen in den Daten aber gleich aus – die Schätzung hängt deshalb an einer <b>Annahme für die Ladeverluste</b> (Standard 10 %, auf der Akku-Seite einstellbar) und zeigt eine Spanne von ± 5 Prozentpunkten. Ein <b>von Hand eingetragener Wert eicht die Schätzung</b>: Die Annahme wird so gewählt, dass die Schätzung im Monat der Messung genau den gemessenen Wert trifft; die Spanne schrumpft auf ± 2 Prozentpunkte.</div>
+<p><b>Nutzbare Kapazität</b> = Akkukapazität (Berichte → Einstellungen der Ladeerkennung) × SoH. Die eingestellte Kapazität bleibt die Grundlage für Verbrauch und Ladeverluste – der SoH ist nur Anzeige, damit sich nichts im Kreis rechnet.</p>
+<p><b>Alterung:</b> lineare Änderung des SoH je Jahr – aus den gemessenen Werten, sonst aus der Schätzung, ab zwei Werten mit mindestens 90 Tagen Abstand. Zum Vergleich zeigt das Diagramm ab der Erstzulassung eine Kurve mit Ø 1,8 % je Jahr (Auswertung von rund 10.000 E-Autos durch Geotab, 2024) – ein Durchschnitt, kein Maß für ein bestimmtes Auto. <b>Garantie-Prognose:</b> SoH am Ende der Akku-Garantie (Standard 8 Jahre ab Erstzulassung oder 160.000 km, je nachdem was zuerst kommt) mit der eigenen Alterung, ohne messbaren Rückgang mit dem Vergleichswert.</p>
+<h3 id="zyklen">Ladezyklen und Ladefenster</h3>
+<p>Ein <b>Vollzyklus</b> = 100 % Akku geladen, egal in wie vielen Ladungen. Gezählt werden die Anstiege des Akkustands zwischen zwei Fahrtabschnitten; Monate vor dem ersten Akkustand werden aus den geladenen kWh geschätzt (<code>kWh × (1 − Ladeverluste) ÷ Kapazität</code>). Das <b>Ladefenster</b> zeigt, wie voll der Akku vor und nach dem Laden war, dazu der Anteil der Ladungen bis ≥ 95 % und ab unter 20 %.</p>
+<h3 id="reichweite">Reichweite</h3>
+<p><code>Reichweite bei 100 % = Akkukapazität ÷ Verbrauch laut Auto-Akku × 100</code> – gleichbedeutend mit km je Prozent Akku × 100, die Kapazität kürzt sich heraus. Der Akkustand des Autos bezieht sich schon auf die heute nutzbare Kapazität, ein gealterter Akku steckt also bereits darin. Dazu „80 → 10 %“ (70 % davon, eine typische Etappe auf Langstrecke), Sommer gegen Winter und eine Prognose für zwölf Monate (Ø desselben Monats der Vorjahre, sonst Ø aller Monate). Bei einem Fahrzeug fragt die Seite den Akkustand jetzt live ab und zeigt daneben die Reichweite laut Auto (Sensor „Reichweite laut Auto“, optional).</p>
+
+<h2 id="profil">Profil <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<p>Unter <b>Auswertung → Profil</b>:</p>
+<ul>
+  <li><b>Nutzungsprofil:</b> aus den km je Tag (letzter Kilometerstand des Tages − letzter davor; entsteht zusammen mit den Fahrtabschnitten, braucht also Kilometer- und Batteriestand). Ø km je Tag und Fahrtag, Anteil der Tage mit Fahrten, Ø je Wochentag, Tage nach Strecke, längster Tag – und wie viel Akku an 95 % der Fahrtage reicht (95-%-Quantil der Tages-km ÷ Reichweite des Monats).</li>
+  <li><b>Ladeprofil:</b> wann geladen wird (Ladungen aus dem Akkustand nach Uhrzeit und Wochentag) und wo und wie (alle Ladevorgänge: zuhause PV/Netz oder unterwegs, AC oder DC).</li>
+  <li><b>Entwicklung über die Jahre:</b> je Jahr eine Linie über Januar bis Dezember (km, beide Verbrauchswerte, Stromkosten je 100 km, Ersparnis) und eine Tabelle mit den Kennzahlen je Kalenderjahr wie in der Statistik.</li>
+</ul>
+
+<h2 id="leasing">Leasing <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<p>Für geleaste Autos unter <b>Einstellungen → Leasing</b>: Vertragsbeginn und -ende, km je Jahr, km-Stand bei Übernahme (leer = km bei Kauf), Freigrenze und die Sätze für Mehr- und Minder-km. Zu sehen unter <a href="#fahrten">Fahrten</a>, als Bereich im Dashboard und im Monatsbericht.</p>
+<table>
+  <tr><th style="width:34%">Wert</th><th>Formel</th></tr>
+  <tr><td>Soll heute</td><td><code>km je Jahr × Tage seit Vertragsbeginn ÷ 365,25</code></td></tr>
+  <tr><td>Gefahren</td><td><code>km-Stand − km-Stand bei Übernahme</code> (ohne Akkustand-Verlauf aus den Monats-km, der erste Monat anteilig)</td></tr>
+  <tr><td>Prognose</td><td><code>Gefahren + je restlichem Monat die km des gleichen Monats im Vorjahr</code> – ohne Vorjahr Ø km je Tag der letzten 12 Monate</td></tr>
+  <tr><td>Mehr-km</td><td><code>Prognose − Vertrags-km − Freigrenze</code>, in Euro <code>× Satz ÷ 100</code>; Minder-km entsprechend</td></tr>
+</table>
 
 <h2 id="fahrten">Fahrten <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„🚗 Gefahrene Kilometer (monatlich)"</b></p>
@@ -465,6 +503,10 @@
   <tr><td>Verbrauch laut Auto-Akku</td><td><code>Akku-Abfall [%] ÷ 100 × Akkukapazität ÷ km × 100</code></td></tr>
   <tr><td>Ladeverluste (geschätzt)</td><td><code>1 − Verbrauch laut Auto-Akku ÷ Verbrauch laut Wallbox/Ladesäule</code> – nur aus Monaten mit beiden Werten; mehr als 35 % gilt als Messfehler und wird nicht angezeigt. Kosten: <code>Stromkosten der Ladungen × Anteil</code>. Stromkosten und Ersparnis enthalten die Verluste bereits, denn bezahlt werden die kWh an Wallbox oder Säule. Zum Vergleich laut ADAC-Messungen: Wallbox mit voller Leistung etwa 5–10 %, mit wenig Leistung (z. B. PV-Überschuss) 9–13 %, Haushaltssteckdose 15–25 %, Schnellladen 5–15 % je nach Akkutemperatur.</td></tr>
   <tr><td>Anteil Stromquelle</td><td><code>kWh der Quelle ÷ Σ geladene kWh</code></td></tr>
+  <tr><td>SoH geschätzt</td><td><code>(1 − angenommene Ladeverluste) ÷ (1 − gemessene Ladeverluste)</code> – gleitend über bis zu 6 Monate, siehe <a href="#soh">Akku-Gesundheit</a></td></tr>
+  <tr><td>Nutzbare Kapazität</td><td><code>Akkukapazität × SoH</code></td></tr>
+  <tr><td>Vollzyklen</td><td><code>Σ Anstiege des Akkustands [%] ÷ 100</code></td></tr>
+  <tr><td>Reichweite bei 100 %</td><td><code>Akkukapazität ÷ Verbrauch laut Auto-Akku × 100</code></td></tr>
 </table>
 
 <h2 id="kennzahlen">Kennzahlen im Detail <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
