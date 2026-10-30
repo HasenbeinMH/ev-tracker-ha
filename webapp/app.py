@@ -689,6 +689,39 @@ def fahrten_delete(monat: str = Form(...)):
 #  Laden
 # ─────────────────────────────────────────────────────────────
 
+def _lade_gruppen(rows: list) -> list:
+    """Teile einer Heimladung als eine Zeile: eine aus Home Assistant geschickte Ladung
+    (Kennung "ha:<Beginn>:netz" / ":pv") bzw. die importierte Monatssumme aus PV und Netz
+    (naechtlicher Abruf oder Zeitraum-Import).
+    Rueckgabe in der Reihenfolge der Liste: [{"kopf": Summenzeile, "teile": [Zeilen]}] –
+    bei nur einem Teil ist der Kopf die Zeile selbst."""
+    gruppen = {}
+    for r in rows:
+        kennung = r.get("extern_id") or ""
+        if kennung.startswith("ha:") and kennung.rsplit(":", 1)[-1] in ("netz", "pv"):
+            schluessel = kennung.rsplit(":", 1)[0]
+        elif (r["anbieter"] in (berechnung.NETZBEZUG, heimladung.PV)
+              and (r.get("notiz") or "").startswith((db.AUTO_NOTIZ, db.IMPORT_NOTIZ))):
+            schluessel = ("monat", r["datum"], r["fahrzeug_id"])
+        else:
+            schluessel = ("einzeln", r["id"])
+        gruppen.setdefault(schluessel, []).append(r)
+    erg = []
+    for teile in gruppen.values():
+        if len(teile) == 1:
+            erg.append({"kopf": teile[0], "teile": teile})
+            continue
+        teile.sort(key=lambda t: t["anbieter"] != berechnung.NETZBEZUG)    # Netz zuerst
+        kwh = sum(t["menge_kwh"] for t in teile)
+        gesamt = sum(t["gesamtpreis"] for t in teile)
+        pv = sum(t["menge_kwh"] for t in teile if t["anbieter"] == heimladung.PV)
+        erg.append({"teile": teile, "kopf": {
+            **teile[0], "menge_kwh": kwh, "gesamtpreis": gesamt,
+            "preis_kwh": gesamt / kwh * 100 if kwh else None,
+            "blockiergebuehr": None, "pv_anteil": pv / kwh * 100 if kwh else 0.0}})
+    return erg
+
+
 @app.get("/laden", response_class=HTMLResponse)
 def laden(request: Request, datum: str = "", anbieter: str = "", typ: str = "",
           kw: str = "", fz: str = "", ok: str = ""):
@@ -705,7 +738,7 @@ def laden(request: Request, datum: str = "", anbieter: str = "", typ: str = "",
     letzte = {"datum": datum if re.fullmatch(r"\d{4}-\d{2}-\d{2}", datum) else "",
               "anbieter": anbieter, "typ": typ if typ in ("AC", "DC") else "",
               "kw": kw, "fz": int(fz) if fz.isdigit() else None, "ok": ok == "1"}
-    return render(request, "laden.html", rows=daten, anbieter=anbieter_liste,
+    return render(request, "laden.html", gruppen=_lade_gruppen(daten), anbieter=anbieter_liste,
                   tarif=tarif, pv_ct=pv_ct, abo=abo, aktiv="laden", letzte=letzte,
                   heute=datetime.now().strftime("%Y-%m-%d"))
 
@@ -764,8 +797,10 @@ def laden_update(id: int = Form(...), datum: str = Form(...), kwh: str = Form(..
 
 
 @app.post("/laden/delete")
-def laden_delete(id: int = Form(...)):
-    db.delete_ladevorgang(id)
+def laden_delete(id: list[int] = Form(...)):
+    # mehrere ids: alle Teile einer Ladung (PV und Netz) auf einmal
+    for i in id:
+        db.delete_ladevorgang(i)
     return RedirectResponse("../laden", status_code=303)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.8.1] - 2026-10-30
+
+### Eine Zeile je Ladung
+- Ladevorgaenge: Eine Heimladung aus PV und Netz steht jetzt als eine Zeile mit Summe, Mischpreis und PV-Anteil – fuer aus Home Assistant geschickte Ladungen ebenso wie fuer die importierten Monatssummen
+- Mit dem Pfeil vor dem Datum klappen die Teile PV und Netz auf und lassen sich dort einzeln bearbeiten; der Papierkorb in der Summenzeile loescht beide Teile
+- Neuer Test laden_liste_test.py
+
 ## [3.8.0] - 2026-10-29
 
 ### Akku-Gesundheit, Reichweite, Leasing und Nutzungsprofil

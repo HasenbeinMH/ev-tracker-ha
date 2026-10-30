@@ -50,15 +50,18 @@
 
 <div class="tabelle-scroll"><table>
   <tr>{% if gesamtsicht %}<th>{{ _("Fahrzeug") }}</th>{% endif %}<th>{{ _("Datum") }}</th><th>{{ _("kWh") }}</th><th>{{ _("ct/kWh") }}</th><th>{{ _("Gesamt €") }}</th><th>{{ _("Anbieter") }}</th><th>{{ _("kW") }}</th><th>{{ _("Typ") }}</th><th>{{ _("Blockier €") }}</th><th>{{ _("Notiz") }}</th><th></th></tr>
-  {% for d in rows %}
-  <tr data-id="{{ d.id }}"
+  {# Eine Ladung = eine Zeile. Heimladungen aus PV und Netz (aus HA geschickt oder als
+     Monatssumme importiert) stehen zusammengefasst darin, die Teile lassen sich aufklappen
+     und einzeln bearbeiten. #}
+  {% macro zeile(d, gruppe=none, vor="") %}
+  <tr data-id="{{ d.id }}"{% if gruppe %} class="lade-teil" data-gruppe="{{ gruppe }}" hidden{% endif %}
       data-datum="{{ d.datum }}" data-kwh="{{ d.menge_kwh }}"
       data-ct="{{ d.preis_kwh or '' }}" data-gesamt="{{ d.gesamtpreis }}"
       data-anbieter="{{ d.anbieter }}" data-kw="{{ d.ladeleistung_kw or '' }}"
       data-typ="{{ d.ladetyp }}" data-blockier="{{ d.blockiergebuehr or '' }}"
       data-notiz="{{ d.notiz or '' }}" data-fahrzeug="{{ d.fahrzeug_id }}">
     {% if gesamtsicht %}<td>{{ fahrzeug_name_von(d.fahrzeug_id) }}</td>{% endif %}
-    <td>{{ d.datum }}</td>
+    <td style="white-space:nowrap">{{ vor }}{{ d.datum }}</td>
     <td>{{ "%.2f"|format(d.menge_kwh)|replace(".", ",") }}</td>
     <td>{{ ("%.2f"|format(d.preis_kwh)|replace(".", ",")) if d.preis_kwh else "—" }}</td>
     <td>{{ "%.2f"|format(d.gesamtpreis)|replace(".", ",") }} €</td>
@@ -77,6 +80,40 @@
       </form>
     </td>
   </tr>
+  {% endmacro %}
+  {% for g in gruppen %}
+  {% if g.teile | length == 1 %}
+  {{ zeile(g.kopf, vor='<span class="aufklappen-platz"></span>' | safe) }}
+  {% else %}
+  {% set d = g.kopf %}
+  {% set gid = "g" ~ loop.index %}
+  <tr class="lade-gruppe">
+    {% if gesamtsicht %}<td>{{ fahrzeug_name_von(d.fahrzeug_id) }}</td>{% endif %}
+    <td style="white-space:nowrap">
+      <button type="button" class="aufklappen" aria-expanded="false"
+              onclick="aufklappen(this, '{{ gid }}')" title="{{ _t("PV und Netz anzeigen") }}">▸</button>{{ d.datum }}
+    </td>
+    <td>{{ "%.2f"|format(d.menge_kwh)|replace(".", ",") }}</td>
+    <td>{{ ("%.2f"|format(d.preis_kwh)|replace(".", ",")) if d.preis_kwh else "—" }}</td>
+    <td>{{ "%.2f"|format(d.gesamtpreis)|replace(".", ",") }} €</td>
+    <td>{{ _("Zuhause") }} <span class="muted">· {{ _("PV {0} %", d.pv_anteil | de(0)) }}</span></td>
+    <td>{{ ("%.0f"|format(d.ladeleistung_kw)) if d.ladeleistung_kw else "—" }}</td>
+    <td>{{ d.ladetyp }}</td>
+    <td>—</td>
+    <td class="muted">{{ d.notiz or "" }}</td>
+    <td style="white-space:nowrap">
+      <button class="secondary" style="padding:4px 9px; font-size:12px"
+              onclick="aufklappen(this.closest('tr').querySelector('.aufklappen'), '{{ gid }}')"
+              title="{{ _t("Zum Bearbeiten aufklappen") }}">✏</button>
+      <form method="post" action="laden/delete" style="display:inline"
+            onsubmit="return confirm({{ _t("Ladevorgang vom {0} löschen – PV und Netz?", d.datum) | tojson | forceescape }})">
+        {% for t in g.teile %}<input type="hidden" name="id" value="{{ t.id }}">{% endfor %}
+        <button class="danger">🗑</button>
+      </form>
+    </td>
+  </tr>
+  {% for t in g.teile %}{{ zeile(t, gruppe=gid, vor='<span class="aufklappen-platz"></span>' | safe) }}{% endfor %}
+  {% endif %}
   {% endfor %}
 </table></div>
 
@@ -86,6 +123,14 @@ const ANBIETER = [{% for a in anbieter %}"{{ a.name }}"{{ "," if not loop.last }
 const GESAMT = {{ "true" if gesamtsicht else "false" }};
 const FAHRZEUGE = {{ fahrzeuge | map(attribute="id") | list | tojson }}.map((id, i) =>
     ({ id: id, name: {{ fahrzeuge | map(attribute="name") | list | tojson }}[i] }));
+
+// Teile einer Ladung (PV und Netz) ein- und ausklappen
+function aufklappen(knopf, gruppe) {
+  const offen = knopf.getAttribute("aria-expanded") !== "true";
+  knopf.setAttribute("aria-expanded", offen);
+  knopf.textContent = offen ? "▾" : "▸";
+  document.querySelectorAll(`tr[data-gruppe="${gruppe}"]`).forEach(tr => { tr.hidden = !offen; });
+}
 
 function bearbeiten(btn) {
   const tr = btn.closest("tr");

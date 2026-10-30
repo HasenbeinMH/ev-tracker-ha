@@ -292,6 +292,17 @@ th {
 }
 td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
 tr:hover td { background: #1f2330; }
+/* Ladevorgaenge: Teile einer Ladung (PV und Netz) unter der Summenzeile aufklappen */
+button.aufklappen, .aufklappen-platz {
+  display: inline-block; width: 22px; margin-right: 4px; text-align: center;
+}
+button.aufklappen {
+  background: none; border: 0; padding: 0; color: var(--blau-hell);
+  font-size: 13px; line-height: 1; cursor: pointer;
+}
+button.aufklappen:hover { color: var(--text); }
+tr.lade-teil td { background: rgba(255, 255, 255, 0.025); font-size: 12px; }
+tr.lade-teil td:first-child { padding-left: 22px; }
 form.inline { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
 label.feld { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--blau-hell); }
 input, select, textarea {
