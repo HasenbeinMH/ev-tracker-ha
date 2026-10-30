@@ -24,7 +24,7 @@ nicht auf ein bestimmtes Modell festgelegt. Oberfläche, Hilfe und Berichte gibt
 
 ## Einblicke
 
-*Alle Bilder mit Beispieldaten: 20 Monate, ein Elektroauto mit Wallbox und PV-Anlage.*
+*Alle Bilder mit Beispieldaten: knapp zwei Jahre, ein Elektroauto mit Wallbox und PV-Anlage.*
 
 <table>
 <tr>
@@ -40,9 +40,21 @@ nicht auf ein bestimmtes Modell festgelegt. Oberfläche, Hilfe und Berichte gibt
 <br><b>Ladetarife im Griff</b> – Abos mit Preisverlauf, Grundgebühr und Blockiergebühr, im Vergleich zum Heimstrom.</td>
 </tr>
 <tr>
+<td><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-akku.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-akku.png" alt="Akku: Gesundheit, Kapazität, Reichweite"></a>
+<br><b>Akku im Blick</b> – Gesundheit (SoH) von Hand, per Sensor oder geschätzt, nutzbare Kapazität, Alterung bis zum Garantie-Ende und die Reichweite im eigenen Ladefenster, z. B. 80 → 20 %.</td>
+<td><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-energie.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-energie.png" alt="Energie: Antrieb, Klima, Bordelektronik, Rekuperation"></a>
+<br><b>Wofür der Strom draufgeht</b> – Antrieb, Klima und Bordelektronik aus der Fahrstatistik des Autos, mit Rekuperation und den Kosten fürs Heizen und Kühlen.</td>
+</tr>
+<tr>
+<td><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-profil.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-profil.png" alt="Profil: Nutzung, Fahrten, Laden"></a>
+<br><b>Wie du fährst und lädst</b> – km je Wochentag, Tage nach Strecke, Fahrten nach Länge und Uhrzeit, häufigste Ziele, Ladeprofil und Vergleich der Jahre.</td>
+<td><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-fahrtenbuch.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-fahrtenbuch.png" alt="Fahrtenbuch: Fahrten mit Start und Ziel"></a>
+<br><b>Fahrtenbuch</b> – jede Fahrt mit Start, Ziel, km und Akku, automatisch aus Home Assistant. Kategorie und Notiz von Hand, Export als CSV.</td>
+</tr>
+<tr>
 <td><a href="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-bericht.png"><img src="https://raw.githubusercontent.com/HasenbeinMH/ev-tracker-ha/main/docs/screenshot-bericht.png" alt="Monatsbericht per Mail" width="70%"></a>
 <br><b>Monatsbericht per Mail</b> – kommt automatisch, sobald der Monat vollständig ist.</td>
-<td valign="top"><br><b>Und außerdem:</b> Import aus Home Assistant oder einer Datenbank (InfluxDB 1.x/2.x/3.x, PostgreSQL/TimescaleDB, Prometheus/VictoriaMetrics), jede Nacht automatisch · Rechnungs-PDFs einlesen ([Musterrechnungen gesucht](#-rechnungsimport-musterrechnungen-gesucht)) · Ladeerkennung am Akkustand (meldet Ladungen unterwegs ohne Beleg) · THG-Quote und KFZ-Steuer · Amortisation des Mehrpreises mit Prognose · Instandhaltung und Versicherung · mehrere E-Autos (je Auto oder als Summe) · Oberfläche, Hilfe und Mail-Berichte auf Deutsch oder Englisch · Backup und Wiederherstellen</td>
+<td valign="top"><br><b>Und außerdem:</b> Import aus Home Assistant oder einer Datenbank (InfluxDB 1.x/2.x/3.x, PostgreSQL/TimescaleDB, Prometheus/VictoriaMetrics), jede Nacht automatisch · Rechnungs-PDFs einlesen ([Musterrechnungen gesucht](#-rechnungsimport-musterrechnungen-gesucht)) · Ladeerkennung am Akkustand (meldet Ladungen unterwegs ohne Beleg) · THG-Quote und KFZ-Steuer · Amortisation des Mehrpreises mit Prognose · Instandhaltung und Versicherung · Leasing-Kilometer mit Prognose · Zusatzauswertungen als Module ein- und ausschaltbar · mehrere E-Autos (je Auto oder als Summe) · Oberfläche, Hilfe und Mail-Berichte auf Deutsch oder Englisch · Backup und Wiederherstellen</td>
 </tr>
 </table>
 
@@ -61,6 +73,9 @@ vorher in Home Assistant eingerichtet sein:
 | 💶 *Kosten Netz ins Auto (optional)* | Tatsächliche Stromkosten bei **dynamischem Tarif** (Tibber, aWATTar, Octopus …) statt eines festen Tarifs | Fortlaufender €-Zähler: jede kWh aus dem Netz × Preis in diesem Moment. Die Vorlage [`ev_netzkosten.yaml`](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/homeassistant/ev_netzkosten.yaml) legt ihn aus dem Preissensor an. |
 | 📨 *Ladungen einzeln senden (optional)* | Heimladungen einzeln mit Datum statt als Monatssumme | Die Vorlage [`ev_ladung_senden.yaml`](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/homeassistant/ev_ladung_senden.yaml) – oder der [Blueprint](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/blueprints/README.md) – schickt am Ladeende kWh und Kosten an den EV Tracker; Adresse und Token stehen in den Einstellungen. |
 | 🔋 *Batteriestand (optional)* | Ladeerkennung und Verbrauch aus dem Akkustand | Ebenfalls über die Fahrzeug-Integration |
+| 📊 *Tägliche Fahrstatistik (optional)* | Modul Energie: Aufteilung auf Antrieb, Klima, Bordelektronik, Rekuperation | Z. B. `sensor.…_tagliche_fahrstatistik` der Kia-/Hyundai-Integration |
+| 📍 *Standort (optional)* | Modul Fahrtenbuch: Start und Ziel jeder Fahrt | `device_tracker` des Autos oder – wenn immer dieselbe Person fährt – des Handys (genauer). Der EV Tracker schreibt den Standort selbst mit, der Recorder muss ihn nicht aufnehmen. |
+| 🩺 *Reichweite, Akku-Gesundheit (optional)* | Modul Akku: Reichweite laut Auto, gemessener SoH | Ohne SoH-Sensor schätzt der EV Tracker den Wert oder nimmt einen von Hand eingetragenen (Werkstatt, OBD-App) |
 
 Die Entity-IDs werden anschließend in den **Einstellungen** des EV Trackers eingetragen.
 
@@ -100,6 +115,9 @@ Grundeinstellungen und zeigt bei jedem Schritt, ob er schon erledigt ist.
    **Erst speichern, dann testen:** Verbindungstest und Suche nutzen die gespeicherten Zugangsdaten.
 5. **Stromtarif** anlegen, dann unter **HA Import** die vergangenen Monate holen.
 6. **Ladungen unterwegs** unter Laden bzw. Rechnungen ergänzen, THG-Prämien unter Steuer & THG.
+7. **Module** (optional) – unter **Einstellungen → Module** die Zusatzauswertungen einschalten:
+   Akku, Profil, Leasing, Energie und Fahrtenbuch. Die Sensoren dafür erscheinen dann unter
+   **Einstellungen → Sensoren**. Ausgeschaltete Module verschwinden aus Menü und Dashboard, ihre Daten bleiben erhalten.
 
 Danach holt der nächtliche Abruf km, kWh und Kraftstoffpreis jeden Monat von selbst.
 
@@ -247,6 +265,9 @@ suchen, wenn unklar ist, wo genau sich beide Wege unterscheiden.
 | `webapp/` | FastAPI-Anwendung, Templates, statische Dateien, Dockerfile |
 | `charts.py` | Chart-Definitionen (Apache ECharts), werden im Browser gezeichnet |
 | `berechnung.py` | Alle Kennzahlen und Ersparnis-Berechnungen |
+| `zeitraum.py`, `akkuverbrauch.py` | Kennzahlen je Zeitraum (Dashboard, Statistik, Berichte), Verbrauch aus dem Akkustand |
+| `module.py` | Verzeichnis der Module (Seiten, Kacheln, Sensoren) und ihr Schalter |
+| `akku.py`, `profil.py`, `leasing.py`, `energie.py`, `fahrtenbuch.py` | Die Module: Akku-Gesundheit und Reichweite, Nutzungsprofil, Leasing-Kilometer, Energie-Aufteilung, Fahrterkennung mit Standort-Mitschnitt |
 | `database.py` | SQLite-Zugriff und Schema |
 | `ha_client.py` | Home Assistant (REST, WebSocket, Supervisor) |
 | `datenquellen.py` | Datenbanken: InfluxDB 1.x/2.x/3.x, PostgreSQL/TimescaleDB (LTSS), Prometheus/VictoriaMetrics |
@@ -267,4 +288,5 @@ suchen, wenn unklar ist, wo genau sich beide Wege unterscheiden.
 | `tests/i18n_test.py` | Sprachumschaltung: jeder Text übersetzt, alle Seiten in Deutsch und Englisch, JavaScript gültig, Deutsch unverändert, keine deutschen Wörter in Englisch, Bericht auf Englisch (braucht Node.js): `python tests/i18n_test.py` |
 | `tests/oberflaeche_test.py` | Alle Seiten im echten Browser (Playwright/Chromium), JS-Fehler, Formular, Zustand „Nur lesbar“; optional Screenshots: `python tests/oberflaeche_test.py [ordner]` |
 | `tests/datenquellen_docker_test.py` | Dieselben Anbindungen gegen echte Server in Docker (InfluxDB 1.8/2.7, TimescaleDB, VictoriaMetrics, Prometheus): `python tests/datenquellen_docker_test.py` |
+| `video/skripte/` | Demodaten (`demo_daten.py`), Screenshots für diese Seite (`screenshots.py`, braucht Playwright und Microsoft Edge) und Aufnahmen fürs Video |
 | `version.py` | Versionsnummer und Änderungslog |
