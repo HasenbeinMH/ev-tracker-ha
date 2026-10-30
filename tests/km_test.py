@@ -126,6 +126,43 @@ fertig.wait(5)
 check("Push-Ladung angenommen", r.status_code == 200 and r.json().get("ok"), r.text[:200])
 check("Push-Ladung zieht km des Monats nach", aufrufe == [("2026-10", 1)], str(aufrufe))
 
+# ── Akku-Entnahme im laufenden Monat: Akkustand von jetzt statt vom letzten Abruf ──
+import json, ha_client, akkuverbrauch
+from datetime import datetime
+jetzt_m = datetime.now().strftime("%Y-%m")
+db.set_einstellung("akku_kapazitaet_kwh", 50)
+db.set_einstellung("akkustand_monate", json.dumps({"2026-01": [80, 60], jetzt_m: [96, 48.5]}))
+db.set_einstellungen({"ha_ev_battery": "sensor.akku", "ha_url": "http://ha", "ha_token": "t"})
+abfragen = []
+
+
+class HAAttrappe:
+    wert = 79.5
+
+    def __init__(self, **verbindung):
+        pass
+
+    def get_current_state(self, entity_id, timeout=15):
+        abfragen.append((entity_id, timeout))
+        return HAAttrappe.wert
+
+
+ha_client.HAClient = HAAttrappe
+akkuverbrauch._soc_cache.clear()
+e = akkuverbrauch.entnahme_je_monat()
+check("Laufender Monat mit Akkustand von jetzt", abs(e[jetzt_m] - (96 - 79.5) / 100 * 50) < 1e-6
+      and abfragen == [("sensor.akku", akkuverbrauch.SOC_TIMEOUT_S)], f"{e} {abfragen}")
+check("Abgeschlossener Monat unveraendert", abs(e["2026-01"] - 10) < 1e-6, str(e))
+HAAttrappe.wert = 20.0
+akkuverbrauch.entnahme_je_monat()
+check("Akkustand von jetzt 5 Minuten zwischengespeichert", len(abfragen) == 1, str(abfragen))
+akkuverbrauch._soc_cache.clear()
+HAAttrappe.wert = None
+e = akkuverbrauch.entnahme_je_monat()
+check("Ohne Wert aus HA: Stand vom letzten Abruf", abs(e[jetzt_m] - (96 - 48.5) / 100 * 50) < 1e-6, str(e))
+akkuverbrauch._soc_cache.clear()
+db.set_einstellungen({"ha_url": "", "ha_token": ""})
+
 # ── Ausgabe ──────────────────────────────────────────────────────────────────
 ok_n = sum(1 for e in ERG if e[1])
 for test, ok, detail in ERG:

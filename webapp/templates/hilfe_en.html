@@ -530,7 +530,7 @@
   <tr><td>Extra cost</td><td><code>purchase price EV − comparable {{ kf.fahrzeug }} − subsidies</code></td></tr>
   <tr><td>Recovered</td><td><code>total savings (entire period) ÷ extra cost × 100</code></td></tr>
   <tr><td>Payback forecast</td><td><code>(extra cost − total savings) ÷ average total savings per month (last 12 completed months)</code></td></tr>
-  <tr><td>Consumption per month</td><td><code>kWh (month) ÷ km (month) × 100</code></td></tr>
+  <tr><td>Consumption per month (per wallbox/charging station)</td><td><code>(kWh (month) + battery level start of month − end of month [%] ÷ 100 × battery capacity) ÷ km (month) × 100</code> – the battery part corrects for a battery that is emptier or fuller at the end of the month than at the start (e.g. car taken over full, only recharged to 80 %). In the current month the end is the battery level right now from Home Assistant (at most 5 minutes old), so it matches charges sent since the last fetch. Without a battery sensor it is left out.</td></tr>
   <tr><td>Ø consumption (weighted)</td><td><code>Σ kWh ÷ Σ km × 100</code></td></tr>
   <tr><td>Costs per 100 km</td><td><code>electricity costs ÷ km × 100</code></td></tr>
   <tr><td>Monthly savings</td><td><code>{{ kf.name }} costs (month) − charging costs (month)</code></td></tr>

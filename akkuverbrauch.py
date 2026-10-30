@@ -318,8 +318,47 @@ def entnahme_je_monat() -> dict:
         kapazitaet = float(db.get_einstellung("akku_kapazitaet_kwh") or 58.3)
     except ValueError:
         return {}
+    # Laufender Monat: Der Stand am Monatsende ist der vom letzten Abruf, die Ladungen aus
+    # Home Assistant sind aber sofort da – ohne den Stand von jetzt zaehlt eine Ladung seit
+    # dem Abruf doppelt (als geladene kWh und als Akku-Entnahme bis zum Tiefststand davor)
+    monat = datetime.now().strftime("%Y-%m")
+    if staende.get(monat) and staende[monat][0] is not None:
+        jetzt = soc_jetzt()
+        if jetzt is not None:
+            staende[monat] = [staende[monat][0], jetzt]
     return {m: (a - e) / 100 * kapazitaet for m, (a, e) in staende.items()
             if a is not None and e is not None}
+
+
+SOC_CACHE_S = 300       # Akkustand von jetzt hoechstens alle 5 Minuten abfragen
+SOC_TIMEOUT_S = 3       # und nicht lange auf Home Assistant warten
+_soc_cache = {}         # fahrzeug_id -> (Zeitpunkt, Wert oder None)
+
+
+def soc_jetzt() -> float | None:
+    """Akkustand des aktuellen Fahrzeugs laut Home Assistant, 5 Minuten zwischengespeichert –
+    auch ein Fehlschlag, damit eine nicht erreichbare Instanz nicht jede Seite bremst.
+    None ohne Verbindung, Batterie-Sensor oder gueltigen Wert."""
+    import time
+    import datenquellen
+    from ha_client import HAClient, ha_verbindung
+    fid = db.aktuelles_fahrzeug()
+    treffer = _soc_cache.get(fid)
+    if treffer and time.monotonic() - treffer[0] < SOC_CACHE_S:
+        return treffer[1]
+    wert = None
+    cfg = db.get_ha_settings()
+    entity = (datenquellen.namen_liste(cfg.get("ha_ev_battery")) or [""])[-1]
+    verbindung = ha_verbindung(cfg) if entity else None
+    if verbindung is not None:
+        try:
+            wert = HAClient(**verbindung).get_current_state(entity, timeout=SOC_TIMEOUT_S)
+        except Exception:
+            wert = None
+    if wert is not None and not 0 <= wert <= 100:
+        wert = None
+    _soc_cache[fid] = (time.monotonic(), wert)
+    return wert
 
 
 def pro_monat() -> list:

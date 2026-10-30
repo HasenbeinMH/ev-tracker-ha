@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.9.2] - 2026-10-30
+
+### Verbrauch im laufenden Monat und Rundung im Profil
+- Behoben: Verbrauch laut Wallbox/Ladesaeule im laufenden Monat zu hoch, wenn seit dem letzten Abruf geladen wurde – die Ladung zaehlte schon als geladene kWh, der Akkustand am Monatsende stand aber noch auf dem Wert davor (z. B. 21,7 statt 17,2 kWh/100 km)
+- Im laufenden Monat nimmt die Akkustand-Korrektur jetzt den Akkustand von jetzt aus Home Assistant (hoechstens 5 Minuten alt, Wartezeit hoechstens 3 Sekunden); ohne Verbindung bleibt es beim Stand vom letzten Abruf
+- Profil: Die Jahrestabelle zeigt kWh und Euro mit denselben Nachkommastellen wie das Dashboard
+- Hilfe: Formel mit Akkustand-Korrektur jetzt auch auf Englisch
+
 ## [3.9.1] - 2026-10-30
 
 ### Ladeprofil mit genauen Ladezeiten

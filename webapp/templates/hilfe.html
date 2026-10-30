@@ -526,7 +526,7 @@
   <tr><td>Mehrpreis</td><td><code>Kaufpreis E-Auto − vergleichbarer {{ kf.fahrzeug }} − Förderung</code></td></tr>
   <tr><td>Amortisiert zu</td><td><code>Gesamt-Ersparnis (gesamter Zeitraum) ÷ Mehrpreis × 100</code></td></tr>
   <tr><td>Prognose Amortisation</td><td><code>(Mehrpreis − Gesamt-Ersparnis) ÷ Ø Gesamt-Ersparnis je Monat (letzte 12 abgeschlossene Monate)</code></td></tr>
-  <tr><td>Verbrauch je Monat (laut Wallbox/Ladesäule)</td><td><code>(kWh (Monat) + Akkustand Monatsanfang − Monatsende [%] ÷ 100 × Akkukapazität) ÷ km (Monat) × 100</code> – der Akku-Teil gleicht aus, wenn der Akku am Monatsende leerer oder voller ist als am Anfang (z. B. Auto voll übernommen, nur bis 80 % nachgeladen). Ohne Batterie-Sensor entfällt er.</td></tr>
+  <tr><td>Verbrauch je Monat (laut Wallbox/Ladesäule)</td><td><code>(kWh (Monat) + Akkustand Monatsanfang − Monatsende [%] ÷ 100 × Akkukapazität) ÷ km (Monat) × 100</code> – der Akku-Teil gleicht aus, wenn der Akku am Monatsende leerer oder voller ist als am Anfang (z. B. Auto voll übernommen, nur bis 80 % nachgeladen). Im laufenden Monat gilt als Monatsende der Akkustand von jetzt aus Home Assistant (höchstens 5 Minuten alt) – so passt er zu Ladungen, die seit dem letzten Abruf geschickt wurden. Ohne Batterie-Sensor entfällt er.</td></tr>
   <tr><td>Ø Verbrauch (gewichtet)</td><td><code>Σ kWh ÷ Σ km × 100</code></td></tr>
   <tr><td>Kosten je 100 km</td><td><code>Stromkosten ÷ km × 100</code></td></tr>
   <tr><td>Monatliche Ersparnis</td><td><code>{{ kf.name }}kosten (Monat) − Ladekosten (Monat)</code></td></tr>

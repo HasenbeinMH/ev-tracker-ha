@@ -71,7 +71,7 @@ class HAClient:
     #  HTTP-Basis
     # ─────────────────────────────────────────
 
-    def _get(self, path: str) -> dict | list | None:
+    def _get(self, path: str, timeout: float = 15) -> dict | list | None:
         req = urllib.request.Request(
             f"{self.url}{path}",
             headers={
@@ -80,7 +80,7 @@ class HAClient:
             }
         )
         try:
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
                 return json.loads(resp.read().decode())
         except urllib.error.HTTPError as e:
             raise ConnectionError(f"HTTP {e.code}: {e.reason}")
@@ -102,9 +102,9 @@ class HAClient:
     #  Aktueller Sensorwert
     # ─────────────────────────────────────────
 
-    def get_current_state(self, entity_id: str) -> float | None:
+    def get_current_state(self, entity_id: str, timeout: float = 15) -> float | None:
         try:
-            data = self._get(f"/api/states/{entity_id}")
+            data = self._get(f"/api/states/{entity_id}", timeout)
             return float(data.get("state", ""))
         except (ValueError, TypeError, ConnectionError):
             return None

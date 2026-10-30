@@ -126,12 +126,12 @@
   <tr><th>{{ _("Kennzahl") }}</th>{% for j in jv.jahre %}<th class="zahl">{{ j }}<div class="muted klein">{{ _("{0} Monat", jv.kennzahlen[j].monate) if jv.kennzahlen[j].monate == 1 else _("{0} Monate", jv.kennzahlen[j].monate) }}</div></th>{% endfor %}</tr>
   {% for key, text, stellen, einheit in [
       ("gesamt_km", _t("Kilometer"), 0, "km"),
-      ("gesamt_kwh", _t("Geladene kWh"), 0, "kWh"),
+      ("gesamt_kwh", _t("Geladene kWh"), 1, "kWh"),
       ("verbrauch", _t("Verbrauch laut Wallbox/Ladesäule"), 1, "kWh/100 km"),
       ("verbrauch_akku", _t("Verbrauch laut Auto-Akku"), 1, "kWh/100 km"),
-      ("strom_kosten", _t("Stromkosten"), 0, "€"),
+      ("strom_kosten", _t("Stromkosten"), 2, "€"),
       ("kosten_pro_100km", _t("Stromkosten je 100 km"), 2, "€"),
-      ("ersparnis_gesamt", _t("Gesamt-Ersparnis"), 0, "€"),
+      ("ersparnis_gesamt", _t("Gesamt-Ersparnis"), 2, "€"),
       ("co2_gespart", _t("CO2 gespart"), 0, "kg")] %}
   <tr>
     <td>{{ text }}</td>
