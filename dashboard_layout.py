@@ -22,12 +22,15 @@ KACHELN = [("strecke", True), ("energie", True), ("ersparnis_kraft", True),
            ("ersparnis_gesamt", False), ("ladevorgaenge", False), ("stromkosten", False),
            ("verbrenner_kosten", False), ("verbrauch", False), ("strompreis", False),
            ("kosten_100km", False), ("ersparnis_100km", False), ("pv_anteil", False),
-           ("soh", False), ("reichweite", False), ("zyklen", False)]
+           ("soh", False), ("reichweite", False), ("zyklen", False),
+           ("klima_anteil", False), ("bordcomputer", False)]
 # Kacheln aus der Akku-Auswertung (akku.py) – nur gerechnet, wenn eine davon sichtbar ist
 AKKU_KACHELN = {"soh", "reichweite", "zyklen"}
+# Kacheln aus der Energie-Aufteilung (energie.py)
+ENERGIE_KACHELN = {"klima_anteil", "bordcomputer"}
 DIAGRAMME = [("monatlich", True), ("kosten", True), ("co2", True), ("verbrauch", True),
              ("benzin", True), ("strom", True), ("anbieter", True), ("strommix", True),
-             ("thg", True)]
+             ("thg", True), ("energieaufteilung", False)]
 GRUPPEN = {"bereiche": BEREICHE, "kacheln": KACHELN, "diagramme": DIAGRAMME}
 
 
@@ -66,8 +69,30 @@ def laden() -> dict:
         return standard()
 
 
-def speichern(roh) -> dict:
+def ohne(layout: dict, ausgeblendet: set) -> dict:
+    """Anordnung ohne die Elemente ausgeschalteter Module (module.ausgeblendet:
+    {(gruppe, id)})."""
+    return {g: [e for e in liste if (g, e["id"]) not in ausgeblendet]
+            for g, liste in layout.items()}
+
+
+def speichern(roh, ausgeblendet: set = frozenset()) -> dict:
+    """Speichert die gesendete Anordnung. Elemente ausgeschalteter Module fehlen darin –
+    sie behalten ihre gespeicherten Werte und ihren Platz (hinter ihrem bisherigen
+    Vorgaenger), damit sie nach dem Einschalten des Moduls wieder dort stehen."""
     layout = bereinigen(roh)
+    if ausgeblendet:
+        alt = laden()
+        for g in GRUPPEN:
+            neu = [e for e in layout[g] if (g, e["id"]) not in ausgeblendet]
+            vorher = None
+            for e in alt[g]:
+                if (g, e["id"]) in ausgeblendet:
+                    ids = [x["id"] for x in neu]
+                    pos = ids.index(vorher) + 1 if vorher in ids else 0
+                    neu.insert(pos, e)
+                vorher = e["id"]
+            layout[g] = neu
     db.set_einstellung(SCHLUESSEL, json.dumps(layout, separators=(",", ":")))
     return layout
 

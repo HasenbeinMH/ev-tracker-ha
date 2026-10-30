@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.9.0] - 2026-10-30
+
+### Module, Energie-Aufteilung und Fahrtenbuch
+- Neu: Einstellungen → Module – Akku, Profil, Leasing, Energie und Fahrtenbuch einzeln ein- und ausschalten. Ein ausgeschaltetes Modul verschwindet aus Menue, Dashboard, Einstellungen, Bericht und naechtlichem Abruf; gespeicherte Daten bleiben erhalten
+- Neues Modul Energie: wofuer das Auto den Strom braucht – Antrieb, Klima, Bordelektronik, Batteriepflege und Rekuperation, aus der taeglichen Fahrstatistik des Autos (z. B. Kia/Hyundai). Anteile, kWh/100 km je Monat, Kosten je Verbraucher, Standverbrauch, Klima im Sommer gegen Winter; dazu Dashboard-Kacheln, ein Diagramm, eine Zeile in Statistik und Monatsbericht
+- Neues Modul Fahrtenbuch: einzelne Fahrten mit Start, Ziel, km, Akku und kWh, Kategorie und Notiz, CSV-Export. Pausen unter der einstellbaren Grenze (Standard 30 Minuten) unterbrechen keine Fahrt. Den Standort – vom Auto oder vom Handy – schreibt der EV Tracker selbst mit; das Profil wertet die Fahrten mit aus
+- Akku: Reichweite im eigenen Nutzungsfenster, einstellbar (Standard 80 → 20 %), mit Vorschlag aus dem gemessenen Ladefenster – auf der Akku-Seite und in der Dashboard-Kachel
+- Neue optionale Sensoren: Taegliche Fahrstatistik, Standort und Motor/Zuendung – sie erscheinen in der Sensor-Tabelle, sobald ihr Modul an ist
+- Behoben: Der Sensor „Reichweite laut Auto“ hatte den Beispielwert sensor.kia_ev3_ev_range als Vorgabe – liefert der eingetragene Sensor keinen Wert, zeigt die Akku-Seite jetzt „Sensor pruefen“
+- Einstellungen: Der Token fuer Ladungen aus Home Assistant steht verdeckt da wie die Passwoerter; 👁 blendet ihn ein, „Kopieren“ funktioniert weiter
+- Hilfe: neue Abschnitte Module, Energie und Fahrtenbuch
+- Neue Tests module_test.py, energie_test.py und fahrtenbuch_test.py
+
 ## [3.8.1] - 2026-10-30
 
 ### Eine Zeile je Ladung

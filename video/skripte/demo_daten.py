@@ -128,6 +128,38 @@ db.ersetze_fahrten_tag(None, tage_km)
 post("/akku/soh", datum="2026-06-18", soh="97,5", km_stand="21.400", quelle="werkstatt",
      notiz="Inspektion")
 
+# Energie je Tag wie aus der Fahrstatistik eines Kia: Klima im Winter deutlich hoeher
+energie_tage = {}
+for d, km in tage_km.items():
+    mon = int(d[5:7])
+    winter = mon in (11, 12, 1, 2, 3)
+    antrieb = km * random.uniform(110, 130)
+    klima = km * (random.uniform(22, 32) if winter else random.uniform(4, 9)) + (150 if winter else 0)
+    elektronik = 60 + km * random.uniform(4, 6)
+    energie_tage[d] = {"km": km, "antrieb_wh": round(antrieb), "klima_wh": round(klima),
+                       "elektronik_wh": round(elektronik), "batterie_wh": 0.0,
+                       "rekuperation_wh": round(antrieb * random.uniform(0.25, 0.4)),
+                       "gesamt_wh": round(antrieb + klima + elektronik)}
+db.upsert_energie_tage(energie_tage)
+
+# Fahrtenbuch der letzten zwei Wochen: Arbeitsweg werktags, am Wochenende Ausfluege
+fahrten, km_stand = [], 30000.0
+for i in range(14):
+    tag = date(2026, 9, 16 + i)
+    wege = ([("07:35", "08:05", 21.4, "home", "Arbeit", "arbeitsweg"),
+             ("16:50", "17:25", 21.6, "Arbeit", "home", "arbeitsweg")] if tag.weekday() < 5
+            else [("10:10", "11:30", 74.2, "home", None, "privat"),
+                  ("17:40", "19:05", 75.0, None, "home", "privat")] if tag.weekday() == 5 else [])
+    for von, bis, km, start, ziel, kat in wege:
+        fahrten.append({"start": f"{tag}T{von}", "ende": f"{tag}T{bis}", "km_start": km_stand,
+                        "km_ende": km_stand + km, "km": km, "soc_start": 80.0,
+                        "soc_ende": round(80 - km * 0.21, 1), "kwh": round(km * 0.17, 2),
+                        "start_lat": 51.40, "start_lon": 6.85, "start_ort": start,
+                        "ziel_lat": 51.45, "ziel_lon": 7.01, "ziel_ort": ziel, "kategorie": kat})
+        km_stand += km
+db.ersetze_fahrten("2026-09-01T00:00", fahrten)
+post("/einstellungen/module", akku="1", profil="1", energie="1", fahrtenbuch="1")
+
 import zeitraum
 a = zeitraum.amortisation(zeitraum.laden())
 k = zeitraum.kennzahlen(zeitraum.aufloesen("alles"), zeitraum.laden())

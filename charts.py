@@ -853,8 +853,8 @@ def chart_ladefenster(z):
 
 
 def chart_reichweite(r):
-    """Reichweite bei 100 % je Monat aus dem Verbrauch laut Auto-Akku, dazu 80 → 10 %
-    (typische Langstrecke) und gestrichelt die Prognose der naechsten zwoelf Monate."""
+    """Reichweite bei 100 % je Monat aus dem Verbrauch laut Auto-Akku, dazu im eigenen
+    Nutzungsfenster (z. B. 80 → 20 %) und gestrichelt die Prognose der naechsten zwoelf Monate."""
     rm, voraus = r["monate"], r["prognose"]
     if not rm:
         return _leer(_("Fahrtabschnitte aus dem Akkustand erforderlich"))
@@ -864,8 +864,8 @@ def chart_reichweite(r):
     serien = [
         _linie(_("bei 100 %"), "blue", [bisher[m]["km_100"] if m in bisher else None for m in monate],
                "fn:km0", flaeche=True),
-        _linie(_("80 → 10 %"), "teal", [bisher[m]["km_80_10"] if m in bisher else None for m in monate],
-               "fn:km0"),
+        _linie(_("{0} → {1} %", f"{r['fenster'][0]:.0f}", f"{r['fenster'][1]:.0f}"), "teal",
+               [bisher[m]["km_fenster"] if m in bisher else None for m in monate], "fn:km0"),
     ]
     if zukunft:
         letzter = rm[-1]["monat"]
@@ -945,3 +945,58 @@ def chart_leasing(l):
                  yAxis=_achse_wert(min=0), series=serien)
     opt["legend"]["show"] = True
     return _bedienung(opt, n, umschalten=False)
+
+
+# ─────────────────────────────────────────────────────────────
+#  Energie-Aufteilung (energie.py)
+# ─────────────────────────────────────────────────────────────
+
+ENERGIE_FARBEN = {"antrieb_wh": "blue", "klima_wh": "orange", "elektronik_wh": "purple",
+                  "batterie_wh": "teal"}
+
+
+def chart_energie_monate(monate):
+    """Je Monat gestapelt: Antrieb, Klima, Bordelektronik, Batteriepflege in kWh/100 km
+    (laut Bordcomputer), dazu die Rekuperation als Linie."""
+    from energie import KATEGORIEN
+    monate = [m for m in monate if m["km"]]
+    if not monate:
+        return _leer(_("Noch keine Tage aus der Fahrstatistik"))
+    namen = [m["monat"] for m in monate]
+    serien = [_balken(_(text), ENERGIE_FARBEN[k],
+                      [round(m[k] / m["km"] / 10, 2) for m in monate], "fn:kwh100",
+                      stack="energie", itemStyle={"color": _balken_farbe(ENERGIE_FARBEN[k])})
+              for k, text in KATEGORIEN]
+    serien[-1]["itemStyle"]["borderRadius"] = [4, 4, 0, 0]
+    serien.append(_linie(_("Rekuperation"), "green",
+                         [round(m["rekuperation_wh"] / m["km"] / 10, 2) for m in monate],
+                         "fn:kwh100", lineStyle={"width": 2, "type": "dashed",
+                                                  "color": COLORS["green"]}))
+    opt = _basis(xAxis=_achse_kategorie(namen), yAxis=_achse_wert(min=0), series=serien)
+    opt["legend"]["show"] = True
+    opt["tooltip"]["axisPointer"] = {"type": "shadow",
+                                     "shadowStyle": {"color": "rgba(255,255,255,0.03)"}}
+    return _bedienung(opt, len(namen), umschalten=False)
+
+
+def chart_energie_anteile(s):
+    """Anteile der Verbraucher am Gesamtverbrauch laut Bordcomputer (Ring)."""
+    from energie import KATEGORIEN
+    if not s or not s["gesamt_wh"]:
+        return _leer(_("Keine Tage im Zeitraum"))
+    daten = [{"name": _(text), "value": round(s[k] / 1000, 1),
+              "itemStyle": {"color": COLORS[ENERGIE_FARBEN[k]]}}
+             for k, text in KATEGORIEN if s[k] > 0]
+    opt = _basis(
+        tooltip={"trigger": "item", "backgroundColor": COLORS["bg"],
+                 "borderColor": COLORS["border"],
+                 "textStyle": {"color": COLORS["text"], "fontSize": 12},
+                 "formatter": "fn:tooltipAnteilKwh"},
+        series=[{"type": "pie", "radius": ["48%", "74%"], "center": ["50%", "56%"],
+                 "data": daten,
+                 "itemStyle": {"borderColor": COLORS["card"], "borderWidth": 3, "borderRadius": 5},
+                 "label": {"color": COLORS["text"], "fontSize": 11, "formatter": "fn:labelAnteil"},
+                 "labelLine": {"lineStyle": {"color": COLORS["border"]}}}],
+    )
+    opt["legend"]["show"] = True
+    return opt

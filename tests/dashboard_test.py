@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(REPO, "webapp"))
 
 from fastapi.testclient import TestClient
 import app as webapp
-import database as db, dashboard_layout as dl
+import database as db, dashboard_layout as dl, module
 
 c = TestClient(webapp.app)
 ERG = []
@@ -49,11 +49,12 @@ std = dl.standard()
 check("Standard: Kacheln wie bisher",
       [k["id"] for k in std["kacheln"] if k["an"]] ==
       ["strecke", "energie", "ersparnis_kraft", "steuer", "thg", "co2"])
-check("Standard: zusaetzliche Kacheln aus", sum(1 for k in std["kacheln"] if not k["an"]) == 12)
+check("Standard: zusaetzliche Kacheln aus", sum(1 for k in std["kacheln"] if not k["an"]) == 14)
 check("Standard: Lade-Abo und Leasing aus, Rest an",
       [b["id"] for b in std["bereiche"] if not b["an"]] == ["abo", "leasing"])
-check("Standard: alle Diagramme an und schmal",
-      all(d["an"] and not d["breit"] for d in std["diagramme"]) and len(std["diagramme"]) == 9)
+check("Standard: Diagramme an und schmal, nur Energie-Aufteilung (Modul) aus",
+      all(d["an"] == (d["id"] != "energieaufteilung") and not d["breit"] for d in std["diagramme"])
+      and len(std["diagramme"]) == 10)
 check("Ohne Eintrag gilt der Standard", dl.laden() == std)
 
 # ── Bereinigen ───────────────────────────────────────────────────────────────
@@ -80,9 +81,13 @@ check("Dashboard laedt", r.status_code == 200, f"HTTP {r.status_code}")
 html = r.text
 check("Seite: Kacheln wie bisher", sichtbar(html, "kacheln") ==
       ["strecke", "energie", "ersparnis_kraft", "steuer", "thg", "co2"], str(sichtbar(html, "kacheln")))
-check("Seite: alle Kacheln im DOM (fuer den Bearbeiten-Modus)", len(alle(html, "kacheln")) == len(dl.KACHELN))
+# Elemente ausgeschalteter Module (hier Energie) stehen auch im Bearbeiten-Modus nicht da
+aus_modul = module.ausgeblendet()
+check("Seite: alle Kacheln aktiver Module im DOM (fuer den Bearbeiten-Modus)",
+      alle(html, "kacheln") == [i for i, _a in dl.KACHELN if ("kacheln", i) not in aus_modul],
+      str(alle(html, "kacheln")))
 check("Seite: Diagramme in Standard-Reihenfolge",
-      sichtbar(html, "diagramme") == [i for i, _a in dl.DIAGRAMME])
+      sichtbar(html, "diagramme") == [i for i, an in dl.DIAGRAMME if an])
 check("Seite: Knopf Anpassen", 'id="dash-anpassen"' in html)
 check("Seite: Platzhalter ohne Kaufpreis und ohne Vergleichstarif",
       "dash-platzhalter" in html and "Lade-Abo: erscheint" in html)

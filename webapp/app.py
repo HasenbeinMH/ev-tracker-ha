@@ -26,12 +26,15 @@ import i18n
 from i18n import _, N_
 import galerie
 import akku as akku_mod
+import energie as energie_mod
+import fahrtenbuch as fahrtenbuch_mod
 import akkuverbrauch
 import berechnung
 import berichte
 import ladeerkennung
 import ladetarife as ladetarife_mod
 import leasing as leasing_mod
+import module as module_mod
 import profil as profil_mod
 import dashboard_layout
 import unterhalt
@@ -148,6 +151,36 @@ def mit_fahrzeug(func):
     return wrapper
 
 
+def modul(mid: str, seite: bool = True):
+    """Route gehoert zum Modul `mid`: ist es ausgeschaltet, leitet eine Seite auf
+    Einstellungen → Module um, andere Aufrufe (Formulare, API) bekommen 404.
+    Innerster Decorator – direkt ueber der Funktion, unter @mit_fahrzeug."""
+    import functools
+    import inspect
+    from urllib.parse import quote
+
+    def aus():
+        name = _(module_mod.MODULE[mid]["name"])
+        if seite:
+            return RedirectResponse("einstellungen?meldung="
+                                    + quote(_("Das Modul „{0}“ ist ausgeschaltet.", name))
+                                    + "#module", status_code=303)
+        return JSONResponse({"ok": False, "error": _("Das Modul „{0}“ ist ausgeschaltet.", name)},
+                            status_code=404)
+
+    def deko(func):
+        if inspect.iscoroutinefunction(func):
+            @functools.wraps(func)
+            async def wrapper(*args, **kwargs):
+                return await func(*args, **kwargs) if module_mod.an(mid) else aus()
+        else:
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                return func(*args, **kwargs) if module_mod.an(mid) else aus()
+        return wrapper
+    return deko
+
+
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 templates.env.globals["MONATE"] = MONATE
@@ -156,6 +189,8 @@ templates.env.globals["VERSION"] = VERSION
 templates.env.globals["_"] = i18n.template_text
 templates.env.globals["sprache"] = i18n.sprache
 templates.env.globals["_t"] = i18n.attribut_text
+# Module (Einstellungen → Module): Menue ohne die Seiten ausgeschalteter Module
+templates.env.globals["menue_filter"] = module_mod.menue
 # Deutsche Zahlen mit Tausenderpunkt: {{ wert | de(2) }} -> "1.519,88"
 templates.env.filters["de"] = lambda wert, stellen=0: berichte.fmt(wert, stellen)
 
@@ -168,6 +203,7 @@ def render(request, template, **ctx):
     ctx.setdefault("kf", berechnung.kraftstoff(cfg["kraftstoff"]))
     ctx.setdefault("simulation", cfg["simulation"])
     ctx.setdefault("schema_zu_neu", db.SCHEMA_ZU_NEU)
+    ctx.setdefault("module", module_mod.alle())
     ctx.setdefault("nicht_gespeichert", request.query_params.get("nicht_gespeichert") == "1")
     # Mehrere Fahrzeuge: Liste fuer Umschalter und Formularfeld, gewaehltes (None = alle)
     ctx.setdefault("mehrere", db.mehrere_fahrzeuge())
@@ -356,7 +392,8 @@ def dashboard(request: Request, zeitraum: str | None = None):
     amo = zeitraum_mod.amortisation(daten)
     if amo:
         charts_html["amortisation"] = charts.chart_amortisation(amo)
-    layout = dashboard_layout.laden()
+    # Elemente ausgeschalteter Module erscheinen auch im Bearbeiten-Modus nicht
+    layout = dashboard_layout.ohne(dashboard_layout.laden(), module_mod.ausgeblendet())
     # Lade-Abo (Break-even) – auch ausgeblendet, damit es im Bearbeiten-Modus erscheint
     abo = ladetarife_mod.seite_daten()["rentabilitaet"]
     # Akku-Kacheln nur fuer ein einzelnes Fahrzeug und nur, wenn eine sichtbar ist
@@ -364,9 +401,18 @@ def dashboard(request: Request, zeitraum: str | None = None):
     if not gesamt and any(k["an"] and k["id"] in dashboard_layout.AKKU_KACHELN
                           for k in layout["kacheln"]):
         akku = akku_mod.auswertung()
-    leasing = [(fz, l) for fz, l in _je_fahrzeug(leasing_mod.auswertung) if l]
+    leasing = ([(fz, l) for fz, l in _je_fahrzeug(leasing_mod.auswertung) if l]
+               if module_mod.an("leasing") else [])
+    # Energie-Aufteilung: Kacheln und Diagramm im gewaehlten Zeitraum, nur ein Fahrzeug
+    energie = None
+    if not gesamt and module_mod.an("energie") and (
+            any(k["an"] and k["id"] in dashboard_layout.ENERGIE_KACHELN for k in layout["kacheln"])
+            or any(d["an"] and d["id"] == "energieaufteilung" for d in layout["diagramme"])):
+        energie = energie_mod.auswertung(z)
+    charts_html["energieaufteilung"] = (charts.chart_energie_monate(energie["monate_zeitraum"])
+                                        if energie else charts._leer(_("Nur für ein einzelnes Fahrzeug")))
     antwort = render(request, "dashboard.html", kz=kz, charts=charts_html, amo=amo,
-                     layout=layout, abo=abo, akku=akku, leasing=leasing,
+                     layout=layout, abo=abo, akku=akku, leasing=leasing, energie=energie,
                      zeitraum=z, zeitraum_optionen=zeitraum_mod.optionen(daten),
                      fahrzeug_name=(_("Alle Fahrzeuge") if gesamt else
                                     db.get_einstellung_str("fahrzeug_name") or "Mein Elektroauto"),
@@ -381,7 +427,7 @@ def dashboard(request: Request, zeitraum: str | None = None):
 @app.post("/api/dashboard/layout")
 def dashboard_layout_speichern(payload: dict):
     """Anordnung aus dem Bearbeiten-Modus des Dashboards speichern (global)."""
-    return {"ok": True, "layout": dashboard_layout.speichern(payload)}
+    return {"ok": True, "layout": dashboard_layout.speichern(payload, module_mod.ausgeblendet())}
 
 
 @app.post("/api/dashboard/layout/standard")
@@ -402,6 +448,12 @@ def statistik(request: Request, a: str | None = None, b: str | None = None):
     daten = zeitraum_mod.laden()
     ka = zeitraum_mod.kennzahlen(za, daten)
     kb = zeitraum_mod.kennzahlen(zb, daten)
+    # Modul Energie: Verbrauch laut Bordcomputer (nur fuer ein einzelnes Fahrzeug)
+    if module_mod.an("energie") and db.aktuelles_fahrzeug() is not None:
+        tage = db.get_energie_tage()
+        for z, k in ((za, ka), (zb, kb)):
+            k["verbrauch_bordcomputer"] = energie_mod.summe(
+                [t for t in tage if zeitraum_mod.enthaelt(z, t["datum"])])["bordcomputer"]
     wa = zeitraum_mod.monatswerte(za, daten)
     wb = zeitraum_mod.monatswerte(zb, daten)
     verlauf = {m: charts.chart_vergleich(wa, wb, za["titel"], zb["titel"], m)
@@ -448,6 +500,7 @@ def _akku_seite(fz: dict, a: dict) -> dict:
 
 
 @app.get("/akku", response_class=HTMLResponse)
+@modul("akku")
 def akku_seite(request: Request, bearbeiten: int | None = None):
     autos = [_akku_seite(fz, a) for fz, a in _je_fahrzeug(akku_mod.auswertung)]
     # Akkustand jetzt nur fuer ein einzelnes Fahrzeug – fragt Home Assistant live
@@ -478,6 +531,7 @@ def _soh_werte(form) -> dict | None:
 
 @app.post("/akku/soh")
 @mit_fahrzeug
+@modul("akku", seite=False)
 async def akku_soh_add(request: Request):
     werte = _soh_werte(await request.form())
     if werte:
@@ -486,6 +540,7 @@ async def akku_soh_add(request: Request):
 
 
 @app.post("/akku/soh/update")
+@modul("akku", seite=False)
 async def akku_soh_update(request: Request):
     form = await request.form()
     werte = _soh_werte(form)
@@ -495,6 +550,7 @@ async def akku_soh_update(request: Request):
 
 
 @app.post("/akku/soh/delete")
+@modul("akku", seite=False)
 def akku_soh_delete(id: int = Form(...)):
     db.delete_soh_messung(id)
     return RedirectResponse("../../akku#soh", status_code=303)
@@ -502,9 +558,19 @@ def akku_soh_delete(id: int = Form(...)):
 
 @app.post("/akku/einstellungen")
 @mit_fahrzeug
+@modul("akku", seite=False)
 def akku_einstellungen(verlust: str = Form(""), garantie_jahre: str = Form(""),
-                       garantie_km: str = Form(""), garantie_soh: str = Form("")):
-    """Ladeverlust-Annahme der SoH-Schaetzung und Akku-Garantie (leer = Standard)."""
+                       garantie_km: str = Form(""), garantie_soh: str = Form(""),
+                       fenster_oben: str = Form(""), fenster_unten: str = Form("")):
+    """Ladeverlust-Annahme der SoH-Schaetzung, Akku-Garantie und Nutzungsfenster
+    (leer = Standard)."""
+    oben, unten = parse_de(fenster_oben), parse_de(fenster_unten)
+    if oben is not None and unten is not None and 0 <= unten < oben <= 100:
+        db.set_einstellung("akku_fenster_oben", oben)
+        db.set_einstellung("akku_fenster_unten", unten)
+    elif not fenster_oben.strip() and not fenster_unten.strip():
+        db.set_einstellung("akku_fenster_oben", "")
+        db.set_einstellung("akku_fenster_unten", "")
     for key, raw, grenzen, tausender in [
             ("akku_verlust_annahme", verlust, (0, akku_mod.VERLUST_MAX), False),
             ("akku_garantie_jahre", garantie_jahre, (1, 30), False),
@@ -519,13 +585,138 @@ def akku_einstellungen(verlust: str = Form(""), garantie_jahre: str = Form(""),
     return RedirectResponse("../akku#einstellungen", status_code=303)
 
 
+@app.get("/energie", response_class=HTMLResponse)
+@modul("energie")
+def energie_seite(request: Request, zeitraum: str | None = None, meldung: str = ""):
+    z = zeitraum_mod.aufloesen(zeitraum)
+
+    def je_auto():
+        e = energie_mod.auswertung(z)
+        return {"e": e, "charts": {"monate": charts.chart_energie_monate(e["monate_zeitraum"]),
+                                   "anteile": charts.chart_energie_anteile(e["summe"])}}
+    return render(request, "energie.html", autos=_je_fahrzeug(je_auto), zeitraum=z,
+                  zeitraum_optionen=zeitraum_mod.optionen(zeitraum_mod.laden()),
+                  kategorien=energie_mod.KATEGORIEN, meldung=meldung,
+                  sensor=db.get_ha_settings().get("ha_ev_tagesstatistik") or "",
+                  aktiv="energie")
+
+
+@app.post("/energie/nachholen")
+@mit_fahrzeug
+@modul("energie", seite=False)
+def energie_nachholen():
+    """Tage aus der Fahrstatistik holen, auch die aelteren aus dem Recorder."""
+    from urllib.parse import quote
+    try:
+        meldung = energie_mod.aktualisieren(nachholen=True) or _("Kein Sensor für die Fahrstatistik eingetragen.")
+    except Exception as e:
+        meldung = _("Fehler beim Abruf: {0}", e)
+    return RedirectResponse(f"../energie?meldung={quote(meldung)}", status_code=303)
+
+
+def _im_hintergrund(funktion):
+    threading.Thread(target=funktion, daemon=True).start()
+
+
+def _energie_nachholen():
+    """Nach dem Einschalten des Moduls: je Fahrzeug mit Fahrstatistik die Tage nachholen."""
+    for fz in db.fahrzeuge(alle=True):
+        try:
+            with db.fahrzeug_kontext(fz["id"]):
+                meldung = energie_mod.aktualisieren(nachholen=True)
+            if meldung:
+                _log_import([f"{meldung} ({fz['name']}, Modul eingeschaltet)"])
+        except Exception as e:
+            print(f"[Energie] Fehler beim Nachholen: {e}", flush=True)
+
+
+@app.get("/fahrtenbuch", response_class=HTMLResponse)
+@modul("fahrtenbuch")
+def fahrtenbuch_seite(request: Request, monat: str = "", meldung: str = ""):
+    if not re.fullmatch(r"\d{4}-\d{2}", monat or ""):
+        monat = datetime.now().strftime("%Y-%m")
+
+    def je_auto():
+        liste = db.get_fahrten(monat + "-01", monat + "-31")
+        tage = {}
+        for f in reversed(liste):
+            tage.setdefault(f["start"][:10], []).append(f)
+        summe = {"km": sum(f["km"] for f in liste), "fahrten": len(liste), "je_kategorie": {}}
+        for f in liste:
+            k = f.get("kategorie") or ""
+            summe["je_kategorie"][k] = summe["je_kategorie"].get(k, 0.0) + f["km"]
+        ha = db.get_ha_settings()
+        return {"tage": tage, "summe": summe, "ort_sensor": ha.get("ha_ev_ort") or "",
+                "motor_sensor": ha.get("ha_ev_fahrt") or "",
+                "orte": len(db.get_orte(monat + "-01"))}
+    return render(request, "fahrtenbuch.html", autos=_je_fahrzeug(je_auto), monat=monat,
+                  kategorien=fahrtenbuch_mod.KATEGORIEN, ort_text=fahrtenbuch_mod.ort_text,
+                  einst=fahrtenbuch_mod.einstellungen(), meldung=meldung, aktiv="fahrtenbuch")
+
+
+@app.post("/fahrtenbuch/update")
+@mit_fahrzeug
+@modul("fahrtenbuch", seite=False)
+def fahrtenbuch_update(start: str = Form(...), kategorie: str = Form(""), notiz: str = Form(""),
+                       monat: str = Form("")):
+    db.update_fahrt(start, kategorie if kategorie in fahrtenbuch_mod.KATEGORIEN else None,
+                    notiz.strip() or None)
+    ziel = f"?monat={monat}" if re.fullmatch(r"\d{4}-\d{2}", monat) else ""
+    return RedirectResponse(f"../fahrtenbuch{ziel}", status_code=303)
+
+
+@app.post("/fahrtenbuch/neu")
+@mit_fahrzeug
+@modul("fahrtenbuch", seite=False)
+def fahrtenbuch_neu():
+    """Fahrten der letzten Tage neu erkennen (so weit der Recorder zurueckreicht)."""
+    from urllib.parse import quote
+    try:
+        meldung = fahrtenbuch_mod.aktualisieren(tage=fahrtenbuch_mod.MAX_TAGE)
+    except Exception as e:
+        meldung = _("Fehler beim Abruf: {0}", e)
+    return RedirectResponse(f"../fahrtenbuch?meldung={quote(meldung)}", status_code=303)
+
+
+@app.get("/fahrtenbuch/csv")
+@modul("fahrtenbuch", seite=False)
+def fahrtenbuch_csv(monat: str = ""):
+    if not re.fullmatch(r"\d{4}-\d{2}", monat or ""):
+        monat = datetime.now().strftime("%Y-%m")
+    text = fahrtenbuch_mod.csv_text(db.get_fahrten(monat + "-01", monat + "-31"))
+    # BOM vorneweg: Excel erkennt die Datei sonst nicht als UTF-8
+    return Response(chr(0xFEFF) + text, media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="fahrtenbuch_{monat}.csv"'})
+
+
+@app.post("/einstellungen/fahrtenbuch")
+def einstellungen_fahrtenbuch(pause_min: str = Form(""), min_km: str = Form(""),
+                              adressen: str = Form("")):
+    """Pausengrenze, Mindeststrecke und Adressen ueber OpenStreetMap (gilt fuer alle)."""
+    pause, km = parse_de(pause_min), parse_de(min_km)
+    if pause is not None and 1 <= pause <= 24 * 60:
+        db.set_einstellung("fahrt_pause_min", pause)
+    if km is not None and 0 <= km <= 100:
+        db.set_einstellung("fahrt_min_km", km)
+    db.set_einstellung("fahrt_adressen", "1" if adressen else "0")
+    return RedirectResponse("../einstellungen#fahrtenbuch", status_code=303)
+
+
 @app.get("/profil", response_class=HTMLResponse)
+@modul("profil")
 def profil_seite(request: Request):
     def je_auto():
         a = akku_mod.auswertung()
         n = profil_mod.nutzung(db.get_fahrten_tage(), a["reichweite"]["jetzt"])
         l = profil_mod.laden(a["ladungen"], db.get_ladevorgaenge(limit=100000))
-        return {"nutzung": n, "laden": l, "reichweite": a["reichweite"]["jetzt"],
+        fp = (fahrtenbuch_mod.profil(db.get_fahrten()) if module_mod.an("fahrtenbuch") else None)
+        if fp:
+            fp["charts"] = {
+                "klassen": charts.chart_balken_liste([_(t) for t, _n in fp["klassen"]],
+                                                     [n for _t, n in fp["klassen"]], _("Fahrten"), "teal"),
+                "stunden": charts.chart_balken_liste([f"{h}" for h in range(24)], fp["stunden"],
+                                                     _("Fahrten"), "blue")}
+        return {"nutzung": n, "laden": l, "reichweite": a["reichweite"]["jetzt"], "fahrten": fp,
                 "charts": {
                     "wochentage": charts.chart_balken_liste(
                         [_(t) for t in profil_mod.WOCHENTAGE], n["je_wochentag"] if n else [],
@@ -640,8 +831,8 @@ def fahrten(request: Request):
         if l_km and a_km and l_kwh:
             differenz = (1 - (a_kwh / a_km) / (l_kwh / l_km)) * 100
 
-    leasing = [(fz, l, charts.chart_leasing(l)) for fz, l in _je_fahrzeug(leasing_mod.auswertung)
-               if l]
+    leasing = ([(fz, l, charts.chart_leasing(l)) for fz, l in _je_fahrzeug(leasing_mod.auswertung)
+                if l] if module_mod.an("leasing") else [])
     return render(request, "fahrten.html", rows=rows, aktiv="fahrten",
                   verbrauch=verbrauch, leasing=leasing,
                   abschnitte=db.get_akku_abschnitte(limit=40),
@@ -660,7 +851,7 @@ def fahrten_akku_berechnen(zeitraum: str = Form("alles")):
     except Exception as e:
         meldung = _("Fehler beim Abruf: {0}", e)
     try:
-        soh = akku_mod.soh_aktualisieren(tage=tage)
+        soh = akku_mod.soh_aktualisieren(tage=tage) if module_mod.an("akku") else ""
     except Exception as e:
         soh = _("SoH-Sensor: Fehler ({0})", e)
     if soh:
@@ -2052,11 +2243,28 @@ def _auto_import(monate: list | None = None, quelle: str = "automatisch") -> lis
             protokoll.append(f"Akkuverbrauch{vor}: {meldung}")
             try:
                 with db.fahrzeug_kontext(fz["id"]):
-                    soh = akku_mod.soh_aktualisieren()
+                    soh = akku_mod.soh_aktualisieren() if module_mod.an("akku") else ""
             except Exception as e:
                 soh = f"SoH-Sensor: Fehler ({e})"
             if soh:
                 _log_import([f"Akku{vor}: {soh}"])
+            if module_mod.an("fahrtenbuch"):
+                try:
+                    with db.fahrzeug_kontext(fz["id"]):
+                        meldung = fahrtenbuch_mod.aktualisieren()
+                except Exception as e:
+                    meldung = f"Fahrtenbuch: Fehler ({e})"
+                _log_import([f"{meldung}{vor}"])
+                protokoll.append(f"{meldung}{vor}")
+            if module_mod.an("energie"):
+                try:
+                    with db.fahrzeug_kontext(fz["id"]):
+                        meldung = energie_mod.aktualisieren()
+                except Exception as e:
+                    meldung = f"Energie: Fehler ({e})"
+                if meldung:
+                    _log_import([f"{meldung}{vor}"])
+                    protokoll.append(f"{meldung}{vor}")
 
     _log_import([f"Abruf beendet – {len(monate)} Monat(e), {fehler} Fehler"])
     return protokoll
@@ -2275,6 +2483,8 @@ def _zeitplan_schleife():
 
 
 threading.Thread(target=_zeitplan_schleife, daemon=True).start()
+# Modul Fahrtenbuch: Standort mitschreiben (prueft selbst, ob das Modul an ist)
+fahrtenbuch_mod.starten()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -2530,9 +2740,13 @@ SENSOR_FELDER = [
     # Optional, fuer die Akku-Seite: Reichweite laut Auto und Akku-Gesundheit (SoH)
     ("ha_ev_range",       "fn_ev_range",       N_("Reichweite laut Auto (km, optional)")),
     ("ha_ev_soh",         "fn_ev_soh",         N_("Akku-Gesundheit SoH (%, optional)")),
+    # Module Energie und Fahrtenbuch
+    ("ha_ev_tagesstatistik", "fn_ev_tagesstatistik", N_("Tägliche Fahrstatistik (Attribute je Tag)")),
+    ("ha_ev_ort",         "",                  N_("Standort (Auto, Handy oder Person)")),
+    ("ha_ev_fahrt",       "fn_ev_fahrt",       N_("Motor / Zündung an (optional)")),
 ]
-# Nur auf der Akku-Seite genutzt – in der Einrichtung kein eigener Schritt
-SENSOR_NUR_AKKU = {"ha_ev_range", "ha_ev_soh"}
+# Nur fuer Module genutzt (Akku, Energie, Fahrtenbuch) – in der Einrichtung kein eigener Schritt
+SENSOR_NUR_AKKU = {"ha_ev_range", "ha_ev_soh", "ha_ev_tagesstatistik", "ha_ev_ort", "ha_ev_fahrt"}
 
 
 def _sensor_label(label: str) -> str:
@@ -2575,7 +2789,13 @@ def einstellungen(request: Request, meldung: str = ""):
                   supervisor_aktiv=IST_ADDON
                                    and not (ha_settings.get("ha_url") and ha_settings.get("ha_token")),
                   anbieter=db.get_lade_anbieter(),
-                  sensor_felder=[(h, f, _sensor_label(l)) for h, f, l in SENSOR_FELDER],
+                  sensor_felder=[(h, f, _sensor_label(l), m,
+                                  _(module_mod.MODULE[m]["name"]) if m else None)
+                                 for h, f, l in SENSOR_FELDER
+                                 for m in [module_mod.sensor_modul(h)]
+                                 if h not in module_mod.sensoren_aus()],
+                  modul_liste=_modul_stand(ha_settings),
+                  fahrtenbuch=fahrtenbuch_mod.einstellungen(),
                   quellen=datenquellen.QUELLEN,
                   prom_standard=datenquellen.PROM_SELEKTOR_STANDARD,
                   push_token=heimladung.token(),
@@ -2629,6 +2849,37 @@ def einstellungen_anschaffung(eauto: str = Form(""), verbrenner: str = Form(""),
         if not raw or re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw):
             db.set_einstellung(key, raw)
     return RedirectResponse("../einstellungen#anschaffung", status_code=303)
+
+
+def _modul_stand(ha: dict) -> list:
+    """Module fuer Einstellungen → Module: [(id, Modul, an?, [(Voraussetzung, erfuellt?)])] –
+    die Voraussetzungen fuer das aktuelle Fahrzeug."""
+    def da(*keys):
+        return any((ha.get(k) or "").strip() for k in keys)
+    braucht = {
+        "akku": [(_("Batteriestand"), da("ha_ev_battery", "fn_ev_battery")),
+                 (_("Kilometerstand"), da("ha_odometer", "fn_odometer"))],
+        "profil": [(_("Kilometerstand"), da("ha_odometer", "fn_odometer")),
+                   (_("Batteriestand"), da("ha_ev_battery", "fn_ev_battery"))],
+        "leasing": [(_("Vertrag eingetragen"), leasing_mod.vertrag() is not None)],
+        "energie": [(_("Tägliche Fahrstatistik"), da("ha_ev_tagesstatistik"))],
+        "fahrtenbuch": [(_("Kilometerstand"), da("ha_odometer", "fn_odometer")),
+                        (_("Standort"), da("ha_ev_ort"))],
+    }
+    zustand = module_mod.alle()
+    return [(mid, m, zustand[mid], braucht.get(mid, [])) for mid, m in module_mod.MODULE.items()]
+
+
+@app.post("/einstellungen/module")
+async def einstellungen_module(request: Request):
+    """Module ein- und ausschalten (gilt fuer die ganze App)."""
+    form = await request.form()
+    vorher = module_mod.alle()
+    module_mod.speichern({mid: bool(form.get(mid)) for mid in module_mod.MODULE})
+    # Energie frisch eingeschaltet: vorhandene Tage aus Home Assistant nachholen
+    if module_mod.an("energie") and not vorher["energie"]:
+        _im_hintergrund(_energie_nachholen)
+    return RedirectResponse("../einstellungen#module", status_code=303)
 
 
 LEASING_FELDER = ("aktiv", "start", "ende", "km_jahr", "km_start", "toleranz_km",

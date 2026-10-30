@@ -220,6 +220,48 @@ def init_db():
             )
         """)
 
+        # Taegliche Fahrstatistik des Autos (z. B. Kia/Hyundai): Energie nach Verbraucher in Wh
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS energie_tag (
+                datum TEXT NOT NULL,
+                km REAL NOT NULL,
+                gesamt_wh REAL NOT NULL,
+                antrieb_wh REAL NOT NULL DEFAULT 0,
+                klima_wh REAL NOT NULL DEFAULT 0,
+                elektronik_wh REAL NOT NULL DEFAULT 0,
+                batterie_wh REAL NOT NULL DEFAULT 0,
+                rekuperation_wh REAL NOT NULL DEFAULT 0,
+                fahrzeug_id INTEGER NOT NULL DEFAULT 1,
+                PRIMARY KEY (fahrzeug_id, datum)
+            )
+        """)
+
+        # Fahrtenbuch: einzelne Fahrten (fahrtenbuch.py) und der vom Add-on mitgeschriebene
+        # Standort (der Recorder nimmt device_tracker oft nicht auf)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS fahrt (
+                start TEXT NOT NULL,
+                ende TEXT NOT NULL,
+                km_start REAL, km_ende REAL, km REAL NOT NULL,
+                soc_start REAL, soc_ende REAL, kwh REAL,
+                start_lat REAL, start_lon REAL, start_ort TEXT,
+                ziel_lat REAL, ziel_lon REAL, ziel_ort TEXT,
+                kategorie TEXT, notiz TEXT,
+                fahrzeug_id INTEGER NOT NULL DEFAULT 1,
+                PRIMARY KEY (fahrzeug_id, start)
+            )
+        """)
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS ort_verlauf (
+                zeit TEXT NOT NULL,
+                lat REAL NOT NULL,
+                lon REAL NOT NULL,
+                zone TEXT,
+                fahrzeug_id INTEGER NOT NULL DEFAULT 1,
+                PRIMARY KEY (fahrzeug_id, zeit)
+            )
+        """)
+
         # Von Hand eingetragene SoH-Werte (Werkstatt, OBD-App, Akku-Zertifikat) – siehe akku.py
         c.execute("""
             CREATE TABLE IF NOT EXISTS soh_messung (
@@ -336,7 +378,8 @@ def init_db():
 # --- Fahrzeuge ---
 # Tabellen mit Zeilen je Fahrzeug (Spalte fahrzeug_id, Standard 1)
 FAHRZEUG_TABELLEN = ("fahrten_monat", "ladevorgang", "akku_abschnitt", "thg_quote",
-                     "instandhaltung", "fahrten_tag", "soh_messung")
+                     "instandhaltung", "fahrten_tag", "soh_messung", "energie_tag", "fahrt",
+                     "ort_verlauf")
 
 # Einstellungen, die jedes Fahrzeug fuer sich hat. Fahrzeug 1 nutzt die bisherigen
 # Schluessel unveraendert, weitere Fahrzeuge "<schluessel>@<id>" – so aendert sich fuer
@@ -353,6 +396,9 @@ FAHRZEUG_SCHLUESSEL = {
     # Akku-Gesundheit und Reichweite (akku.py)
     "ha_ev_soh", "fn_ev_soh", "fn_ev_range", "soh_monate", "akku_verlust_annahme",
     "akku_garantie_jahre", "akku_garantie_km", "akku_garantie_soh",
+    "akku_fenster_oben", "akku_fenster_unten",
+    # Energie-Aufteilung (energie.py) und Fahrtenbuch (fahrtenbuch.py)
+    "ha_ev_tagesstatistik", "fn_ev_tagesstatistik", "ha_ev_ort", "ha_ev_fahrt", "fn_ev_fahrt",
     # Leasing (leasing.py)
     "leasing_aktiv", "leasing_start", "leasing_ende", "leasing_km_jahr", "leasing_km_start",
     "leasing_toleranz_km", "leasing_mehr_ct", "leasing_minder_ct",
@@ -1111,6 +1157,115 @@ def get_fahrten_tage(fahrzeug_id=None) -> list:
             "SELECT datum, km FROM fahrten_tag WHERE fahrzeug_id=? ORDER BY datum", (fid,))]
 
 
+# --- Energie-Aufteilung (taegliche Fahrstatistik) ---
+ENERGIE_FELDER = ["km", "gesamt_wh", "antrieb_wh", "klima_wh", "elektronik_wh", "batterie_wh",
+                  "rekuperation_wh"]
+
+
+def upsert_energie_tage(tage: dict, fahrzeug_id=None):
+    """{datum: {km, gesamt_wh, …}} speichern; vorhandene Tage werden ueberschrieben."""
+    fid = schreib_fahrzeug(fahrzeug_id)
+    with closing(get_connection()) as conn:
+        conn.executemany(
+            f"INSERT OR REPLACE INTO energie_tag (datum, {','.join(ENERGIE_FELDER)}, fahrzeug_id) "
+            f"VALUES (?{',?' * len(ENERGIE_FELDER)},?)",
+            [(d, *[w.get(f, 0.0) for f in ENERGIE_FELDER], fid) for d, w in sorted(tage.items())])
+        conn.commit()
+
+
+def get_energie_tage(fahrzeug_id=None) -> list:
+    """[{datum, km, gesamt_wh, …}] aufsteigend – eines Fahrzeugs (Standard: aktuelles)."""
+    fid = schreib_fahrzeug(fahrzeug_id)
+    with closing(get_connection()) as conn:
+        return [dict(r) for r in conn.execute(
+            f"SELECT datum, {','.join(ENERGIE_FELDER)} FROM energie_tag WHERE fahrzeug_id=? "
+            f"ORDER BY datum", (fid,))]
+
+
+# --- Fahrtenbuch ---
+FAHRT_FELDER = ["start", "ende", "km_start", "km_ende", "km", "soc_start", "soc_ende", "kwh",
+                "start_lat", "start_lon", "start_ort", "ziel_lat", "ziel_lon", "ziel_ort",
+                "kategorie", "notiz"]
+
+
+def ersetze_fahrten(ab: str, fahrten: list, fahrzeug_id=None):
+    """Ersetzt die Fahrten des Fahrzeugs ab Beginn `ab` ('YYYY-MM-DDTHH:MM') durch die neuen.
+    Kategorie und Notiz einer alten Fahrt, die sich zeitlich mit einer neuen ueberschneidet,
+    gehen auf die neue ueber – von Hand Gesetztes bleibt beim Neuberechnen erhalten."""
+    fid = schreib_fahrzeug(fahrzeug_id)
+    with closing(get_connection()) as conn:
+        alt = [dict(r) for r in conn.execute(
+            "SELECT start, ende, kategorie, notiz FROM fahrt WHERE fahrzeug_id=? AND start >= ?",
+            (fid, ab))]
+        zeilen = []
+        for f in fahrten:
+            f = dict(f)
+            for a in alt:
+                if (a["kategorie"] or a["notiz"]) and a["start"] <= f["ende"] and f["start"] <= a["ende"]:
+                    f["kategorie"] = f.get("kategorie") or a["kategorie"]
+                    f["notiz"] = f.get("notiz") or a["notiz"]
+                    break
+            zeilen.append([f.get(k) for k in FAHRT_FELDER] + [fid])
+        conn.execute("DELETE FROM fahrt WHERE fahrzeug_id=? AND start >= ?", (fid, ab))
+        conn.executemany(f"INSERT OR REPLACE INTO fahrt ({','.join(FAHRT_FELDER)}, fahrzeug_id) "
+                         f"VALUES ({','.join('?' * (len(FAHRT_FELDER) + 1))})", zeilen)
+        conn.commit()
+
+
+def get_fahrten(von: str | None = None, bis: str | None = None, fahrzeug_id=None) -> list:
+    """Fahrten eines Fahrzeugs, aelteste zuerst; von/bis 'YYYY-MM-DD' (inklusive)."""
+    fid = schreib_fahrzeug(fahrzeug_id)
+    sql, p = "SELECT * FROM fahrt WHERE fahrzeug_id=?", [fid]
+    if von:
+        sql, p = sql + " AND start >= ?", p + [von]
+    if bis:
+        sql, p = sql + " AND start < ?", p + [bis + "T99"]
+    with closing(get_connection()) as conn:
+        return [dict(r) for r in conn.execute(sql + " ORDER BY start", p)]
+
+
+def update_fahrt(start: str, kategorie: str | None, notiz: str | None, fahrzeug_id=None):
+    fid = schreib_fahrzeug(fahrzeug_id)
+    with closing(get_connection()) as conn:
+        conn.execute("UPDATE fahrt SET kategorie=?, notiz=? WHERE fahrzeug_id=? AND start=?",
+                     (kategorie, notiz, fid, start))
+        conn.commit()
+
+
+def add_ort(zeit: str, lat: float, lon: float, zone: str | None, fahrzeug_id=None):
+    fid = schreib_fahrzeug(fahrzeug_id)
+    with closing(get_connection()) as conn:
+        conn.execute("INSERT OR REPLACE INTO ort_verlauf (zeit, lat, lon, zone, fahrzeug_id) "
+                     "VALUES (?,?,?,?,?)", (zeit, lat, lon, zone, fid))
+        conn.commit()
+
+
+def get_orte(von: str, bis: str | None = None, fahrzeug_id=None) -> list:
+    """[{zeit, lat, lon, zone}] aufsteigend ab `von` ('YYYY-MM-DDTHH:MM')."""
+    fid = schreib_fahrzeug(fahrzeug_id)
+    sql, p = "SELECT zeit, lat, lon, zone FROM ort_verlauf WHERE fahrzeug_id=? AND zeit >= ?", [fid, von]
+    if bis:
+        sql, p = sql + " AND zeit <= ?", p + [bis]
+    with closing(get_connection()) as conn:
+        return [dict(r) for r in conn.execute(sql + " ORDER BY zeit", p)]
+
+
+def letzter_ort(fahrzeug_id=None) -> dict | None:
+    fid = schreib_fahrzeug(fahrzeug_id)
+    with closing(get_connection()) as conn:
+        r = conn.execute("SELECT zeit, lat, lon, zone FROM ort_verlauf WHERE fahrzeug_id=? "
+                         "ORDER BY zeit DESC LIMIT 1", (fid,)).fetchone()
+    return dict(r) if r else None
+
+
+def orte_aufraeumen(vor: str) -> int:
+    """Mitgeschriebene Standorte vor `vor` loeschen (alle Fahrzeuge). Anzahl geloescht."""
+    with closing(get_connection()) as conn:
+        n = conn.execute("DELETE FROM ort_verlauf WHERE zeit < ?", (vor,)).rowcount
+        conn.commit()
+    return n
+
+
 # --- SoH von Hand ---
 SOH_FELDER = ["datum", "soh", "km_stand", "quelle", "notiz"]
 SOH_QUELLEN = {"werkstatt": N_("Werkstatt"), "obd": N_("OBD-App / Dongle"),
@@ -1468,7 +1623,7 @@ HA_ENTITY_DEFAULTS = {
     "ha_token":                  "",
     "ha_odometer":               "sensor.kia_ev3_odometer",
     "ha_ev_battery":             "sensor.kia_ev3_ev_battery_level",
-    "ha_ev_range":               "sensor.kia_ev3_ev_range",
+    "ha_ev_range":               "",
     "ha_pv_production":          "sensor.solaredge_energy_production",
     "ha_grid_consumption":       "sensor.solaredge_energy_consumption",
     "ha_grid_export":            "sensor.solaredge_energy_export",
@@ -1491,6 +1646,12 @@ HA_ENTITY_DEFAULTS = {
     "ha_ev_soh":                 "",
     "fn_ev_soh":                 "",
     "fn_ev_range":               "",
+    # Optional, Module Energie und Fahrtenbuch
+    "ha_ev_tagesstatistik":      "",
+    "fn_ev_tagesstatistik":      "",
+    "ha_ev_ort":                 "",
+    "ha_ev_fahrt":               "",
+    "fn_ev_fahrt":               "",
     # InfluxDB Verbindung
     "influx_url":                "http://localhost",
     "influx_port":               "8086",

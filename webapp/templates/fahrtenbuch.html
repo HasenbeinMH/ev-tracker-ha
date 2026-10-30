@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block titel %}{{ _("Fahrtenbuch") }}{% endblock %}
+{% block inhalt %}
+{% macro zeit(t) %}{{ t[11:16] }}{% endmacro %}
+{% macro datum(d) %}{{ d[8:10] ~ "." ~ d[5:7] ~ "." ~ d[:4] }}{% endmacro %}
+<h1>{{ _("📒 Fahrtenbuch") }}</h1>
+{% if meldung %}<div class="sim-banner" role="status">{{ meldung }}</div>{% endif %}
+
+<form class="vergleich-wahl" method="get" action="fahrtenbuch">
+  <input type="month" name="monat" value="{{ monat }}" onchange="this.form.submit()">
+  <noscript><button type="submit" class="secondary">{{ _("Anzeigen") }}</button></noscript>
+  <a class="secondary-link" href="fahrtenbuch/csv?monat={{ monat }}">{{ _("⬇ CSV") }}</a>
+</form>
+
+{% for fz, x in autos %}
+{% if autos | length > 1 %}<h2 class="fz-titel">🚗 {{ fz.name }}</h2>{% endif %}
+<div class="statgrid">
+  <div class="stat"><span class="wert">{{ x.summe.fahrten }}</span><div class="label">{{ _("Fahrten") }}</div></div>
+  <div class="stat"><span class="wert">{{ x.summe.km | de(0) }}</span><span class="einheit">km</span><div class="label">{{ _("gesamt") }}</div></div>
+  {% for k, km in x.summe.je_kategorie.items() if k %}
+  <div class="stat"><span class="wert">{{ km | de(0) }}</span><span class="einheit">km</span><div class="label">{{ _(kategorien[k]) }}</div></div>
+  {% endfor %}
+</div>
+
+{% if not x.ort_sensor %}
+<div class="card"><span class="gelb">{{ _("Kein Standort eingetragen.") }}</span>
+  {{ _("Unter <a href=\"einstellungen#sensor-fahrtenbuch\">Einstellungen → Sensoren</a> den Standort eintragen: den device_tracker des Autos oder – wenn immer dieselbe Person fährt – den des Handys (genauer, das Auto meldet sich oft nur alle 30 Minuten). Ohne Standort gibt es Fahrten, aber kein Start und Ziel.") }}</div>
+{% endif %}
+
+{% if x.tage %}
+<div class="tabelle-scroll"><table>
+  <tr><th>{{ _("Zeit") }}</th><th>{{ _("Start") }}</th><th>{{ _("Ziel") }}</th><th>{{ _("km") }}</th>
+      <th>{{ _("Akku") }}</th><th>{{ _("kWh") }}</th><th>{{ _("Kategorie / Notiz") }}</th></tr>
+  {% for tag, liste in x.tage.items() %}
+  <tr class="lade-gruppe"><td colspan="7"><b>{{ datum(tag) }}</b> <span class="muted">· {{ _("{0} km", (liste | sum(attribute="km")) | de(1)) }}</span></td></tr>
+  {% for f in liste | reverse %}
+  <tr>
+    <td style="white-space:nowrap">{{ zeit(f.start) }}–{{ zeit(f.ende) }}</td>
+    <td>{{ ort_text(f, "start") }}</td>
+    <td>{{ ort_text(f, "ziel") }}</td>
+    <td>{{ f.km | de(1) }}</td>
+    <td style="white-space:nowrap">{% if f.soc_start is not none and f.soc_ende is not none %}{{ f.soc_start | de(0) }} → {{ f.soc_ende | de(0) }} %{% else %}–{% endif %}</td>
+    <td>{{ f.kwh | de(1) if f.kwh else "–" }}</td>
+    <td>
+      <form class="inline" method="post" action="fahrtenbuch/update" style="gap:6px">
+        <input type="hidden" name="start" value="{{ f.start }}">
+        <input type="hidden" name="monat" value="{{ monat }}">
+        {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ fz.id }}">{% endif %}
+        <select name="kategorie" onchange="this.form.submit()" aria-label="{{ _t("Kategorie") }}">
+          <option value="">–</option>
+          {% for k, text in kategorien.items() %}<option value="{{ k }}" {% if f.kategorie == k %}selected{% endif %}>{{ _(text) }}</option>{% endfor %}
+        </select>
+        <input name="notiz" value="{{ f.notiz or '' }}" placeholder="{{ _t("Notiz") }}" style="width:140px" onchange="this.form.submit()">
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+  {% endfor %}
+</table></div>
+{% else %}
+<div class="card">{{ _("Keine Fahrten in diesem Monat.") }}</div>
+{% endif %}
+
+<form method="post" action="fahrtenbuch/neu" style="margin-top:10px">
+  {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ fz.id }}">{% endif %}
+  <button type="submit" class="secondary">{{ _("🔄 Fahrten der letzten 10 Tage neu erkennen") }}</button>
+</form>
+{% endfor %}
+
+<p class="hint">
+  {{ _("Eine Fahrt beginnt, sobald der Kilometerstand steigt (bzw. der Motor läuft), und endet, wenn das Auto mindestens {0} Minuten steht – kürzere Pausen unterbrechen sie nicht. Fahrten unter {1} km zählen nicht. Beides unter <a href=\"einstellungen#fahrtenbuch\">Einstellungen → Fahrtenbuch</a>.", einst.pause_min | de(0), einst.min_km | de(1)) }}
+  {{ _("Die Genauigkeit hängt davon ab, wie oft das Auto meldet: bei 30 Minuten sind Beginn und Ende ohne Handy-Standort nur auf etwa eine halbe Stunde genau. Den Standort schreibt der EV Tracker selbst jede Minute mit, solange das Modul an ist – der Recorder von Home Assistant muss ihn dafür nicht aufnehmen. Fahrten erkennt der nächtliche Abruf aus der Historie der letzten Tage.") }}
+  <b>{{ _("Kein Fahrtenbuch fürs Finanzamt") }}</b> – {{ _("dafür müssten die Einträge unveränderbar sein und Zweck und Geschäftspartner enthalten.") }}
+</p>
+{% endblock %}

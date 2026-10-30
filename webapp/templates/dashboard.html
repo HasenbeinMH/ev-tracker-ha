@@ -125,8 +125,10 @@
     'ersparnis_100km':   ('ic-strecke',    '#5aaa78', kz.ersparnis_100km | de(2) if kz.ersparnis_100km else '–', '€', _t('Ersparnis je 100 km')),
     'pv_anteil':         ('ic-sonne',      '#c4963a', pv | de(0) if pv is not none else '–', '%', _t('PV-Anteil')),
     'soh':               ('ic-akku',       '#5aaa78', akku.soh.wert | de(1) if akku and akku.soh else '–', '%', _t('Akku-Gesundheit (SoH)')),
-    'reichweite':        ('ic-strecke',    '#4a90c4', akku.reichweite.jetzt | de(0) if akku and akku.reichweite.jetzt else '–', 'km', _t('Reichweite bei 100 % (diesen Monat)')),
-    'zyklen':            ('ic-zyklus',     '#7a6aaa', akku.zyklen.vollzyklen | de(1) if akku else '–', '', _t('Vollzyklen'))} %}
+    'reichweite':        ('ic-strecke',    '#4a90c4', akku.reichweite.jetzt_fenster | de(0) if akku and akku.reichweite.jetzt_fenster else '–', 'km', _t('Reichweite {0} → {1} % (diesen Monat)', (akku.reichweite.fenster[0] if akku else 80) | de(0), (akku.reichweite.fenster[1] if akku else 20) | de(0))),
+    'zyklen':            ('ic-zyklus',     '#7a6aaa', akku.zyklen.vollzyklen | de(1) if akku else '–', '', _t('Vollzyklen')),
+    'klima_anteil':      ('ic-wolke',      '#c47a3a', energie.summe.anteile.klima_wh | de(0) if energie and energie.summe.anteile.klima_wh is not none else '–', '%', _t('Anteil Klima am Verbrauch')),
+    'bordcomputer':      ('ic-tacho',      '#3a9aaa', energie.summe.bordcomputer | de(1) if energie and energie.summe.bordcomputer else '–', 'kWh/100 km', _t('Verbrauch laut Bordcomputer'))} %}
 {# Kacheln, die mit den an Wallbox/Ladesaeule bezahlten kWh rechnen – mit Tooltip und Fussnote #}
 {% set WALLBOX_KACHELN = ('stromkosten', 'ersparnis_kraft', 'ersparnis_gesamt', 'kosten_100km',
                           'ersparnis_100km', 'verbrauch', 'strompreis') %}
@@ -140,7 +142,8 @@
     'strom':     _t('Stromtarifverlauf'),
     'anbieter':  _t('Ladekosten nach Anbieter'),
     'strommix':  _t('Geladene kWh nach Stromquelle'),
-    'thg':       _t('THG-Quote Erträge')} %}
+    'thg':       _t('THG-Quote Erträge'),
+    'energieaufteilung': _t('Energie nach Verbraucher (kWh/100 km)')} %}
 {% set BEREICH = {
     'kacheln':      _t('Kennzahlen'),
     'amortisation': _t('Amortisation des Mehrpreises'),

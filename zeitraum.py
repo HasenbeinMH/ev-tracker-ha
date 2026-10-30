@@ -587,6 +587,8 @@ VERGLEICH_ZEILEN = [
     (N_("Geladene Energie"), "gesamt_kwh", 1, "kWh", None),
     (N_("Verbrauch laut Wallbox/Ladesäule"), "verbrauch", 1, "kWh/100 km", "niedrig"),
     (N_("Verbrauch laut Auto-Akku"), "verbrauch_akku", 1, "kWh/100 km", "niedrig"),
+    # nur mit Modul Energie (energie.py) – die Statistikseite setzt den Wert
+    (N_("Verbrauch laut Bordcomputer"), "verbrauch_bordcomputer", 1, "kWh/100 km", "niedrig"),
     (N_("Ladeverluste (geschätzt)"), "ladeverlust_anteil", 0, "%", "niedrig"),
     (N_("Stromkosten"), "strom_kosten", 2, "€", None),
     (N_("davon Ladeverluste (geschätzt)"), "ladeverlust_kosten", 2, "€", None),
@@ -627,8 +629,9 @@ def vergleich_zeilen(ka: dict, kb: dict, nur: tuple | None = None) -> list:
             a, b = ka.get(schluessel), kb.get(schluessel)
         if schluessel == "kfz_steuer_eauto" and not a and not b:
             continue        # solange das E-Auto steuerfrei ist, nur Rauschen
-        if schluessel in ("ladeverlust_anteil", "ladeverlust_kosten") and a is None and b is None:
-            continue        # ohne Akkustand in beiden Zeitraeumen nicht schaetzbar
+        if (schluessel in ("ladeverlust_anteil", "ladeverlust_kosten", "verbrauch_bordcomputer")
+                and a is None and b is None):
+            continue        # ohne Akkustand bzw. Fahrstatistik in beiden Zeitraeumen kein Wert
         diff = prozent = None
         wertung = ""
         if a is not None and b is not None:

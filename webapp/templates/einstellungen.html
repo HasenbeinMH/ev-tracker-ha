@@ -4,6 +4,24 @@
 <h1>{{ _("⚙️ Einstellungen") }}</h1>
 {% if meldung %}<div class="sim-banner" role="status">{{ meldung }}</div>{% endif %}
 
+<h2 id="module">{{ _("🧩 Module") }}</h2>
+<div class="card">
+  <p class="hint" style="margin-top:0">{{ _("Zusatzauswertungen, die du nach Bedarf ein- und ausschaltest. Ein ausgeschaltetes Modul verschwindet aus Menü, Dashboard, Einstellungen und Bericht – gespeicherte Daten bleiben erhalten. Die Schalter gelten für die ganze App, die Sensoren je Fahrzeug.") }}</p>
+  <form method="post" action="einstellungen/module">
+    <div class="modul-liste">
+      {% for mid, m, an, braucht in modul_liste %}
+      <label class="modul-karte{{ ' an' if an }}">
+        <span class="modul-kopf"><input type="checkbox" name="{{ mid }}" value="1" {% if an %}checked{% endif %}> <b>{{ _(m.name) }}</b></span>
+        <span class="muted">{{ _(m.beschreibung) }}</span>
+        {% if braucht %}<span class="klein">{% for text, ok in braucht %}<span class="{{ 'gruen' if ok else 'gelb' }}">{{ "✓" if ok else "○" }} {{ text }}</span>{% if not loop.last %} · {% endif %}{% endfor %}</span>{% endif %}
+      </label>
+      {% endfor %}
+    </div>
+    <button type="submit" style="margin-top:10px">{{ _("💾 Speichern") }}</button>
+  </form>
+  <p class="hint" style="margin-bottom:0">{{ _("Sensoren der Module stehen unten bei den Sensoren, sobald das Modul eingeschaltet ist.") }}</p>
+</div>
+
 <h2 id="fahrzeuge">{{ _("🚗 Fahrzeuge") }}</h2>
 <div class="card">
   <form class="inline" method="post" action="einstellungen/fahrzeuge/modus" id="fz-modus-form">
@@ -183,6 +201,7 @@
   {% endif %}
 </div>
 
+{% if module.leasing %}
 <h2 id="leasing">{{ _("📋 Leasing") }}{% if mehrere and fahrzeuge | length > 1 %} · {{ fahrzeug_name or _("Fahrzeug") }}{% endif %}</h2>
 <div class="card">
   <p class="hint" style="margin-top:0">{{ _("Für geleaste Autos: vereinbarte km gegen gefahrene km, mit Prognose bis Vertragsende und den Kosten für Mehr-km. Zu sehen unter <a href=\"fahrten#leasing\">Fahrten</a> und als Bereich im Dashboard.") }}</p>
@@ -217,6 +236,26 @@
   </form>
   <p class="hint">{{ _("Die <b>Freigrenze</b> (oft 2.500 km) wird weder als Mehr- noch als Minder-km abgerechnet. Ohne km-Stand bei Übernahme gilt der km-Stand bei Kauf (Neuwagen: 0). Gefahren wird aus dem Kilometerstand gerechnet, ohne Akkustand-Verlauf aus den Monats-km.") }}</p>
 </div>
+{% endif %}
+
+{% if module.fahrtenbuch %}
+<h2 id="fahrtenbuch">{{ _("📒 Fahrtenbuch") }}</h2>
+<div class="card">
+  <form class="inline" method="post" action="einstellungen/fahrtenbuch">
+    <label class="feld">{{ _("Neue Fahrt nach Pause ab (Minuten)") }}
+      <input name="pause_min" value="{{ fahrtenbuch.pause_min | de(0) }}" inputmode="decimal" style="width:80px">
+    </label>
+    <label class="feld">{{ _("Mindeststrecke km") }}
+      <input name="min_km" value="{{ fahrtenbuch.min_km | de(1) }}" inputmode="decimal" style="width:80px">
+    </label>
+    <label class="feld" style="flex-direction:row; align-items:center; gap:6px">
+      <input type="checkbox" name="adressen" value="1" {% if fahrtenbuch.adressen %}checked{% endif %}> {{ _("Adressen über OpenStreetMap") }}
+    </label>
+    <button type="submit">{{ _("💾 Speichern") }}</button>
+  </form>
+  <p class="hint" style="margin-bottom:0">{{ _("Pausen unter dieser Grenze unterbrechen eine Fahrt nicht. <b>Adressen:</b> Liegt Start oder Ziel in keiner Zone von Home Assistant, fragt der EV Tracker die Adresse bei OpenStreetMap (Nominatim) ab – dabei gehen die Koordinaten an diesen Dienst. Ohne steht dort die Position. Die Sensoren (Standort, Motor) stehen unten bei den Sensoren.") }}</p>
+</div>
+{% endif %}
 
 <h2 id="simulation">{{ _("🧪 Simulationsmodus – noch kein E-Auto") }}</h2>
 <div class="card">
@@ -405,9 +444,9 @@
     {# Friendly-Name-Spalte nur bei InfluxDB – die Werte bleiben beim Ausblenden erhalten #}
     <tr><th>{{ _("Sensor") }}</th><th>{{ _("Entity-ID (Home Assistant)") }}</th>
         <th data-quelle="influxdb influxdb2 influxdb3">{{ _("Name in der InfluxDB (Friendly Name)") }}</th></tr>
-    {% for ha_key, fn_key, label in sensor_felder %}
-    <tr>
-      <td style="white-space:nowrap">{{ label }}</td>
+    {% for ha_key, fn_key, label, modul, modul_name in sensor_felder %}
+    <tr{% if modul and loop.changed(modul) %} id="sensor-{{ modul }}"{% endif %}>
+      <td style="white-space:nowrap">{{ label }}{% if modul %}<div class="muted klein">{{ _("Modul {0}", modul_name) }}</div>{% endif %}</td>
       <td><input class="breit" name="{{ ha_key }}" value="{{ ha[ha_key] }}"></td>
       <td data-quelle="influxdb influxdb2 influxdb3">{% if fn_key %}<input class="breit" name="{{ fn_key }}" value="{{ ha[fn_key] }}">{% endif %}</td>
     </tr>
@@ -565,8 +604,11 @@
     </label>
     <button type="button" class="secondary" onclick="kopieren('push-url', this)">{{ _("📋 Kopieren") }}</button>
     <label class="feld">{{ _("Token (ersetzt <code>DEIN_TOKEN</code>)") }}
-      <input id="push-token" readonly value="{{ push_token }}" style="width:300px">
+      <input id="push-token" type="password" readonly value="{{ push_token }}" style="width:300px"
+             autocomplete="off" spellcheck="false">
     </label>
+    <button type="button" class="secondary" onclick="anzeigen('push-token', this)"
+            title="{{ _t("Token anzeigen") }}" aria-pressed="false">👁</button>
     <button type="button" class="secondary" onclick="kopieren('push-token', this)">{{ _("📋 Kopieren") }}</button>
   </div>
   {% if add_on_modus %}
@@ -590,10 +632,22 @@
 async function kopieren(id, knopf) {
   const feld = document.getElementById(id);
   try { await navigator.clipboard.writeText(feld.value); }
-  catch (e) { feld.select(); document.execCommand("copy"); }
+  catch (e) {
+    // Rueckfall ohne Clipboard-API: ein Passwortfeld laesst sich nicht kopieren – kurz umschalten
+    const typ = feld.type;
+    feld.type = "text"; feld.select(); document.execCommand("copy"); feld.type = typ;
+  }
   const alt = knopf.textContent;
   knopf.textContent = {{ _t("✓ Kopiert") | tojson }};
   setTimeout(() => { knopf.textContent = alt; }, 1500);
+}
+
+// Token wie ein Passwort verdeckt; auf Wunsch einblenden
+function anzeigen(id, knopf) {
+  const feld = document.getElementById(id);
+  const sichtbar = feld.type === "password";
+  feld.type = sichtbar ? "text" : "password";
+  knopf.setAttribute("aria-pressed", sichtbar);
 }
 
 async function sucheSensoren() {
@@ -616,7 +670,7 @@ async function sucheSensoren() {
 }
 
 // ── Suche in der eingestellten Datenbank ────────────────────────────────────
-const SENSOR_ZEILEN = {{ sensor_felder | tojson }};   // [[ha_key, fn_key, label], ...]
+const SENSOR_ZEILEN = {{ sensor_felder | tojson }};   // [[ha_key, fn_key, label, modul, modul_name], ...]
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
   c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 let dbTreffer = [], dbSpalte = "entity";

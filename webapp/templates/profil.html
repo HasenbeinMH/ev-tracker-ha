@@ -48,6 +48,30 @@
 </div>
 {% endif %}
 
+{% set fp = p.fahrten %}
+{% if fp %}
+<h2>{{ _("Fahrten") }}</h2>
+<div class="statgrid">
+  <div class="stat"><span class="wert">{{ fp.je_tag | de(1) }}</span><div class="label">{{ _("Fahrten je Fahrtag") }}</div></div>
+  <div class="stat"><span class="wert">{{ fp.km_schnitt | de(1) }}</span><span class="einheit">km</span><div class="label">{{ _("Ø je Fahrt") }}</div></div>
+  <div class="stat"><span class="wert">{{ fp.kurz_anteil | de(0) }}</span><span class="einheit">%</span><div class="label">{{ _("Kurzstrecken unter 5 km") }}</div></div>
+</div>
+<div class="chartgrid">
+  <div class="chart">
+    <div class="titel">{{ _("Fahrten nach Länge") }}</div>
+    <div class="echart" data-echart="opt-fk-{{ fz.id }}"></div>
+    <script type="application/json" id="opt-fk-{{ fz.id }}">{{ fp.charts.klassen | tojson }}</script>
+  </div>
+  <div class="chart">
+    <div class="titel">{{ _("Abfahrt nach Uhrzeit") }}</div>
+    <div class="echart" data-echart="opt-fs-{{ fz.id }}"></div>
+    <script type="application/json" id="opt-fs-{{ fz.id }}">{{ fp.charts.stunden | tojson }}</script>
+  </div>
+</div>
+{% if fp.ziele %}<p class="hint">{{ _("Häufigste Ziele:") }} {% for name, n in fp.ziele %}{{ name }} ({{ n }}){% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+<p class="hint">{{ _("Aus dem <a href=\"fahrtenbuch\">Fahrtenbuch</a>: {0} Fahrten an {1} Tagen.", fp.fahrten, fp.tage) }}</p>
+{% endif %}
+
 <h2>{{ _("Ladeprofil") }}</h2>
 <div class="statgrid">
   <div class="stat"><span class="wert">{{ l.anteil_zuhause | de(0) if l.anteil_zuhause is not none else "–" }}</span><span class="einheit">%</span>

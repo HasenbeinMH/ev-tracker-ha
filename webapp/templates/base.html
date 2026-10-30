@@ -30,8 +30,10 @@ window.T = function (text) {
       (_t('Auswertung'), [('statistik', 'statistik', _t('Statistik')),
                       ('akku', 'akku', _t('Akku')),
                       ('profil', 'profil', _t('Profil')),
+                      ('energie', 'energie', _t('Energie')),
                       ('berichte', 'berichte', _t('Berichte'))]),
       (_t('Fahrten'), [('fahrten', 'fahrten', _t('Fahrten')),
+                   ('fahrtenbuch', 'fahrtenbuch', _t('Fahrtenbuch')),
                    ('benzin', 'benzin', _t('{0}preise', kf.name))]),
       (_t('Laden'), [('laden', 'laden', _t('Ladevorgänge')),
                  ('ladetarife', 'ladetarife', _t('Ladetarife')),
@@ -45,6 +47,8 @@ window.T = function (text) {
                       ('einstellungen', 'einstellungen', _t('Einstellungen'))]),
       (_t('❓ Hilfe'), [('hilfe', 'hilfe', _t('Hilfe')),
                    ('einrichtung', 'einrichtung', _t('Einrichtung'))])] %}
+    {# Seiten ausgeschalteter Module (Einstellungen → Module) fallen weg #}
+    {% set eintraege = menue_filter(eintraege) %}
     {% set ist_aktiv = aktiv in eintraege | map('first') | list %}
     {% if eintraege | length == 1 %}
     <a href="{{ eintraege[0][1] }}" class="{{ 'aktiv' if ist_aktiv else '' }}">{{ label }}</a>

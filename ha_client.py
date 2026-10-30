@@ -109,6 +109,30 @@ class HAClient:
         except (ValueError, TypeError, ConnectionError):
             return None
 
+    def get_state_full(self, entity_id: str) -> dict | None:
+        """Zustand mit Attributen ({state, attributes, last_changed, …}) – None bei Fehler."""
+        try:
+            data = self._get(f"/api/states/{entity_id}")
+            return data if isinstance(data, dict) else None
+        except ConnectionError:
+            return None
+
+    def get_history_full(self, entity_id: str, start: datetime, end: datetime,
+                         attribute: bool = True) -> list[dict]:
+        """Alle Zustaende aus dem Recorder (etwa 10 Tage), auf Wunsch mit Attributen:
+        [{state, attributes, last_changed, last_updated}], aufsteigend. [] bei Fehler."""
+        from urllib.parse import quote
+        start_str = quote(start.astimezone().isoformat(timespec="seconds"))
+        end_str = quote(end.astimezone().isoformat(timespec="seconds"))
+        path = (f"/api/history/period/{start_str}?filter_entity_id={entity_id}"
+                f"&end_time={end_str}&significant_changes_only=0"
+                + ("" if attribute else "&no_attributes=true"))
+        try:
+            data = self._get(path)
+            return data[0] if isinstance(data, list) and data else []
+        except ConnectionError:
+            return []
+
     # ─────────────────────────────────────────
     #  Statistics API  (primär)
     # ─────────────────────────────────────────

@@ -292,6 +292,15 @@ th {
 }
 td { padding: 7px 10px; border-bottom: 1px solid var(--border); }
 tr:hover td { background: #1f2330; }
+/* Einstellungen → Module: eine Karte je Modul mit Schalter */
+.modul-liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.modul-karte {
+  display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; cursor: pointer;
+  border: 1px solid var(--border2); border-radius: 8px; font-size: 12px; line-height: 1.4;
+}
+.modul-karte.an { border-color: var(--blau-hell); }
+.modul-kopf { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.klein { font-size: 11px; }
 /* Ladevorgaenge: Teile einer Ladung (PV und Netz) unter der Summenzeile aufklappen */
 button.aufklappen, .aufklappen-platz {
   display: inline-block; width: 22px; margin-right: 4px; text-align: center;

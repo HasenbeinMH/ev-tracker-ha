@@ -23,6 +23,11 @@
     <span class="wert">{{ a.zyklen.vollzyklen | de(1) }}</span>
     <div class="label">{{ _("Vollzyklen") }}</div>
   </div>
+  {% set fe = a.reichweite.fenster %}
+  <div class="stat">
+    <span class="wert">{{ a.reichweite.jetzt_fenster | de(0) if a.reichweite.jetzt_fenster else "–" }}</span><span class="einheit">km</span>
+    <div class="label">{{ _("Reichweite {0} → {1} % (diesen Monat)", fe[0] | de(0), fe[1] | de(0)) }}</div>
+  </div>
   <div class="stat">
     <span class="wert">{{ a.reichweite.jetzt | de(0) if a.reichweite.jetzt else "–" }}</span><span class="einheit">km</span>
     <div class="label">{{ _("Reichweite bei 100 % (diesen Monat)") }}</div>
@@ -35,7 +40,7 @@
 
 {% if live and autos | length == 1 %}
 <div class="card">
-  {{ _("<b>Jetzt:</b> Akku {0} %", live.soc | de(0)) }}{% if live.km %} · {{ _("≈ {0} km bei deinem Verbrauch in diesem Monat", live.km | de(0)) }}{% endif %}{% if live.auto_km %} · {{ _("laut Auto {0} km", live.auto_km | de(0)) }}{% endif %}
+  {{ _("<b>Jetzt:</b> Akku {0} %", live.soc | de(0)) }}{% if live.km %} · {{ _("≈ {0} km bei deinem Verbrauch in diesem Monat", live.km | de(0)) }}{% endif %}{% if live.auto_km %} · {{ _("laut Auto {0} km", live.auto_km | de(0)) }}{% elif live.auto_fehlt %} · <span class="gelb">{{ _("Reichweite laut Auto: „{0}“ liefert keinen Wert – <a href=\"einstellungen#sensor-akku\">Sensor prüfen</a>", live.auto_sensor) }}</span>{% endif %}
 </div>
 {% endif %}
 
@@ -158,6 +163,10 @@
 {% set r = a.reichweite %}
 <h2>{{ _("Reichweite") }}</h2>
 <div class="statgrid">
+  <div class="stat"><span class="wert">{{ r.saison_fenster.sommer | de(0) if r.saison_fenster.sommer else "–" }}</span><span class="einheit">km</span>
+    <div class="label">{{ _("Ø Sommer (Jun–Aug), {0} → {1} %", r.fenster[0] | de(0), r.fenster[1] | de(0)) }}</div></div>
+  <div class="stat"><span class="wert">{{ r.saison_fenster.winter | de(0) if r.saison_fenster.winter else "–" }}</span><span class="einheit">km</span>
+    <div class="label">{{ _("Ø Winter (Dez–Feb), {0} → {1} %", r.fenster[0] | de(0), r.fenster[1] | de(0)) }}</div></div>
   <div class="stat"><span class="wert">{{ r.saison.sommer | de(0) if r.saison.sommer else "–" }}</span><span class="einheit">km</span>
     <div class="label">{{ _("Ø Sommer (Jun–Aug)") }}</div></div>
   <div class="stat"><span class="wert">{{ r.saison.winter | de(0) if r.saison.winter else "–" }}</span><span class="einheit">km</span>
@@ -171,13 +180,19 @@
   <div class="echart" data-echart="opt-reichweite-{{ fz.id }}"></div>
   <script type="application/json" id="opt-reichweite-{{ fz.id }}">{{ x.charts.reichweite | tojson }}</script>
 </div>
-<p class="hint">{{ _("Reichweite = km je Prozent Akku × 100, aus dem Verbrauch laut Auto-Akku des Monats. Der Akkustand des Autos bezieht sich schon auf die heute nutzbare Kapazität – ein gealterter Akku steckt also bereits darin. 80 → 10 % ist eine typische Etappe auf Langstrecke. Prognose: Ø desselben Monats in den Vorjahren, ohne Vorjahr der Ø aller Monate.") }}</p>
+<p class="hint">{{ _("Reichweite = km je Prozent Akku × 100, aus dem Verbrauch laut Auto-Akku des Monats. Der Akkustand des Autos bezieht sich schon auf die heute nutzbare Kapazität – ein gealterter Akku steckt also bereits darin. Das Nutzungsfenster (unten bei den Einstellungen) zeigt, wie weit du im Alltag kommst, wenn du z. B. bis 80 % lädst und bei 20 % nachlädst. Prognose: Ø desselben Monats in den Vorjahren, ohne Vorjahr der Ø aller Monate.") }}</p>
 
 {# ── Einstellungen ── #}
 <h2{% if loop.first %} id="einstellungen"{% endif %}>{{ _("Einstellungen Akku") }}</h2>
 <div class="card">
   <form class="inline" method="post" action="akku/einstellungen">
     {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ fz.id }}">{% endif %}
+    <label class="feld">{{ _("Nutzungsfenster: laden bis %") }}
+      <input name="fenster_oben" id="fenster-oben-{{ fz.id }}" value="{{ r.fenster[0] | de(0) }}" inputmode="decimal" style="width:70px">
+    </label>
+    <label class="feld">{{ _("nachladen bei %") }}
+      <input name="fenster_unten" id="fenster-unten-{{ fz.id }}" value="{{ r.fenster[1] | de(0) }}" inputmode="decimal" style="width:70px">
+    </label>
     <label class="feld">{{ _("Angenommene Ladeverluste %") }}
       <input name="verlust" value="{{ a.annahme_eingestellt | de(1) }}" inputmode="decimal" style="width:80px">
     </label>
@@ -192,6 +207,12 @@
     </label>
     <button type="submit">{{ _("💾 Speichern") }}</button>
   </form>
+  {% if z.von_schnitt is not none %}
+  <p class="hint">{{ _("Gemessen lädst du im Schnitt von {0} auf {1} %.", z.von_schnitt | de(0), z.bis_schnitt | de(0)) }}
+    <button type="button" class="secondary" style="padding:2px 8px; font-size:11px"
+            onclick="document.getElementById('fenster-oben-{{ fz.id }}').value = '{{ z.bis_schnitt | round(0) | int }}'; document.getElementById('fenster-unten-{{ fz.id }}').value = '{{ z.von_schnitt | round(0) | int }}';">{{ _("übernehmen") }}</button>
+  </p>
+  {% endif %}
   <p class="hint" style="margin-bottom:0">{{ _("Die Akkukapazität ({0} kWh) steht unter <a href=\"berichte\">Berichte</a> bei den Einstellungen der Ladeerkennung, der SoH-Sensor unter <a href=\"einstellungen\">Einstellungen → Sensoren</a>. Garantie: viele Hersteller geben 8 Jahre bzw. 160.000 km auf mindestens 70 % SoH.", a.kapazitaet | de(1)) }}</p>
 </div>
 {% endfor %}

@@ -69,6 +69,18 @@ def verlust_annahme() -> float:
     return VERLUST_STANDARD if wert is None or not 0 <= wert <= VERLUST_MAX else wert
 
 
+FENSTER_STANDARD = (80.0, 20.0)  # Nutzungsfenster: von oben (geladen) bis unten (nachladen)
+
+
+def nutzungsfenster() -> tuple:
+    """(oben, unten) in % – wie weit der Akku im Alltag genutzt wird, z. B. 80 → 20 %."""
+    oben = db.get_einstellung("akku_fenster_oben")
+    unten = db.get_einstellung("akku_fenster_unten")
+    oben = FENSTER_STANDARD[0] if oben is None else oben
+    unten = FENSTER_STANDARD[1] if unten is None else unten
+    return (oben, unten) if 0 <= unten < oben <= 100 else FENSTER_STANDARD
+
+
 def garantie() -> dict:
     return {k: _zahl(f"akku_garantie_{k}", v) for k, v in GARANTIE_STANDARD.items()}
 
@@ -306,13 +318,15 @@ def trend(punkte: list) -> float | None:
 
 # ── Reichweite ───────────────────────────────────────────────────────────────
 
-def reichweite_monate(akku_monate: list, kap: float) -> list:
+def reichweite_monate(akku_monate: list, kap: float, fenster: tuple = FENSTER_STANDARD) -> list:
     """Reichweite je Monat aus dem Verbrauch laut Auto-Akku (akkuverbrauch.pro_monat):
-    [{monat, verbrauch, km_100, km_80_10}]. km_100 = Kapazitaet ÷ Verbrauch × 100,
-    gleichbedeutend mit km je Prozent Akku × 100."""
+    [{monat, verbrauch, km_100, km_fenster}]. km_100 = Kapazitaet ÷ Verbrauch × 100,
+    gleichbedeutend mit km je Prozent Akku × 100; km_fenster fuer das Nutzungsfenster
+    (oben − unten) – z. B. 80 → 20 % = 60 % davon."""
+    anteil = (fenster[0] - fenster[1]) / 100
     return [{"monat": a["monat"], "verbrauch": a["verbrauch"],
              "km_100": round(kap / a["verbrauch"] * 100),
-             "km_80_10": round(kap / a["verbrauch"] * 100 * 0.7)}
+             "km_fenster": round(kap / a["verbrauch"] * 100 * anteil)}
             for a in akku_monate if a.get("verbrauch")]
 
 
@@ -321,9 +335,11 @@ def _monat_plus(monat: str, n: int) -> str:
     return f"{i // 12}-{i % 12 + 1:02d}"
 
 
-def reichweite_prognose(rm: list, ab: str, anzahl: int = 12) -> list:
+def reichweite_prognose(rm: list, ab: str, anzahl: int = 12,
+                        fenster: tuple = FENSTER_STANDARD) -> list:
     """Reichweite der naechsten `anzahl` Monate ab `ab` ('YYYY-MM'): Ø desselben
-    Kalendermonats aus den Vorjahren, sonst Ø aller Monate. [{monat, km_100, basis}]."""
+    Kalendermonats aus den Vorjahren, sonst Ø aller Monate.
+    [{monat, km_100, km_fenster, basis}]."""
     if not rm:
         return []
     alle = sum(r["km_100"] for r in rm) / len(rm)
@@ -331,15 +347,17 @@ def reichweite_prognose(rm: list, ab: str, anzahl: int = 12) -> list:
     for i in range(anzahl):
         m = _monat_plus(ab, i)
         gleich = [r["km_100"] for r in rm if r["monat"][5:7] == m[5:7]]
-        erg.append({"monat": m, "km_100": round(sum(gleich) / len(gleich) if gleich else alle),
+        km = sum(gleich) / len(gleich) if gleich else alle
+        erg.append({"monat": m, "km_100": round(km),
+                    "km_fenster": round(km * (fenster[0] - fenster[1]) / 100),
                     "basis": "monat" if gleich else "schnitt"})
     return erg
 
 
-def saison(rm: list) -> dict:
+def saison(rm: list, feld: str = "km_100") -> dict:
     """Ø Reichweite im Sommer (Jun–Aug) und Winter (Dez–Feb) – None ohne Monate."""
     def schnitt(monate):
-        werte = [r["km_100"] for r in rm if int(r["monat"][5:7]) in monate]
+        werte = [r[feld] for r in rm if int(r["monat"][5:7]) in monate]
         return round(sum(werte) / len(werte)) if werte else None
     return {"sommer": schnitt((6, 7, 8)), "winter": schnitt((12, 1, 2))}
 
@@ -448,8 +466,9 @@ def auswertung(heute: date | None = None) -> dict:
                     "rate": rate, "aus_referenz": not (jahrestrend is not None and jahrestrend < 0),
                     "ok": wert >= g["soh"], "vorbei": ende <= heute}
 
-    rm = reichweite_monate(akkuverbrauch.pro_monat(), kap)
-    voraus = reichweite_prognose(rm, heute.strftime("%Y-%m"))
+    fenster = nutzungsfenster()
+    rm = reichweite_monate(akkuverbrauch.pro_monat(), kap, fenster)
+    voraus = reichweite_prognose(rm, heute.strftime("%Y-%m"), fenster=fenster)
     return {
         "kapazitaet": kap,
         "soh": soh,
@@ -473,7 +492,9 @@ def auswertung(heute: date | None = None) -> dict:
         "zyklen": zyklen(ladungen, lade_kwh, kap, annahme),
         "km_gesamt": sum(f["km"] for f in daten["fahrten"]),
         "reichweite": {"monate": rm, "prognose": voraus, "saison": saison(rm),
-                       "jetzt": voraus[0]["km_100"] if voraus else None},
+                       "saison_fenster": saison(rm, "km_fenster"), "fenster": fenster,
+                       "jetzt": voraus[0]["km_100"] if voraus else None,
+                       "jetzt_fenster": voraus[0]["km_fenster"] if voraus else None},
         "abschnitte": len(abschnitte),
     }
 
@@ -497,5 +518,7 @@ def live(reichweite_100: float | None) -> dict:
         return {}
     if soc is None:
         return {}
-    return {"soc": soc, "auto_km": auto,
+    # Eingetragen, aber kein Wert (z. B. noch der alte Beispielwert sensor.kia_ev3_ev_range)
+    return {"soc": soc, "auto_km": auto, "auto_sensor": range_entity,
+            "auto_fehlt": bool(range_entity) and auto is None,
             "km": round(soc / 100 * reichweite_100) if reichweite_100 else None}

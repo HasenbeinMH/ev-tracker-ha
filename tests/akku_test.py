@@ -83,9 +83,12 @@ check("Kalibrieren ohne genug Monate", akku.kalibrieren(liste[:2], [{"datum": "2
 check("Trend in %/Jahr", nah(akku.trend([(date(2025, 1, 1), 100.0), (date(2026, 1, 1), 98.0)]), -2.0, 0.01))
 check("Trend braucht 90 Tage", akku.trend([(date(2026, 1, 1), 100), (date(2026, 2, 1), 99)]) is None)
 rm = akku.reichweite_monate([{"monat": "2025-01", "verbrauch": 20.0}, {"monat": "2025-07", "verbrauch": 14.0}], 58.3)
-check("Reichweite = Kapazitaet ÷ Verbrauch", rm[0]["km_100"] == 292 and rm[0]["km_80_10"] == 204, str(rm))
+check("Reichweite = Kapazitaet ÷ Verbrauch, Fenster 80 → 20 %", rm[0]["km_100"] == 292
+      and rm[0]["km_fenster"] == 175, str(rm))
+rm_f = akku.reichweite_monate([{"monat": "2025-01", "verbrauch": 20.0}], 58.3, (90, 10))
+check("Eigenes Fenster 90 → 10 %", rm_f[0]["km_fenster"] == 233, str(rm_f))
 pg = akku.reichweite_prognose(rm, "2026-01")
-check("Prognose: gleicher Monat, sonst Ø", pg[0] == {"monat": "2026-01", "km_100": 292, "basis": "monat"}
+check("Prognose: gleicher Monat, sonst Ø", pg[0] == {"monat": "2026-01", "km_100": 292, "km_fenster": 175, "basis": "monat"}
       and pg[1]["basis"] == "schnitt" and pg[1]["km_100"] == round((292 + 416) / 2) and pg[6]["km_100"] == 416,
       str(pg[:7]))
 check("Sommer/Winter", akku.saison(rm) == {"sommer": 416, "winter": 292})

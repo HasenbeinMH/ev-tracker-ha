@@ -61,6 +61,9 @@
   <a href="#akku">Akku</a>
   <a href="#profil">Profil</a>
   <a href="#leasing">Leasing</a>
+  <a href="#module">Module</a>
+  <a href="#energie">Energie</a>
+  <a href="#fahrtenbuch">Fahrtenbuch</a>
   <a href="#fahrten">Fahrten</a>
   <a href="#laden">Laden</a>
   <a href="#ladetarife">Ladetarife</a>
@@ -158,7 +161,7 @@
 <p><b>Verbrauch aus dem Akkustand je Monat:</b> Dieselbe Paarung als Tabelle mit den Zahlen dahinter – je Monat und Zeitraum die gewerteten km, die kWh aus dem Akku und der Verbrauch. Die Summenzeile ist über Σ kWh ÷ Σ km gewichtet und entspricht der Zeile „Verbrauch laut Auto-Akku“ in der Tabelle oben.</p>
 <div class="hb-warn"><b>Andere km als im Diagramm:</b> In dieser Tabelle zählen nur die km der gewerteten Fahrtabschnitte, nicht die monatlich erfassten Gesamtkilometer – sonst passten km, kWh und Verbrauch in einer Zeile nicht zusammen. Welche Abschnitte draußen bleiben, steht unter <a href="#akkuverbrauch">Verbrauch aus dem Akkustand</a>.</div>
 
-<h2 id="akku">Akku <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<h2 id="akku">Akku (Modul) <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p>Akku-Gesundheit, Ladezyklen und Reichweite – unter <b>Auswertung → Akku</b>. Grundlage sind die <a href="#akkuverbrauch">Fahrtabschnitte aus dem Akkustand</a>: Zwischen zwei Abschnitten liegt eine Ladung, vom Akkustand am Ende des einen bis zum Start des nächsten.</p>
 <h3 id="soh">Akku-Gesundheit (SoH)</h3>
 <p>SoH (State of Health) = heute nutzbare Kapazität im Verhältnis zum Neuzustand. Drei Quellen, <b>gemessene Werte gehen immer vor</b>:</p>
@@ -173,9 +176,9 @@
 <h3 id="zyklen">Ladezyklen und Ladefenster</h3>
 <p>Ein <b>Vollzyklus</b> = 100 % Akku geladen, egal in wie vielen Ladungen. Gezählt werden die Anstiege des Akkustands zwischen zwei Fahrtabschnitten; Monate vor dem ersten Akkustand werden aus den geladenen kWh geschätzt (<code>kWh × (1 − Ladeverluste) ÷ Kapazität</code>). Das <b>Ladefenster</b> zeigt, wie voll der Akku vor und nach dem Laden war, dazu der Anteil der Ladungen bis ≥ 95 % und ab unter 20 %.</p>
 <h3 id="reichweite">Reichweite</h3>
-<p><code>Reichweite bei 100 % = Akkukapazität ÷ Verbrauch laut Auto-Akku × 100</code> – gleichbedeutend mit km je Prozent Akku × 100, die Kapazität kürzt sich heraus. Der Akkustand des Autos bezieht sich schon auf die heute nutzbare Kapazität, ein gealterter Akku steckt also bereits darin. Dazu „80 → 10 %“ (70 % davon, eine typische Etappe auf Langstrecke), Sommer gegen Winter und eine Prognose für zwölf Monate (Ø desselben Monats der Vorjahre, sonst Ø aller Monate). Bei einem Fahrzeug fragt die Seite den Akkustand jetzt live ab und zeigt daneben die Reichweite laut Auto (Sensor „Reichweite laut Auto“, optional).</p>
+<p><code>Reichweite bei 100 % = Akkukapazität ÷ Verbrauch laut Auto-Akku × 100</code> – gleichbedeutend mit km je Prozent Akku × 100, die Kapazität kürzt sich heraus. Der Akkustand des Autos bezieht sich schon auf die heute nutzbare Kapazität, ein gealterter Akku steckt also bereits darin. Dazu die Reichweite im eigenen <b>Nutzungsfenster</b> – etwa „80 → 20 %“, wenn du bis 80 % lädst und bei 20 % nachlädst (einstellbar auf der Akku-Seite, mit Vorschlag aus deinem gemessenen Ladefenster) –, Sommer gegen Winter und eine Prognose für zwölf Monate (Ø desselben Monats der Vorjahre, sonst Ø aller Monate). Bei einem Fahrzeug fragt die Seite den Akkustand jetzt live ab und zeigt daneben die Reichweite laut Auto (Sensor „Reichweite laut Auto“, optional; liefert er keinen Wert, steht dort „Sensor prüfen“).</p>
 
-<h2 id="profil">Profil <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<h2 id="profil">Profil (Modul) <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p>Unter <b>Auswertung → Profil</b>:</p>
 <ul>
   <li><b>Nutzungsprofil:</b> aus den km je Tag (letzter Kilometerstand des Tages − letzter davor; entsteht zusammen mit den Fahrtabschnitten, braucht also Kilometer- und Batteriestand). Ø km je Tag und Fahrtag, Anteil der Tage mit Fahrten, Ø je Wochentag, Tage nach Strecke, längster Tag – und wie viel Akku an 95 % der Fahrtage reicht (95-%-Quantil der Tages-km ÷ Reichweite des Monats).</li>
@@ -183,7 +186,7 @@
   <li><b>Entwicklung über die Jahre:</b> je Jahr eine Linie über Januar bis Dezember (km, beide Verbrauchswerte, Stromkosten je 100 km, Ersparnis) und eine Tabelle mit den Kennzahlen je Kalenderjahr wie in der Statistik.</li>
 </ul>
 
-<h2 id="leasing">Leasing <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<h2 id="leasing">Leasing (Modul) <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p>Für geleaste Autos unter <b>Einstellungen → Leasing</b>: Vertragsbeginn und -ende, km je Jahr, km-Stand bei Übernahme (leer = km bei Kauf), Freigrenze und die Sätze für Mehr- und Minder-km. Zu sehen unter <a href="#fahrten">Fahrten</a>, als Bereich im Dashboard und im Monatsbericht.</p>
 <table>
   <tr><th style="width:34%">Wert</th><th>Formel</th></tr>
@@ -192,6 +195,34 @@
   <tr><td>Prognose</td><td><code>Gefahren + je restlichem Monat die km des gleichen Monats im Vorjahr</code> – ohne Vorjahr Ø km je Tag der letzten 12 Monate</td></tr>
   <tr><td>Mehr-km</td><td><code>Prognose − Vertrags-km − Freigrenze</code>, in Euro <code>× Satz ÷ 100</code>; Minder-km entsprechend</td></tr>
 </table>
+
+<h2 id="module">Module <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<p>Unter <b>Einstellungen → Module</b> schaltest du die Zusatzauswertungen ein und aus: <b>Akku</b>, <b>Profil</b>, <b>Leasing</b>, <b>Energie</b> und <b>Fahrtenbuch</b>. Die Schalter gelten für die ganze App, die Sensoren je Fahrzeug. Ein ausgeschaltetes Modul verschwindet aus Menü, Dashboard (auch im Anpassen-Modus), Einstellungen, Monatsbericht und nächtlichem Abruf; seine Seiten leiten auf die Einstellungen um. <b>Gespeicherte Daten bleiben erhalten</b> – nach dem Einschalten ist alles wieder da, auch die Kacheln an ihrem alten Platz.</p>
+<p>Ohne eigene Wahl gilt: Akku und Profil an, Leasing an, sobald ein Vertrag eingetragen ist, Energie an, sobald eine Tägliche Fahrstatistik eingetragen ist, Fahrtenbuch aus. Jede Karte zeigt, was das Modul braucht (✓ vorhanden, ○ fehlt).</p>
+
+<h2 id="energie">Energie (Modul) <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<p>Wofür das Auto die Energie braucht: <b>Antrieb, Klima, Bordelektronik, Batteriepflege</b> und was die <b>Rekuperation</b> zurückgewinnt. Quelle ist die tägliche Fahrstatistik des Autos – bei Kia/Hyundai (Integration „Kia Uvo / Hyundai Bluelink“) der Sensor „Tägliche Fahrstatistik“, dessen Attribute je Tag die Werte in Wh enthalten. Unter Einstellungen → Sensoren eintragen.</p>
+<p>Das Auto hält nur die letzten Tage vor. Der nächtliche Abruf speichert deshalb jeden Tag (der laufende Tag wird bis zum nächsten Abruf überschrieben); beim Einschalten des Moduls und per Knopf auf der Seite Energie holt der EV Tracker zusätzlich die Tage, die der Recorder noch hat (etwa 10).</p>
+<table>
+  <tr><th style="width:34%">Wert</th><th>Formel</th></tr>
+  <tr><td>Verbrauch laut Bordcomputer</td><td><code>Σ Gesamt ÷ Σ km</code> – entspricht dem Ø, den das Auto selbst anzeigt</td></tr>
+  <tr><td>Anteil je Verbraucher</td><td><code>kWh des Verbrauchers ÷ Gesamt</code> (Gesamt = Antrieb + Klima + Bordelektronik + Batteriepflege)</td></tr>
+  <tr><td>Kosten je Verbraucher</td><td><code>Σ Tag: kWh × Ø Strompreis des Monats</code> (an Wallbox/Säule bezahlt, Ladeverluste darin)</td></tr>
+  <tr><td>Rekuperation</td><td>zurückgewonnene kWh, dazu im Verhältnis zum Antrieb</td></tr>
+  <tr><td>Standverbrauch</td><td>Summe der Tage mit weniger als 1 km (Vorklimatisieren, 12-V-Batterie …)</td></tr>
+</table>
+<div class="hb-warn"><b>Bordcomputer zählt weniger:</b> Das Auto erfasst nur, was während der Fahrten verbraucht wurde – ohne Standverbrauch über Nacht und ohne Verluste im Akku. Der Wert liegt deshalb unter dem Verbrauch laut Auto-Akku und laut Wallbox. Die Anteile der Verbraucher sind davon unberührt. Mit eingeschaltetem Modul zeigt die Statistik den Wert als dritte Verbrauchszeile.</div>
+
+<h2 id="fahrtenbuch">Fahrtenbuch (Modul) <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
+<p>Einzelne Fahrten mit Beginn, Ende, Start, Ziel, km, Akku von–bis und kWh – unter <b>Fahrten → Fahrtenbuch</b>, je Monat, mit Kategorie (privat, Arbeitsweg, dienstlich), Notiz und CSV-Export. Das Profil wertet die Fahrten mit aus (Fahrten je Tag, Längen, Abfahrtszeiten, häufigste Ziele).</p>
+<ul>
+  <li><b>Sensoren:</b> Kilometerstand und Batteriestand wie bisher, dazu der <b>Standort</b> – der device_tracker des Autos oder, wenn immer dieselbe Person fährt, der des <b>Handys</b> bzw. <code>person.*</code> (mehrere mit <code>|</code>, die erste mit Koordinaten zählt). Optional <b>Motor/Zündung</b> als binary_sensor.</li>
+  <li><b>Erkennung:</b> Eine Fahrt beginnt, sobald der Kilometerstand steigt bzw. der Motor läuft, und endet, wenn das Auto mindestens die eingestellte Pause steht (Standard 30 Minuten). Kürzere Pausen unterbrechen die Fahrt nicht. Belegt wird der Stillstand durch „Motor aus“ oder einen gleichbleibenden Standort; ohne Belege trennt erst eine Lücke von Pause + 30 Minuten. Fahrten unter der Mindeststrecke (Standard 0,5 km) zählen nicht.</li>
+  <li><b>Genauigkeit:</b> Viele Autos melden nur alle 30 Minuten – Beginn und Ende sind dann auf etwa eine halbe Stunde genau. Ein Handy als Standort macht sie genauer: Abfahrt ist die erste Position, die sich vom Startort entfernt, Ankunft die erste, ab der sich nichts mehr bewegt.</li>
+  <li><b>Standort:</b> Den schreibt der EV Tracker selbst jede Minute mit (nur bei Änderung, 30 Tage lang), solange das Modul an ist – der Recorder von Home Assistant muss device_tracker dafür nicht aufnehmen. Start und Ziel heißen wie die Zone in Home Assistant, sonst stehen die Koordinaten da – oder, wenn eingeschaltet, die Adresse von OpenStreetMap (dabei gehen die Koordinaten an diesen Dienst).</li>
+  <li><b>Wann:</b> Der nächtliche Abruf erkennt die Fahrten der letzten 3 Tage neu, der Knopf auf der Seite die der letzten 10 (so weit reicht der Recorder meist). Kategorie und Notiz bleiben dabei erhalten.</li>
+</ul>
+<div class="hb-warn"><b>Kein Fahrtenbuch fürs Finanzamt:</b> Dafür müssten die Einträge unveränderbar sein und Zweck und Geschäftspartner enthalten.</div>
 
 <h2 id="fahrten">Fahrten <a class="hb-oben" href="#oben">↑ nach oben</a></h2>
 <p class="hint">Überschrift: <b>„🚗 Gefahrene Kilometer (monatlich)"</b></p>

@@ -160,6 +160,9 @@ def _leasing() -> list:
     """Stand der Leasingvertraege fuer den Bericht: [(fahrzeugname, leasing.auswertung)] –
     das gewaehlte Fahrzeug bzw. alle sichtbaren."""
     import leasing
+    import module
+    if not module.an("leasing"):
+        return []
     fid = db.aktuelles_fahrzeug()
     erg = []
     for fz in db.fahrzeuge():
@@ -170,6 +173,35 @@ def _leasing() -> list:
         if l:
             erg.append((fz["name"], l))
     return erg
+
+
+def _energie(monat: str) -> list:
+    """Energie-Aufteilung des Monats je Fahrzeug: [(fahrzeugname, energie.summe)] – nur mit
+    Modul Energie und nur Fahrzeuge mit Tagen im Monat."""
+    import energie
+    import module
+    if not module.an("energie"):
+        return []
+    fid = db.aktuelles_fahrzeug()
+    erg = []
+    for fz in db.fahrzeuge():
+        if fid is not None and fz["id"] != fid:
+            continue
+        tage = [t for t in db.get_energie_tage(fz["id"]) if t["datum"][:7] == monat]
+        if tage:
+            erg.append((fz["name"], energie.summe(tage)))
+    return erg
+
+
+def energie_text(name: str, s: dict) -> str:
+    """Eine Zeile zur Energie-Aufteilung (Mail und Text)."""
+    teile = [f"{_(text)} {fmt(s['anteile'][k], 0)} %" for k, text in
+             (("antrieb_wh", "Antrieb"), ("klima_wh", "Klima"), ("elektronik_wh", "Bordelektronik"))
+             if s["anteile"][k] is not None]
+    text = _("Laut Bordcomputer {0} kWh/100 km", fmt(s["bordcomputer"], 1)) + " · " + ", ".join(teile)
+    if s["rekuperation_wh"]:
+        text += " · " + _("Rekuperation {0} kWh", fmt(s["rekuperation_wh"] / 1000, 1))
+    return (f"{name}: " if name else "") + text
 
 
 def leasing_text(name: str, l: dict) -> str:
@@ -201,7 +233,8 @@ def monatsbericht(jahr: int, monat: int) -> dict:
     return {"typ": "monat", "titel": f"{monatsname(monat)} {jahr}" + _sim_zusatz(),
             "jahr": jahr, "monat": monat,
             "daten": daten, "vergleich": vormonat,
-            "vergleich_titel": f"{monatsname(v_monat)} {v_jahr}", "leasing": _leasing()}
+            "vergleich_titel": f"{monatsname(v_monat)} {v_jahr}", "leasing": _leasing(),
+            "energie": _energie(schluessel)}
 
 
 def jahresbericht(jahr: int) -> dict:
@@ -338,6 +371,13 @@ def als_html(bericht: dict) -> str:
                        f'<th class="z">{_("Ersparnis &euro;")}</th></tr>'
                        + reihen + '</table>')
 
+    energie_html = ""
+    if bericht.get("energie"):
+        viele = len(bericht["energie"]) > 1
+        energie_html = (f'<h2>{_("Energie nach Verbraucher")}</h2>'
+                        + "".join(f'<p style="font-size:13px">'
+                                  f'{html.escape(energie_text(name if viele else "", s))}</p>'
+                                  for name, s in bericht["energie"]))
     mehrere_namen = len(bericht.get("leasing") or []) > 1
     leasing_html = ""
     if bericht.get("leasing"):
@@ -358,7 +398,7 @@ def als_html(bericht: dict) -> str:
         + f'<div style="margin:0 -1%">{kacheln}</div>'
         f'<h2>{_("Kennzahlen")}</h2><table>{tabelle}</table>'
         f'<p class="grau" style="font-size:12px">{_("Stromkosten, Verbrauch und Ersparnis rechnen mit den kWh, die an Wallbox oder Ladesäule gemessen und bezahlt wurden – die Ladeverluste sind darin enthalten.")}</p>'
-        f'{fahrzeug_html}{anbieter_html}{monats_html}{leasing_html}</div>'
+        f'{fahrzeug_html}{anbieter_html}{monats_html}{energie_html}{leasing_html}</div>'
         f'<div class="fuss">{_("Automatisch erstellt vom EV Tracker am {0}.", date.today().strftime("%d.%m.%Y"))}</div>'
         '</div></body></html>')
 
@@ -380,5 +420,6 @@ def als_text(bericht: dict) -> str:
         f"{_('CO2 gespart:'):<19} {fmt(d['co2'], 1, 'kg')}",
         "",
         _("Stromkosten, Verbrauch und Ersparnis rechnen mit den kWh, die an Wallbox oder Ladesäule gemessen und bezahlt wurden – die Ladeverluste sind darin enthalten."),
-    ] + [_("Leasing: {0}", leasing_text(name if len(bericht.get("leasing") or []) > 1 else "", l))
+    ] + [_("Energie: {0}", energie_text(name if len(bericht.get("energie") or []) > 1 else "", s))
+         for name, s in bericht.get("energie") or []] + [_("Leasing: {0}", leasing_text(name if len(bericht.get("leasing") or []) > 1 else "", l))
          for name, l in bericht.get("leasing") or []])

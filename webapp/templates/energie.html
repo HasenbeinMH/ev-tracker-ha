@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block titel %}{{ _("Energie") }}{% endblock %}
+{% block inhalt %}
+<h1>{{ _("⚡ Energie – wofür das Auto Strom braucht") }}</h1>
+{% if meldung %}<div class="sim-banner" role="status">{{ meldung }}</div>{% endif %}
+<p class="hint">{{ _("Aus der täglichen Fahrstatistik des Autos (z. B. Kia/Hyundai): Antrieb, Klima, Bordelektronik und Batteriepflege, dazu die Rekuperation. Der nächtliche Abruf speichert jeden Tag – das Auto selbst hält nur die letzten Tage vor.") }}</p>
+
+<form class="vergleich-wahl" method="get" action="energie">
+  <select name="zeitraum" onchange="this.form.submit()">
+    {% for gruppe, eintraege in zeitraum_optionen %}
+      {% if gruppe %}<optgroup label="{{ gruppe }}">{% endif %}
+      {% for schluessel, text in eintraege %}
+        <option value="{{ schluessel }}" {% if schluessel == zeitraum.schluessel %}selected{% endif %}>{{ text }}</option>
+      {% endfor %}
+      {% if gruppe %}</optgroup>{% endif %}
+    {% endfor %}
+  </select>
+  <noscript><button type="submit" class="secondary">{{ _("Anzeigen") }}</button></noscript>
+</form>
+
+{% for fz, x in autos %}
+{% set e = x.e %}
+{% set s = e.summe %}
+{% if autos | length > 1 %}<h2 class="fz-titel">🚗 {{ fz.name }}</h2>{% endif %}
+
+{% if not e.tage %}
+<div class="card">
+  <span class="gelb">{{ _("Noch keine Tage aus der Fahrstatistik.") }}</span>
+  {% if sensor %}
+    {{ _("Der Sensor ist eingetragen – die Tage kommen mit dem nächtlichen Abruf, oder gleich hier:") }}
+  {% else %}
+    {{ _("Unter <a href=\"einstellungen#sensor-energie\">Einstellungen → Sensoren</a> die „Tägliche Fahrstatistik“ des Autos eintragen (bei Kia/Hyundai z. B. <code>sensor.…_tagliche_fahrstatistik</code>).") }}
+  {% endif %}
+  <form method="post" action="energie/nachholen" style="display:inline">
+    {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ fz.id }}">{% endif %}
+    <button type="submit" class="secondary">{{ _("🔄 Aus Home Assistant holen") }}</button>
+  </form>
+</div>
+{% else %}
+<div class="statgrid">
+  <div class="stat"><span class="wert">{{ s.bordcomputer | de(1) if s.bordcomputer else "–" }}</span><span class="einheit">kWh/100 km</span>
+    <div class="label">{{ _("Verbrauch laut Bordcomputer") }}</div></div>
+  <div class="stat"><span class="wert orange">{{ s.anteile.klima_wh | de(0) if s.anteile.klima_wh is not none else "–" }}</span><span class="einheit">%</span>
+    <div class="label">{{ _("Anteil Klima") }}</div></div>
+  <div class="stat"><span class="wert gruen">{{ (s.rekuperation_wh / 1000) | de(1) }}</span><span class="einheit">kWh</span>
+    <div class="label">{{ _("Rekuperation (entspricht {0} % des Antriebs)", s.rekuperation_anteil | de(0) if s.rekuperation_anteil is not none else "–") }}</div></div>
+  <div class="stat"><span class="wert">{{ e.kosten.klima_wh | de(2) }}</span><span class="einheit">€</span>
+    <div class="label">{{ _("Heizen/Kühlen gekostet") }}</div></div>
+  <div class="stat"><span class="wert">{{ (s.stand_wh / 1000) | de(1) }}</span><span class="einheit">kWh</span>
+    <div class="label">{{ _("Standverbrauch ({0} Tage ohne Fahrt)", s.stand_tage) }}</div></div>
+</div>
+
+<div class="chartgrid">
+  <div class="chart">
+    <div class="titel">{{ _("Anteile · {0}", zeitraum.titel) }}</div>
+    <div class="echart" data-echart="opt-anteile-{{ fz.id }}"></div>
+    <script type="application/json" id="opt-anteile-{{ fz.id }}">{{ x.charts.anteile | tojson }}</script>
+  </div>
+  <div class="chart">
+    <div class="titel">{{ _("Je Monat in kWh/100 km") }}</div>
+    <div class="echart" data-echart="opt-monate-{{ fz.id }}"></div>
+    <script type="application/json" id="opt-monate-{{ fz.id }}">{{ x.charts.monate | tojson }}</script>
+  </div>
+</div>
+
+<div class="tabelle-scroll"><table class="vergleich">
+  <tr><th>{{ _("Verbraucher") }}</th><th class="zahl">{{ _("kWh") }}</th><th class="zahl">{{ _("Anteil") }}</th>
+      <th class="zahl">{{ _("kWh/100 km") }}</th><th class="zahl">{{ _("Kosten") }}</th></tr>
+  {% for k, text in kategorien %}
+  <tr>
+    <td>{{ _(text) }}</td>
+    <td class="zahl">{{ (s[k] / 1000) | de(1) }}</td>
+    <td class="zahl">{{ s.anteile[k] | de(1) ~ " %" if s.anteile[k] is not none else "–" }}</td>
+    <td class="zahl">{{ s.je_100km[k] | de(1) if s.je_100km[k] is not none else "–" }}</td>
+    <td class="zahl">{{ e.kosten[k] | de(2) }} €</td>
+  </tr>
+  {% endfor %}
+  <tr class="summenzeile">
+    <td>{{ _("Gesamt ({0} km, {1} Tage)", s.km | de(0), s.tage) }}</td>
+    <td class="zahl">{{ (s.gesamt_wh / 1000) | de(1) }}</td><td class="zahl">100 %</td>
+    <td class="zahl">{{ s.bordcomputer | de(1) if s.bordcomputer else "–" }}</td>
+    <td class="zahl">{{ (e.kosten.values() | sum) | de(2) }} €</td>
+  </tr>
+</table></div>
+
+{% if e.saison.sommer or e.saison.winter %}
+<p class="hint">{{ _("Klima je 100 km: Sommer (Jun–Aug) {0} kWh, Winter (Dez–Feb) {1} kWh.", e.saison.sommer | de(1) if e.saison.sommer else "–", e.saison.winter | de(1) if e.saison.winter else "–") }}</p>
+{% endif %}
+<p class="hint">
+  {{ _("Daten vom {0} bis {1} ({2} Tage).", e.von[8:10] ~ "." ~ e.von[5:7] ~ "." ~ e.von[:4], e.bis[8:10] ~ "." ~ e.bis[5:7] ~ "." ~ e.bis[:4], e.tage) }}
+  {{ _("<b>Laut Bordcomputer</b> zählt das Auto nur, was während der Fahrten verbraucht wurde – ohne Standverbrauch über Nacht und ohne Verluste im Akku. Der Wert liegt daher unter dem Verbrauch laut Auto-Akku und laut Wallbox; die Anteile der Verbraucher sind davon unberührt. Rekuperation: beim Bremsen zurückgewonnene Energie laut Fahrstatistik. Kosten: kWh × Ø Strompreis des Monats (an Wallbox/Säule bezahlt).") }}
+</p>
+<form method="post" action="energie/nachholen">
+  {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ fz.id }}">{% endif %}
+  <button type="submit" class="secondary">{{ _("🔄 Jetzt aus Home Assistant holen") }}</button>
+</form>
+{% endif %}
+{% endfor %}
+
+<script src="static/echarts.min.js"></script>
+<script src="static/charts.js"></script>
+{% endblock %}

@@ -37,7 +37,8 @@ GEHEIM = {"ha_token", heimladung.TOKEN_KEY, "mail_passwort"} | datenquellen.GEHE
 PERSOENLICH = {"mail_benutzer", "mail_absender", "mail_empfaenger"}
 
 # Einstellungen mit HA-Entity-IDs (Fahrzeug-Schluessel auch als "<key>@<id>")
-SENSOR_KEYS = ("ha_odometer", "ha_ev_battery", "ha_ev_range", "ha_ev_soh", "ha_pv_production",
+SENSOR_KEYS = ("ha_odometer", "ha_ev_battery", "ha_ev_range", "ha_ev_soh", "ha_ev_tagesstatistik",
+               "ha_ev_ort", "ha_ev_fahrt", "ha_pv_production",
                "ha_grid_consumption", "ha_grid_export", "ha_wallbox_energy",
                "ha_wallbox_cost", "ha_tankerkoenig", "ha_tankerkoenig_2")
 

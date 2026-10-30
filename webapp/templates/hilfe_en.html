@@ -62,6 +62,9 @@
   <a href="#akku">Battery</a>
   <a href="#profil">Profile</a>
   <a href="#leasing">Leasing</a>
+  <a href="#module">Modules</a>
+  <a href="#energie">Energy</a>
+  <a href="#fahrtenbuch">Trip log</a>
   <a href="#fahrten">Trips</a>
   <a href="#laden">Charging</a>
   <a href="#ladetarife">Charging tariffs</a>
@@ -161,7 +164,7 @@
 <p><b>Consumption from the battery level per month:</b> the same pairing as a table with the figures behind it – per month and period the counted km, the kWh from the battery and the consumption. The total row is weighted via Σ kWh ÷ Σ km and matches the row “Consumption from battery” in the table above.</p>
 <div class="hb-warn"><b>Different km than in the chart:</b> this table only counts the km of the counted trip segments, not the monthly recorded total kilometres – otherwise km, kWh and consumption in one row would not match. Which segments are left out is explained under <a href="#akkuverbrauch">Consumption from the battery level</a>.</div>
 
-<h2 id="akku">Battery <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<h2 id="akku">Battery (module) <a class="hb-oben" href="#oben">↑ back to top</a></h2>
 <p>Battery health, charge cycles and range – under <b>Analysis → Battery</b>. The basis are the <a href="#akkuverbrauch">trip segments from the battery level</a>: between two segments there is a charge, from the level at the end of one to the start of the next.</p>
 <h3 id="soh">Battery health (SoH)</h3>
 <p>SoH (state of health) = today's usable capacity relative to new condition. Three sources, <b>measured values always take precedence</b>:</p>
@@ -176,9 +179,9 @@
 <h3 id="zyklen">Charge cycles and charging window</h3>
 <p>One <b>full cycle</b> = 100 % of the battery charged, no matter in how many sessions. Counted are the rises of the battery level between two trip segments; months before the first battery level are estimated from the charged kWh (<code>kWh × (1 − charging losses) ÷ capacity</code>). The <b>charging window</b> shows how full the battery was before and after charging, plus the share of charges to ≥ 95 % and from below 20 %.</p>
 <h3 id="reichweite">Range</h3>
-<p><code>Range at 100 % = battery capacity ÷ consumption according to car battery × 100</code> – equivalent to km per percent of battery × 100, the capacity cancels out. The car's battery level already refers to today's usable capacity, so an aged battery is already included. In addition “80 → 10 %” (70 % of it, a typical leg on long trips), summer against winter and a forecast for twelve months (average of the same month in previous years, otherwise of all months). With one vehicle, the page fetches the current battery level live and shows the range according to the car next to it (sensor “Range according to car”, optional).</p>
+<p><code>Range at 100 % = battery capacity ÷ consumption according to car battery × 100</code> – equivalent to km per percent of battery × 100, the capacity cancels out. The car's battery level already refers to today's usable capacity, so an aged battery is already included. In addition the range in your own <b>usage window</b> – e.g. “80 → 20 %” if you charge to 80 % and recharge at 20 % (adjustable on the Battery page, with a suggestion from your measured charging window) –, summer against winter and a forecast for twelve months (average of the same month in previous years, otherwise of all months). With one vehicle, the page fetches the current battery level live and shows the range according to the car next to it (sensor “Range according to car”, optional; if it returns no value, “check sensor” is shown).</p>
 
-<h2 id="profil">Profile <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<h2 id="profil">Profile (module) <a class="hb-oben" href="#oben">↑ back to top</a></h2>
 <p>Under <b>Analysis → Profile</b>:</p>
 <ul>
   <li><b>Usage profile:</b> from the km per day (last odometer reading of the day − last one before; created together with the trip segments, so it needs odometer and battery level). Average km per day and driving day, share of days with trips, average per weekday, days by distance, longest day – and how much battery covers 95 % of your driving days (95 % quantile of the daily km ÷ range of the month).</li>
@@ -186,7 +189,7 @@
   <li><b>Development over the years:</b> one line per year from January to December (km, both consumption values, electricity cost per 100 km, savings) and a table with the key figures per calendar year as in the Statistics.</li>
 </ul>
 
-<h2 id="leasing">Leasing <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<h2 id="leasing">Leasing (module) <a class="hb-oben" href="#oben">↑ back to top</a></h2>
 <p>For leased cars under <b>Settings → Leasing</b>: contract start and end, km per year, odometer at handover (empty = km at purchase), tolerance and the rates for excess and unused km. Shown under <a href="#fahrten">Trips</a>, as a section on the dashboard and in the monthly report.</p>
 <table>
   <tr><th style="width:34%">Value</th><th>Formula</th></tr>
@@ -195,6 +198,34 @@
   <tr><td>Forecast</td><td><code>driven + for each remaining month the km of the same month a year earlier</code> – without a previous year the average km per day of the last 12 months</td></tr>
   <tr><td>Excess km</td><td><code>forecast − contract km − tolerance</code>, in euros <code>× rate ÷ 100</code>; unused km accordingly</td></tr>
 </table>
+
+<h2 id="module">Modules <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p>Under <b>Settings → Modules</b> you switch the additional analyses on and off: <b>Battery</b>, <b>Profile</b>, <b>Leasing</b>, <b>Energy</b> and <b>Trip log</b>. The switches apply to the whole app, the sensors per vehicle. A switched-off module disappears from menu, dashboard (also in customise mode), settings, monthly report and nightly fetch; its pages redirect to the settings. <b>Stored data is kept</b> – after switching it on again everything is back, including the tiles in their old place.</p>
+<p>Without your own choice: Battery and Profile on, Leasing on as soon as a contract is entered, Energy on as soon as a daily driving statistics sensor is set, Trip log off. Each card shows what the module needs (✓ present, ○ missing).</p>
+
+<h2 id="energie">Energy (module) <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p>What the car uses the energy for: <b>drive, climate, on-board electronics, battery care</b> and what <b>regeneration</b> recovers. The source is the car's daily driving statistics – for Kia/Hyundai (integration “Kia Uvo / Hyundai Bluelink”) the sensor “Daily driving statistics”, whose attributes contain the values in Wh per day. Set it under Settings → Sensors.</p>
+<p>The car only keeps the last few days. The nightly fetch therefore stores every day (the current day is overwritten until the next fetch); when the module is switched on and with the button on the Energy page, the EV Tracker also fetches the days the recorder still has (about 10).</p>
+<table>
+  <tr><th style="width:34%">Value</th><th>Formula</th></tr>
+  <tr><td>Consumption according to on-board computer</td><td><code>Σ total ÷ Σ km</code> – matches the average the car shows itself</td></tr>
+  <tr><td>Share per consumer</td><td><code>kWh of the consumer ÷ total</code> (total = drive + climate + on-board electronics + battery care)</td></tr>
+  <tr><td>Cost per consumer</td><td><code>Σ day: kWh × average electricity price of the month</code> (paid at wallbox/charger, charging losses included)</td></tr>
+  <tr><td>Regeneration</td><td>recovered kWh, also relative to drive</td></tr>
+  <tr><td>Standby consumption</td><td>sum of days with less than 1 km (preconditioning, 12 V battery …)</td></tr>
+</table>
+<div class="hb-warn"><b>On-board computer counts less:</b> the car only records what was used while driving – without standby consumption overnight and without losses in the battery. The value is therefore below the consumption according to the car battery and the wallbox. The shares of the consumers are not affected. With the module on, the statistics show the value as a third consumption row.</div>
+
+<h2 id="fahrtenbuch">Trip log (module) <a class="hb-oben" href="#oben">↑ back to top</a></h2>
+<p>Individual trips with start and end time, start, destination, km, battery from–to and kWh – under <b>Trips → Trip log</b>, per month, with category (private, commute, business), note and CSV export. The profile uses the trips as well (trips per day, lengths, departure times, most frequent destinations).</p>
+<ul>
+  <li><b>Sensors:</b> odometer and battery level as before, plus the <b>location</b> – the car's device_tracker or, if the same person always drives, the <b>phone's</b> or <code>person.*</code> (several with <code>|</code>, the first with coordinates counts). Optionally <b>motor/ignition</b> as a binary_sensor.</li>
+  <li><b>Detection:</b> a trip starts as soon as the odometer rises or the motor runs, and ends when the car stands for at least the set break (default 30 minutes). Shorter breaks do not interrupt the trip. Standing still is proven by “motor off” or an unchanged location; without proof, only a gap of break + 30 minutes splits. Trips below the minimum distance (default 0.5 km) do not count.</li>
+  <li><b>Accuracy:</b> many cars report only every 30 minutes – start and end are then accurate to about half an hour. A phone as location makes them more precise: departure is the first position that moves away from the start, arrival the first after which nothing moves any more.</li>
+  <li><b>Location:</b> the EV Tracker records it itself every minute (only on change, for 30 days) while the module is on – the Home Assistant recorder does not need to include device_tracker. Start and destination are named like the Home Assistant zone, otherwise the coordinates are shown – or, if switched on, the address from OpenStreetMap (the coordinates are sent to that service).</li>
+  <li><b>When:</b> the nightly fetch re-detects the trips of the last 3 days, the button on the page those of the last 10 (as far as the recorder usually reaches). Category and note are kept.</li>
+</ul>
+<div class="hb-warn"><b>Not a trip log for the tax office:</b> for that, entries would have to be unchangeable and include purpose and business partner.</div>
 
 <h2 id="fahrten">Trips <a class="hb-oben" href="#oben">↑ back to top</a></h2>
 <p class="hint">Heading: <b>“🚗 Kilometres driven (monthly)”</b></p>

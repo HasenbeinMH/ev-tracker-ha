@@ -53,7 +53,7 @@
   {# Eine Ladung = eine Zeile. Heimladungen aus PV und Netz (aus HA geschickt oder als
      Monatssumme importiert) stehen zusammengefasst darin, die Teile lassen sich aufklappen
      und einzeln bearbeiten. #}
-  {% macro zeile(d, gruppe=none, vor="") %}
+  {% macro zeile(d, gruppe=none) %}
   <tr data-id="{{ d.id }}"{% if gruppe %} class="lade-teil" data-gruppe="{{ gruppe }}" hidden{% endif %}
       data-datum="{{ d.datum }}" data-kwh="{{ d.menge_kwh }}"
       data-ct="{{ d.preis_kwh or '' }}" data-gesamt="{{ d.gesamtpreis }}"
@@ -61,7 +61,7 @@
       data-typ="{{ d.ladetyp }}" data-blockier="{{ d.blockiergebuehr or '' }}"
       data-notiz="{{ d.notiz or '' }}" data-fahrzeug="{{ d.fahrzeug_id }}">
     {% if gesamtsicht %}<td>{{ fahrzeug_name_von(d.fahrzeug_id) }}</td>{% endif %}
-    <td style="white-space:nowrap">{{ vor }}{{ d.datum }}</td>
+    <td style="white-space:nowrap"><span class="aufklappen-platz"></span>{{ d.datum }}</td>
     <td>{{ "%.2f"|format(d.menge_kwh)|replace(".", ",") }}</td>
     <td>{{ ("%.2f"|format(d.preis_kwh)|replace(".", ",")) if d.preis_kwh else "—" }}</td>
     <td>{{ "%.2f"|format(d.gesamtpreis)|replace(".", ",") }} €</td>
@@ -83,7 +83,7 @@
   {% endmacro %}
   {% for g in gruppen %}
   {% if g.teile | length == 1 %}
-  {{ zeile(g.kopf, vor='<span class="aufklappen-platz"></span>' | safe) }}
+  {{ zeile(g.kopf) }}
   {% else %}
   {% set d = g.kopf %}
   {% set gid = "g" ~ loop.index %}
@@ -112,7 +112,7 @@
       </form>
     </td>
   </tr>
-  {% for t in g.teile %}{{ zeile(t, gruppe=gid, vor='<span class="aufklappen-platz"></span>' | safe) }}{% endfor %}
+  {% for t in g.teile %}{{ zeile(t, gruppe=gid) }}{% endfor %}
   {% endif %}
   {% endfor %}
 </table></div>

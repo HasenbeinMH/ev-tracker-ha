@@ -108,9 +108,12 @@ Danach holt der nächtliche Abruf km, kWh und Kraftstoffpreis jeden Monat von se
 | Seite | Beschreibung |
 |-------|-------------|
 | 📊 Dashboard | Gesamtübersicht, Kennzahlen, alle Charts, Amortisation des Mehrpreises – je Fahrzeug oder für alle zusammen |
-| 🔋 Akku | Akku-Gesundheit (SoH: von Hand, Sensor oder geschätzt), nutzbare Kapazität, Alterung mit Garantie-Prognose, Ladezyklen, Ladefenster, Reichweite je Monat mit Prognose |
-| 📈 Profil | Nutzungsprofil (km je Wochentag, Tage nach Strecke), Ladeprofil (wann, wo, AC/DC), Entwicklung über die Jahre |
+| 🧩 Module | Zusatzauswertungen unter Einstellungen ein- und ausschalten: Akku, Profil, Leasing, Energie, Fahrtenbuch |
+| 🔋 Akku | Akku-Gesundheit (SoH: von Hand, Sensor oder geschätzt), nutzbare Kapazität, Alterung mit Garantie-Prognose, Ladezyklen, Ladefenster, Reichweite je Monat und im eigenen Nutzungsfenster (z. B. 80 → 20 %) mit Prognose |
+| 📈 Profil | Nutzungsprofil (km je Wochentag, Tage nach Strecke), Fahrten (Längen, Abfahrtszeiten, Ziele), Ladeprofil (wann, wo, AC/DC), Entwicklung über die Jahre |
+| ⚡ Energie | Wofür der Strom gebraucht wird: Antrieb, Klima, Bordelektronik, Rekuperation – aus der täglichen Fahrstatistik des Autos (z. B. Kia/Hyundai) |
 | 🚗 Fahrten | km erfassen, Kraftstoff-Äquivalent, Verbrauch kWh/100 km, Leasing-Kilometer mit Prognose und Mehr-km |
+| 📒 Fahrtenbuch | Einzelne Fahrten mit Start, Ziel, km und Verbrauch; Standort von Auto oder Handy, Pausengrenze einstellbar, CSV-Export |
 | 🔌 Laden | Ladevorgänge mit kWh, Preis, Anbieter, AC/DC, Blockiergebühr |
 | 🔋 Ladetarife | Eigene Lade-Abos mit Preisverlauf |
 | ⛽ Kraftstoffpreise | Benzin, Diesel oder Autogas: Monatsdurchschnitte + Preisverlauf |
