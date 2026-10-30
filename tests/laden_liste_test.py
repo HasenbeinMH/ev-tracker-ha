@@ -52,6 +52,16 @@ monat = next(x for x in g if x["kopf"]["datum"] == "2026-09-01")
 check("Monatssumme aus PV und Netz zusammengefasst", len(monat["teile"]) == 2
       and monat["kopf"]["menge_kwh"] == 150)
 
+# Anzahl der Ladevorgaenge in Statistik und Bericht: so viele wie Zeilen in der Liste
+import berechnung, zeitraum, berichte
+check("Anzahl wie Zeilen der Liste", berechnung.anzahl_ladungen(berechnung.ladevorgaenge()) == len(g) == 4,
+      str(len(g)))
+kz = zeitraum.kennzahlen(zeitraum.aufloesen("2026"), zeitraum.laden())
+check("Statistik zaehlt die Teile einer Ladung einmal (6 Eintraege, 4 Ladungen)",
+      kz["ladevorgaenge"] == 4, str(kz["ladevorgaenge"]))
+check("Monatsbericht zaehlt die Monatssumme einmal",
+      berichte.monatsbericht(2026, 9)["daten"]["ladevorgaenge"] == 1)
+
 r = c.get("/laden")
 html = r.text
 check("Seite: Summenzeilen mit Pfeil", r.status_code == 200 and html.count('class="lade-gruppe"') == 2

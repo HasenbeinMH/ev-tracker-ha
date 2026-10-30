@@ -888,14 +888,7 @@ def _lade_gruppen(rows: list) -> list:
     bei nur einem Teil ist der Kopf die Zeile selbst."""
     gruppen = {}
     for r in rows:
-        kennung = r.get("extern_id") or ""
-        if kennung.startswith("ha:") and kennung.rsplit(":", 1)[-1] in ("netz", "pv"):
-            schluessel = kennung.rsplit(":", 1)[0]
-        elif (r["anbieter"] in (berechnung.NETZBEZUG, heimladung.PV)
-              and (r.get("notiz") or "").startswith((db.AUTO_NOTIZ, db.IMPORT_NOTIZ))):
-            schluessel = ("monat", r["datum"], r["fahrzeug_id"])
-        else:
-            schluessel = ("einzeln", r["id"])
+        schluessel = berechnung.ladung_schluessel(r) or ("einzeln", r["id"])
         gruppen.setdefault(schluessel, []).append(r)
     erg = []
     for teile in gruppen.values():
@@ -1954,7 +1947,7 @@ def _monat_pruefen(jahr: int, monat: int) -> dict:
 
     return {"monat": schluessel, "bereit": not offen, "offen": offen,
             "ladeerkennung": ladung,
-            "km": fahrten.get(schluessel), "ladevorgaenge": len(lade)}
+            "km": fahrten.get(schluessel), "ladevorgaenge": berechnung.anzahl_ladungen(lade)}
 
 
 @app.get("/api/bericht/pruefung")

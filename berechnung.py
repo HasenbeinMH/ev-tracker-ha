@@ -213,6 +213,33 @@ def nur_ladungen(lade: list) -> list:
     return [l for l in lade if not l.get("grundgebuehr")]
 
 
+def ladung_schluessel(l: dict):
+    """Welche Eintraege zusammen eine Ladung bilden – wie eine Zeile der Ladeliste: PV- und
+    Netzteil einer aus Home Assistant geschickten Ladung (Kennung "ha:<Beginn>:netz" / ":pv")
+    bzw. die importierte Monatssumme aus PV und Netz (naechtlicher Abruf oder Zeitraum-Import).
+    None: der Eintrag ist eine Ladung fuer sich."""
+    kennung = l.get("extern_id") or ""
+    if kennung.startswith("ha:") and kennung.rsplit(":", 1)[-1] in ("netz", "pv"):
+        return kennung.rsplit(":", 1)[0]
+    if (l.get("anbieter") in STROMQUELLEN
+            and (l.get("notiz") or "").startswith((db.AUTO_NOTIZ, db.IMPORT_NOTIZ))):
+        return ("monat", l["datum"], l.get("fahrzeug_id"))
+    return None
+
+
+def anzahl_ladungen(lade: list) -> int:
+    """Anzahl der Ladevorgaenge wie in der Ladeliste: ohne Grundgebuehr-Eintraege, die Teile
+    einer Ladung (ladung_schluessel) zaehlen einmal."""
+    gesehen, n = set(), 0
+    for l in nur_ladungen(lade):
+        k = ladung_schluessel(l)
+        if k is None or k not in gesehen:
+            n += 1
+            if k is not None:
+                gesehen.add(k)
+    return n
+
+
 def benzin_liter(km: float, benziner_verbrauch: float) -> float:
     """Liter Benzin, die ein Vergleichs-Benziner für km gebraucht hätte."""
     return (km / 100) * benziner_verbrauch

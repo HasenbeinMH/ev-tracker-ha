@@ -309,7 +309,7 @@ def kennzahlen(z: dict, daten: dict) -> dict:
         "steuer_monate":    st_mon,
         "gesamt_km":        km,
         "gesamt_kwh":       kwh,
-        "ladevorgaenge":    len(berechnung.nur_ladungen(f["lade"])),
+        "ladevorgaenge":    berechnung.anzahl_ladungen(f["lade"]),
         "strom_kosten":     strom_kosten,
         "benzin_kosten":    benzin_kosten,
         "avg_benzin":       avg_benzin,

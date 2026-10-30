@@ -19,10 +19,19 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "3.9.2"
+VERSION = "3.9.3"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.9.3",
+        "datum": "2026-10-30",
+        "titel": "Ladevorgaenge zaehlen wie in der Ladeliste",
+        "aenderungen": [
+            "Behoben: Statistik, Dashboard-Kachel und Monatsbericht zaehlten eine aus Home Assistant geschickte Ladung aus PV und Netz als zwei Ladevorgaenge (z. B. 8 statt 4), ebenso die importierte Monatssumme aus PV und Netz",
+            "Jetzt zaehlen alle Stellen wie die Ladeliste: die Teile einer Ladung einmal",
+        ],
+    },
     {
         "version": "3.9.2",
         "datum": "2026-10-30",

@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.9.3] - 2026-10-30
+
+### Ladevorgaenge zaehlen wie in der Ladeliste
+- Behoben: Statistik, Dashboard-Kachel und Monatsbericht zaehlten eine aus Home Assistant geschickte Ladung aus PV und Netz als zwei Ladevorgaenge (z. B. 8 statt 4), ebenso die importierte Monatssumme aus PV und Netz
+- Jetzt zaehlen alle Stellen wie die Ladeliste: die Teile einer Ladung einmal
+
 ## [3.9.2] - 2026-10-30
 
 ### Verbrauch im laufenden Monat und Rundung im Profil
