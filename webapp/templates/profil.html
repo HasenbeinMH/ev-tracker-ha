@@ -98,7 +98,13 @@
     <script type="application/json" id="opt-lwt-{{ fz.id }}">{{ p.charts.ladetage | tojson }}</script>
   </div>
 </div>
+{% if l.ladungen_genau and l.ladungen_genau == l.ladungen %}
+<p class="hint">{{ _("Wann: {0} Ladungen, aus Home Assistant geschickt, mit genauem Beginn. Wo und wie: alle erfassten Ladevorgänge in kWh.", l.ladungen) }}</p>
+{% elif l.ladungen_genau %}
+<p class="hint">{{ _("Wann: {0} Ladungen – {1} aus Home Assistant geschickt, mit genauem Beginn, dazu {2} aus dem Akkustand: Die sind nur so genau wie der Abfragetakt des Autos und erst erkannt, wenn danach wieder gefahren wurde. Wo und wie: alle erfassten Ladevorgänge in kWh.", l.ladungen, l.ladungen_genau, l.ladungen - l.ladungen_genau) }}</p>
+{% else %}
 <p class="hint">{{ _("Wann: Ladungen aus dem Akkustand ({0}), Beginn auf die Stunde genau. Wo und wie: alle erfassten Ladevorgänge in kWh.", l.ladungen) }}</p>
+{% endif %}
 {% endfor %}
 
 <h2 id="jahre">{{ _("Entwicklung über die Jahre") }}</h2>

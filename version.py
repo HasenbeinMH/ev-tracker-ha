@@ -19,10 +19,20 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "3.9.0"
+VERSION = "3.9.1"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.9.1",
+        "datum": "2026-10-30",
+        "titel": "Ladeprofil mit genauen Ladezeiten",
+        "aenderungen": [
+            "Profil: Ladebeginn nach Uhrzeit und Ladungen nach Wochentag nutzen jetzt die aus Home Assistant geschickten Ladungen mit ihrem genauen Beginn (PV- und Netzteil zaehlen einmal)",
+            "Ladungen aus dem Akkustand zaehlen nur noch, wenn keine geschickte Ladung in ihrem Zeitraum beginnt – sie sind nur so genau wie der Abfragetakt des Autos (z. B. 30 Minuten) und erst erkannt, wenn danach wieder gefahren wurde; bisher fehlte so z. B. die Ladung von heute",
+            "Der Hinweis unter den Diagrammen nennt, wie viele Ladungen genau und wie viele aus dem Akkustand stammen; Hilfe angepasst",
+        ],
+    },
     {
         "version": "3.9.0",
         "datum": "2026-10-30",

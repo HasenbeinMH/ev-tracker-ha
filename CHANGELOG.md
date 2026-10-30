@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.9.1] - 2026-10-30
+
+### Ladeprofil mit genauen Ladezeiten
+- Profil: Ladebeginn nach Uhrzeit und Ladungen nach Wochentag nutzen jetzt die aus Home Assistant geschickten Ladungen mit ihrem genauen Beginn (PV- und Netzteil zaehlen einmal)
+- Ladungen aus dem Akkustand zaehlen nur noch, wenn keine geschickte Ladung in ihrem Zeitraum beginnt – sie sind nur so genau wie der Abfragetakt des Autos (z. B. 30 Minuten) und erst erkannt, wenn danach wieder gefahren wurde; bisher fehlte so z. B. die Ladung von heute
+- Der Hinweis unter den Diagrammen nennt, wie viele Ladungen genau und wie viele aus dem Akkustand stammen; Hilfe angepasst
+
 ## [3.9.0] - 2026-10-30
 
 ### Module, Energie-Aufteilung und Fahrtenbuch

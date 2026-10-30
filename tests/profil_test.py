@@ -68,6 +68,22 @@ check("Ladungen nach Wochentag und Stunde", l["je_wochentag"][0] == 1 and l["je_
 check("Anteil zuhause und DC", nah(l["anteil_zuhause"], 75) and nah(l["anteil_dc"], 60), str(l))
 check("Ladungen unterwegs (ohne Grundgebuehr)", l["unterwegs"] == 2)
 
+# Aus Home Assistant geschickte Ladungen: genauer Beginn, PV- und Netzteil zaehlen einmal; eine
+# Ladung aus dem Akkustand, in deren Zeitraum eine davon beginnt, zaehlt nicht doppelt
+ladungen = [{"start": "2026-10-24T14:03", "ende": "2026-10-25T09:33", "anstieg": 30},   # abgedeckt
+            {"start": "2026-10-20T21:00", "ende": "2026-10-21T07:00", "anstieg": 40}]   # nicht
+lv = [{"anbieter": "Privat – Netzbezug", "menge_kwh": 9, "extern_id": "ha:2026-10-24T16:18:netz"},
+      {"anbieter": "Privat – PV", "menge_kwh": 1, "extern_id": "ha:2026-10-24T16:18:pv"},
+      {"anbieter": "Privat – Netzbezug", "menge_kwh": 1, "extern_id": "ha:2026-10-24T14:32:netz"},
+      {"anbieter": "Privat – Netzbezug", "menge_kwh": 30, "extern_id": "ha:2026-10-30T17:33@2:netz"},
+      {"anbieter": "EnBW", "menge_kwh": 30, "ladetyp": "DC", "extern_id": None}]
+l = profil.laden(ladungen, lv)
+check("Genaue Ladungen aus HA", l["ladungen"] == 4 and l["ladungen_genau"] == 3, str(l))
+check("Genaue Ladungen nach Stunde", l["je_stunde"][16] == 1 and l["je_stunde"][14] == 1
+      and l["je_stunde"][17] == 1 and l["je_stunde"][21] == 1 and sum(l["je_stunde"]) == 4,
+      str(l["je_stunde"]))
+check("Genaue Ladungen nach Wochentag", l["je_wochentag"] == [0, 1, 0, 0, 1, 2, 0], str(l["je_wochentag"]))
+
 # ── Jahresvergleich ──────────────────────────────────────────────────────────
 for monat, km in (("2025-01", 1000), ("2025-02", 800), ("2026-01", 1200)):
     c.post("/fahrten", data={"monat": monat, "km": str(km)}, follow_redirects=False)

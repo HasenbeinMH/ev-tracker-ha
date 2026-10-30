@@ -185,7 +185,7 @@
 <p>Under <b>Analysis → Profile</b>:</p>
 <ul>
   <li><b>Usage profile:</b> from the km per day (last odometer reading of the day − last one before; created together with the trip segments, so it needs odometer and battery level). Average km per day and driving day, share of days with trips, average per weekday, days by distance, longest day – and how much battery covers 95 % of your driving days (95 % quantile of the daily km ÷ range of the month).</li>
-  <li><b>Charging profile:</b> when you charge (charges from the battery level by time of day and weekday) and where and how (all charging sessions: at home solar/grid or on the road, AC or DC).</li>
+  <li><b>Charging profile:</b> when you charge (by time of day and weekday: charges sent from Home Assistant with the exact start, plus the charges from the battery level not covered by one of them – these are only as precise as the car's polling interval and are detected only once the car has been driven again) and where and how (all charging sessions: at home solar/grid or on the road, AC or DC).</li>
   <li><b>Development over the years:</b> one line per year from January to December (km, both consumption values, electricity cost per 100 km, savings) and a table with the key figures per calendar year as in the Statistics.</li>
 </ul>
 

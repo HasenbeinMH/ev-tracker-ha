@@ -6,13 +6,15 @@ Nutzungsprofil: aus den Tages-km (Tabelle fahrten_tag, gebildet aus dem stuendli
 Kilometerstand in akkuverbrauch.tages_km) – wie viel an welchem Wochentag gefahren wird,
 wie sich die Tage verteilen und wie viel Akku ein typischer Tag braucht.
 
-Ladeprofil: wann geladen wird (Ladungen aus dem Akkustand, akku.ladungen_aus_abschnitten)
+Ladeprofil: wann geladen wird (aus Home Assistant geschickte Ladungen mit genauem Beginn,
+dazu die Ladungen aus dem Akkustand, akku.ladungen_aus_abschnitten, die keine davon abdecken)
 und wo (Ladevorgaenge: zuhause PV/Netz oder unterwegs, AC oder DC).
 
 Jahresvergleich: dieselben Monatswerte wie die Statistik (zeitraum.monatswerte), je Jahr
 eine Linie ueber Januar bis Dezember, dazu die Kennzahlen je Kalenderjahr.
 """
-from datetime import date
+import re
+from datetime import date, datetime, timedelta
 
 import berechnung
 import zeitraum
@@ -80,18 +82,43 @@ def nutzung(tage: list, reichweite_100: float | None = None) -> dict | None:
     }
 
 
-def laden(ladungen: list, ladevorgaenge: list) -> dict:
-    """Ladeprofil: Ladungen aus dem Akkustand nach Wochentag und Stunde, Ladevorgaenge nach
-    Ort (zuhause/unterwegs) und Art (AC/DC) in kWh."""
-    je_wt, je_std = [0] * 7, [0] * 24
+# Kennung einer aus Home Assistant geschickten Ladung: ha:<Beginn>[@Fahrzeug]:netz|pv
+HA_BEGINN = re.compile(r"^ha:(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})")
+# Eine Ladung aus dem Akkustand gilt als abgedeckt, wenn eine genaue Ladung in ihrem Zeitraum
+# beginnt – ihr Beginn ist nur so genau wie der Abfragetakt des Autos
+DECKUNG = timedelta(hours=1)
+
+
+def ladebeginne(ladungen: list, ladevorgaenge: list) -> tuple[list, int]:
+    """Beginn jeder Ladung, aelteste zuerst, und wie viele davon genau sind: die aus Home
+    Assistant geschickten Ladungen (PV- und Netzteil zaehlen einmal) und die Ladungen aus dem
+    Akkustand, in deren Zeitraum keine davon beginnt. Aus dem Akkustand erkennt der EV Tracker
+    eine Ladung erst, wenn danach wieder gefahren wurde – die geschickte ist sofort da."""
+    genau = set()
+    for l in ladevorgaenge:
+        m = HA_BEGINN.match(l.get("extern_id") or "")
+        if m:
+            genau.add(datetime.fromisoformat(m.group(1)))
+    beginne = sorted(genau)
     for l in ladungen:
         try:
-            t = date.fromisoformat(l["start"][:10])
-            std = int(l["start"][11:13])
-        except (ValueError, TypeError):
+            von = datetime.fromisoformat(l["start"][:16])
+            bis = datetime.fromisoformat(l["ende"][:16]) if l.get("ende") else von
+        except (ValueError, TypeError, KeyError):
             continue
+        if not any(von - DECKUNG <= t <= bis + DECKUNG for t in genau):
+            beginne.append(von)
+    return sorted(beginne), len(genau)
+
+
+def laden(ladungen: list, ladevorgaenge: list) -> dict:
+    """Ladeprofil: Ladebeginn nach Wochentag und Stunde (ladebeginne), Ladevorgaenge nach
+    Ort (zuhause/unterwegs) und Art (AC/DC) in kWh."""
+    beginne, genau = ladebeginne(ladungen, ladevorgaenge)
+    je_wt, je_std = [0] * 7, [0] * 24
+    for t in beginne:
         je_wt[t.weekday()] += 1
-        je_std[std] += 1
+        je_std[t.hour] += 1
     orte = {"PV-Strom": 0.0, "Netzbezug": 0.0, berechnung.OEFFENTLICH: 0.0}
     art = {"AC": 0.0, "DC": 0.0}
     unterwegs = 0
@@ -108,7 +135,8 @@ def laden(ladungen: list, ladevorgaenge: list) -> dict:
     gesamt = sum(orte.values())
     zuhause = orte["PV-Strom"] + orte["Netzbezug"]
     return {
-        "ladungen": len(ladungen),
+        "ladungen": len(beginne),
+        "ladungen_genau": genau,
         "je_wochentag": je_wt,
         "je_stunde": je_std,
         "orte": orte,
