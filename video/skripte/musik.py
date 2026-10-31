@@ -1,13 +1,13 @@
 """Hintergrundmusik fuer das Video, komplett synthetisiert (keine Samples, keine fremden Rechte).
 
-60 s, 96 BPM, Akkorde Am – F – C – G. Intro nur Flaechen, dann Arpeggio und leichter Puls,
+90 s, 96 BPM, Akkorde Am – F – C – G. Intro nur Flaechen, dann Arpeggio und leichter Puls,
 am Ende ausklingen.
 """
 import os, wave
 import numpy as np
 
 SR = 48000
-DAUER = 60.0
+DAUER = 90.0
 BPM = 96
 SCHLAG = 60 / BPM
 TAKT = 4 * SCHLAG
@@ -99,7 +99,7 @@ achtel = SCHLAG / 2
 muster = [0, 1, 2, 1, 2, 0, 1, 2]
 i = 0
 zeit = 5.0
-while zeit < 53.5:
+while zeit < DAUER - 6.5:
     takt = int(zeit // TAKT)
     akkord = AKKORDE[takt % 4]
     note = akkord[muster[i % 8] % len(akkord)] + 24
@@ -114,7 +114,7 @@ while zeit < 53.5:
 
 # Puls ab 15 s: weicher Kick auf 1 und 3, leise Hi-Hat auf den Offbeats
 schlag = 15.0
-while schlag < 52.5:
+while schlag < DAUER - 7.5:
     nk = int(0.35 * SR)
     tk = np.arange(nk) / SR
     kick = np.sin(2 * np.pi * (45 + 70 * np.exp(-tk * 30)) * tk) * np.exp(-tk * 9)

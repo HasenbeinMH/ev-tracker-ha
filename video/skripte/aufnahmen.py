@@ -32,6 +32,11 @@ try:
         ("dashboard_sommer", "/?zeitraum=2026-S", 1280, False),
         ("ladetarife", "/ladetarife", 1280, True),
         ("bericht", "/api/bericht/vorschau?typ=monat&jahr=2026&monat=9", 680, True),
+        ("akku", "/akku", 1280, True),
+        ("energie", "/energie", 1280, True),
+        ("profil", "/profil", 1280, True),
+        ("fahrtenbuch", "/fahrtenbuch?monat=2026-09", 1280, True),
+        ("einstellungen", "/einstellungen", 1280, True),
     ]
     with sync_playwright() as pw:
         browser = pw.chromium.launch(channel="msedge")
@@ -41,7 +46,8 @@ try:
             seite.goto(URL + pfad, wait_until="networkidle")
             seite.wait_for_timeout(1800)             # Diagramm-Animationen
             seite.screenshot(path=os.path.join(OUT, name + ".png"), full_page=ganz)
-            for sel in ("#amortisation", "h2", ".chartgrid > .chart"):
+            for sel in ("#amortisation", "h1", "h2", ".statgrid", ".kacheln", ".chartgrid > .chart", "table",
+                        ".modul-karte"):
                 for el in seite.locator(sel).all()[:20]:
                     b = el.bounding_box()
                     if b:

@@ -30,16 +30,31 @@ const SCHRIFT = '"Segoe UI", "Inter", system-ui, sans-serif';
 const DPR = 3;
 
 // ── Szenen (Frames bei 30 fps) ───────────────────────────────────────────────
-const S = {
-  intro: [0, 150],
-  dashboard: [150, 300],
-  amortisation: [450, 300],
-  diagramme: [750, 300],
-  abo: [1050, 300],
-  ha: [1350, 240],
-  outro: [1590, 210],
-} as const;
-export const GESAMT = 1800;
+const DAUER = {
+  intro: 150,
+  dashboard: 300,
+  amortisation: 270,
+  diagramme: 270,
+  akku: 300,
+  energie: 270,
+  profil: 270,
+  fahrtenbuch: 210,
+  abo: 270,
+  ha: 240,
+  outro: 150,
+};
+type SzenenName = keyof typeof DAUER;
+// Beginn jeder Szene aus den Dauern davor: [Beginn, Dauer]
+const S = (() => {
+  let start = 0;
+  const erg = {} as Record<SzenenName, [number, number]>;
+  for (const name of Object.keys(DAUER) as SzenenName[]) {
+    erg[name] = [start, DAUER[name]];
+    start += DAUER[name];
+  }
+  return erg;
+})();
+export const GESAMT = Object.values(DAUER).reduce((a, b) => a + b, 0);
 
 const ease = Easing.bezier(0.45, 0, 0.2, 1);
 
@@ -319,8 +334,8 @@ const Amortisation: React.FC = () => {
     [0, {x: 0, y: 150, w: 1280}],
     [60, {x: 0, y: 300, w: 1280}],
     [130, {x: 0, y: 300, w: 1280}],
-    [200, {x: 10, y: 325, w: 760}],
-    [300, {x: 10, y: 325, w: 760}],
+    [200, {x: 10, y: 355, w: 760}],
+    [270, {x: 10, y: 355, w: 760}],
   ]);
   return (
     <AbsoluteFill style={{opacity: blende}}>
@@ -329,7 +344,7 @@ const Amortisation: React.FC = () => {
         bild="dashboard.png"
         url="homeassistant.local:8123/ev-tracker"
         kamera={kamera}
-        markierungen={f > 205 ? [{r: {x: 33, y: 372, w: 285, h: 28}, ab: 215, farbe: C.orange}] : []}
+        markierungen={f > 205 ? [{r: {x: 33, y: 402, w: 300, h: 30}, ab: 215, farbe: C.orange}] : []}
       />
     </AbsoluteFill>
   );
@@ -341,15 +356,15 @@ const Diagramme: React.FC = () => {
   const blende = useBlende(S.diagramme[1]);
   const kamera = kameraBei(f, [
     [0, {x: 0, y: 830, w: 1280}],
-    [90, {x: 0, y: 830, w: 1280}],
-    [170, {x: 0, y: 1200, w: 1280}],
-    [215, {x: 0, y: 1200, w: 1280}],
-    [290, {x: 0, y: 1935, w: 1280}],
+    [80, {x: 0, y: 830, w: 1280}],
+    [150, {x: 0, y: 1200, w: 1280}],
+    [190, {x: 0, y: 1200, w: 1280}],
+    [250, {x: 0, y: 1935, w: 1280}],
   ]);
   const texte: [number, string, string][] = [
     [0, 'Kosten & Ersparnis jeden Monat', 'Was der Benziner gekostet hätte – und was du wirklich zahlst'],
-    [130, 'Verbrauch im Sommer und Winter', 'Laut Ladung und laut Akkustand, dazu das gesparte CO2'],
-    [235, 'Woher dein Strom kommt', 'PV, Wallbox, öffentliches Laden – nach Kosten und kWh'],
+    [115, 'Verbrauch im Sommer und Winter', 'Laut Wallbox und laut Auto-Akku, dazu das gesparte CO2'],
+    [205, 'Woher dein Strom kommt', 'PV, Wallbox, öffentliches Laden – nach Kosten und kWh'],
   ];
   const aktiv = [...texte].reverse().find((t) => f >= t[0])!;
   return (
@@ -362,7 +377,122 @@ const Diagramme: React.FC = () => {
   );
 };
 
-// ── Szene 5: Lade-Abo ───────────────────────────────────────────────────────
+// ── Seite mit Kamerafahrt, wechselnden Ueberschriften und Markierungen ───────
+type Rechteck = {x: number; y: number; w: number; h: number};
+const Seite: React.FC<{
+  szene: SzenenName;
+  bild: string;
+  url: string;
+  punkte: [number, Kamera][];
+  texte: [number, string, string][];
+  farbe: string;
+  marken?: {r: Rechteck; ab: number; bis: number; farbe?: string}[];
+}> = ({szene, bild, url, punkte, texte, farbe, marken = []}) => {
+  const f = useCurrentFrame();
+  const blende = useBlende(S[szene][1]);
+  const aktiv = [...texte].reverse().find((t) => f >= t[0])!;
+  return (
+    <AbsoluteFill style={{opacity: blende}}>
+      <Sequence key={aktiv[0]} from={aktiv[0]} layout="none">
+        <Titel zeile={aktiv[1]} unter={aktiv[2]} farbe={farbe} />
+      </Sequence>
+      <Aufnahme
+        bild={bild}
+        url={url}
+        kamera={kameraBei(f, punkte)}
+        markierungen={marken.filter((m) => f >= m.ab - 10 && f < m.bis)}
+      />
+    </AbsoluteFill>
+  );
+};
+
+// ── Szene 5: Akku ───────────────────────────────────────────────────────────
+const Akku: React.FC = () => (
+  <Seite
+    szene="akku"
+    bild="akku.png"
+    url="homeassistant.local:8123/ev-tracker/akku"
+    farbe={C.gruen}
+    punkte={[
+      [0, {x: 0, y: 55, w: 1280}],
+      [120, {x: 0, y: 55, w: 1280}],
+      [175, {x: 0, y: 1455, w: 1280}],
+      [300, {x: 0, y: 1455, w: 1280}],
+    ]}
+    texte={[
+      [0, 'Wie fit ist dein Akku?', 'Akku-Gesundheit (SoH) – von Hand, per Sensor oder geschätzt'],
+      [150, 'Reichweite in deinem Ladefenster', 'Sommer, Winter und Prognose – z. B. von 80 auf 20 %'],
+    ]}
+    marken={[
+      {r: {x: 16, y: 142, w: 200, h: 70}, ab: 35, bis: 115},
+      {r: {x: 645, y: 142, w: 200, h: 70}, ab: 65, bis: 115},
+      {r: {x: 16, y: 1501, w: 200, h: 70}, ab: 205, bis: 300},
+    ]}
+  />
+);
+
+// ── Szene 6: Energie ────────────────────────────────────────────────────────
+const Energie: React.FC = () => (
+  <Seite
+    szene="energie"
+    bild="energie.png"
+    url="homeassistant.local:8123/ev-tracker/energie"
+    farbe={C.blau}
+    punkte={[
+      [0, {x: 0, y: 55, w: 1280}],
+      [120, {x: 0, y: 55, w: 1280}],
+      [185, {x: 610, y: 255, w: 680}],
+      [270, {x: 610, y: 255, w: 680}],
+    ]}
+    texte={[
+      [0, 'Wofür braucht dein Auto den Strom?', 'Antrieb, Klima, Bordelektronik – aus der Fahrstatistik des Autos'],
+      [140, 'Was beim Bremsen zurückkommt', 'Die Rekuperation – grün unter der Nulllinie'],
+    ]}
+    marken={[
+      {r: {x: 771, y: 191, w: 242, h: 70}, ab: 50, bis: 120, farbe: C.orange},
+      {r: {x: 680, y: 516, w: 560, h: 44}, ab: 200, bis: 270},
+    ]}
+  />
+);
+
+// ── Szene 7: Profil ─────────────────────────────────────────────────────────
+const Profil: React.FC = () => (
+  <Seite
+    szene="profil"
+    bild="profil.png"
+    url="homeassistant.local:8123/ev-tracker/profil"
+    farbe={C.orange}
+    punkte={[
+      [0, {x: 0, y: 106, w: 1280}],
+      [125, {x: 0, y: 106, w: 1280}],
+      [180, {x: 0, y: 637, w: 1280}],
+      [270, {x: 0, y: 637, w: 1280}],
+    ]}
+    texte={[
+      [0, 'Wie fährst du wirklich?', 'km je Wochentag, Tage nach Strecke – und wie viel Akku dein Alltag braucht'],
+      [150, 'Deine Fahrten auf einen Blick', 'Länge, Abfahrtszeit, häufigste Ziele – dazu wann und wo du lädst'],
+    ]}
+    marken={[{r: {x: 1022, y: 148, w: 242, h: 70}, ab: 55, bis: 125}]}
+  />
+);
+
+// ── Szene 8: Fahrtenbuch ────────────────────────────────────────────────────
+const Fahrtenbuch: React.FC = () => (
+  <Seite
+    szene="fahrtenbuch"
+    bild="fahrtenbuch.png"
+    url="homeassistant.local:8123/ev-tracker/fahrtenbuch"
+    farbe={C.blau}
+    punkte={[
+      [0, {x: 0, y: 40, w: 1280}],
+      [70, {x: 0, y: 40, w: 1280}],
+      [210, {x: 0, y: 330, w: 1280}],
+    ]}
+    texte={[[0, 'Fahrtenbuch – ganz von selbst', 'Jede Fahrt mit Start, Ziel, km und Akku · Kategorie, Notiz, CSV-Export']]}
+  />
+);
+
+// ── Szene 9: Lade-Abo ───────────────────────────────────────────────────────
 const Abo: React.FC = () => {
   const f = useCurrentFrame();
   const blende = useBlende(S.abo[1]);
@@ -371,7 +501,7 @@ const Abo: React.FC = () => {
     [70, {x: 0, y: 1745, w: 1280}],
     [140, {x: 0, y: 1745, w: 1280}],
     [210, {x: 8, y: 1750, w: 820}],
-    [300, {x: 8, y: 1750, w: 820}],
+    [270, {x: 8, y: 1750, w: 820}],
   ]);
   return (
     <AbsoluteFill style={{opacity: blende}}>
@@ -386,7 +516,7 @@ const Abo: React.FC = () => {
   );
 };
 
-// ── Szene 6: Home Assistant und Monatsbericht ──────────────────────────────
+// ── Szene 10: Home Assistant, Module und Monatsbericht ──────────────────────────────
 const HomeAssistant: React.FC = () => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
@@ -395,6 +525,7 @@ const HomeAssistant: React.FC = () => {
     ['🚗', 'Kilometer und Akkustand direkt vom Auto'],
     ['☀️', 'PV-Strom und Wallbox aus Home Assistant'],
     ['⛽', 'Benzinpreise für den Vergleich'],
+    ['🧩', 'Module: nur einschalten, was du brauchst'],
     ['✉️', 'Monatsbericht per Mail'],
     ['🚙', 'Ein oder mehrere E-Autos'],
   ];
@@ -463,7 +594,7 @@ const HomeAssistant: React.FC = () => {
   );
 };
 
-// ── Szene 7: Abspann ────────────────────────────────────────────────────────
+// ── Szene 11: Abspann ────────────────────────────────────────────────────────
 const Outro: React.FC = () => {
   const f = useCurrentFrame();
   const {fps} = useVideoConfig();
@@ -517,6 +648,18 @@ export const Werbevideo: React.FC = () => (
     </Sequence>
     <Sequence from={S.diagramme[0]} durationInFrames={S.diagramme[1]}>
       <Diagramme />
+    </Sequence>
+    <Sequence from={S.akku[0]} durationInFrames={S.akku[1]}>
+      <Akku />
+    </Sequence>
+    <Sequence from={S.energie[0]} durationInFrames={S.energie[1]}>
+      <Energie />
+    </Sequence>
+    <Sequence from={S.profil[0]} durationInFrames={S.profil[1]}>
+      <Profil />
+    </Sequence>
+    <Sequence from={S.fahrtenbuch[0]} durationInFrames={S.fahrtenbuch[1]}>
+      <Fahrtenbuch />
     </Sequence>
     <Sequence from={S.abo[0]} durationInFrames={S.abo[1]}>
       <Abo />
