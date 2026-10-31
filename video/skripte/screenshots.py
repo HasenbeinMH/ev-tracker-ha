@@ -89,7 +89,7 @@ def main(namen):
                         hoehe = wert
                     else:
                         b = seite.locator(wert).first.bounding_box()
-                        hoehe = b["y"] - 8 if art == "vor" else b["y"] + b["height"] + 16
+                        hoehe = b["y"] - 8 if art == "vor" else b["y"] + b["height"] + 4
                     seite.screenshot(path=datei, full_page=True,
                                      clip={"x": 0, "y": 0, "width": breite, "height": hoehe})
                 print(name, "->", os.path.relpath(datei, REPO))

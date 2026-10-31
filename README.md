@@ -4,12 +4,6 @@
 > stabil. Eine Sicherung über Home Assistants eigene Backups vor einem Update schadet nie.
 > Rückmeldungen und Fehlerberichte sind willkommen.
 
-> [!NOTE]
-> **Update von 2.x:** Version 3.0 hat die Datenbank für mehrere E-Autos umgebaut. Wer noch
-> eine 2.x-Version nutzt, erstellt vor dem Update eine Home-Assistant-Sicherung mit dem
-> EV Tracker Add-on und lädt zusätzlich unter **Backup** die Datenbank herunter – ohne
-> Sicherung gibt es keinen Weg zurück.
-
 Web-App zur Erfassung und Auswertung der Kosteneinsparungen eines oder mehrerer Elektroautos
 gegenüber einem Benziner, Diesel oder Autogas-Auto. Fahrzeugname und -bild sind in den Einstellungen frei wählbar –
 nicht auf ein bestimmtes Modell festgelegt. Oberfläche, Hilfe und Berichte gibt es auf Deutsch oder Englisch.
@@ -73,7 +67,7 @@ vorher in Home Assistant eingerichtet sein:
 | 💶 *Kosten Netz ins Auto (optional)* | Tatsächliche Stromkosten bei **dynamischem Tarif** (Tibber, aWATTar, Octopus …) statt eines festen Tarifs | Fortlaufender €-Zähler: jede kWh aus dem Netz × Preis in diesem Moment. Die Vorlage [`ev_netzkosten.yaml`](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/homeassistant/ev_netzkosten.yaml) legt ihn aus dem Preissensor an. |
 | 📨 *Ladungen einzeln senden (optional)* | Heimladungen einzeln mit Datum statt als Monatssumme | Die Vorlage [`ev_ladung_senden.yaml`](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/homeassistant/ev_ladung_senden.yaml) – oder der [Blueprint](https://github.com/HasenbeinMH/ev-tracker-ha/blob/main/vorlagen/blueprints/README.md) – schickt am Ladeende kWh und Kosten an den EV Tracker; Adresse und Token stehen in den Einstellungen. |
 | 🔋 *Batteriestand (optional)* | Ladeerkennung und Verbrauch aus dem Akkustand | Ebenfalls über die Fahrzeug-Integration |
-| 📊 *Tägliche Fahrstatistik (optional)* | Modul Energie: Aufteilung auf Antrieb, Klima, Bordelektronik, Rekuperation | Z. B. `sensor.…_tagliche_fahrstatistik` der Kia-/Hyundai-Integration |
+| 📊 *Tägliche Fahrstatistik (optional)* | Modul Energie: Aufteilung auf Antrieb, Klima, Bordelektronik, Rekuperation | Z. B. `sensor.…_tagliche_fahrstatistik` der Kia-/Hyundai-Integration. Die Werte stecken in den Attributen – der EV Tracker liest sie immer direkt aus Home Assistant, auch wenn InfluxDB o. ä. als Quelle eingestellt ist; die Einstellungen schlagen den Sensor vor. |
 | 📍 *Standort (optional)* | Modul Fahrtenbuch: Start und Ziel jeder Fahrt | `device_tracker` des Autos oder – wenn immer dieselbe Person fährt – des Handys (genauer). Der EV Tracker schreibt den Standort selbst mit, der Recorder muss ihn nicht aufnehmen. |
 | 🩺 *Reichweite, Akku-Gesundheit (optional)* | Modul Akku: Reichweite laut Auto, gemessener SoH | Ohne SoH-Sensor schätzt der EV Tracker den Wert oder nimmt einen von Hand eingetragenen (Werkstatt, OBD-App) |
 
