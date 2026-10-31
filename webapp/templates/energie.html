@@ -57,7 +57,7 @@
     <script type="application/json" id="opt-anteile-{{ fz.id }}">{{ x.charts.anteile | tojson }}</script>
   </div>
   <div class="chart">
-    <div class="titel">{{ _("Je Monat in kWh/100 km") }}</div>
+    <div class="titel">{{ _("Je Tag in kWh/100 km") if x.e.je_tag else _("Je Monat in kWh/100 km") }}</div>
     <div class="echart" data-echart="opt-monate-{{ fz.id }}"></div>
     <script type="application/json" id="opt-monate-{{ fz.id }}">{{ x.charts.monate | tojson }}</script>
   </div>
@@ -88,7 +88,7 @@
 {% endif %}
 <p class="hint">
   {{ _("Daten vom {0} bis {1} ({2} Tage).", e.von[8:10] ~ "." ~ e.von[5:7] ~ "." ~ e.von[:4], e.bis[8:10] ~ "." ~ e.bis[5:7] ~ "." ~ e.bis[:4], e.tage) }}
-  {{ _("<b>Laut Bordcomputer</b> zählt das Auto nur, was während der Fahrten verbraucht wurde – ohne Standverbrauch über Nacht und ohne Verluste im Akku. Der Wert liegt daher unter dem Verbrauch laut Auto-Akku und laut Wallbox; die Anteile der Verbraucher sind davon unberührt. Rekuperation: beim Bremsen zurückgewonnene Energie laut Fahrstatistik. Kosten: kWh × Ø Strompreis des Monats (an Wallbox/Säule bezahlt).") }}
+  {{ _("<b>Laut Bordcomputer</b> zählt das Auto nur, was während der Fahrten verbraucht wurde – ohne Standverbrauch über Nacht und ohne Verluste im Akku. Der Wert liegt daher unter dem Verbrauch laut Auto-Akku und laut Wallbox; die Anteile der Verbraucher sind davon unberührt. Rekuperation: beim Bremsen zurückgewonnene Energie laut Fahrstatistik – im Verlauf als grüner Balken unter der Nulllinie. Kosten: kWh × Ø Strompreis des Monats (an Wallbox/Säule bezahlt).") }}
 </p>
 <form method="post" action="energie/nachholen">
   {% if mehrere %}<input type="hidden" name="fahrzeug_id" value="{{ fz.id }}">{% endif %}

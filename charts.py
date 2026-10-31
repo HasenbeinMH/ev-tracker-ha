@@ -955,28 +955,37 @@ ENERGIE_FARBEN = {"antrieb_wh": "blue", "klima_wh": "orange", "elektronik_wh": "
                   "batterie_wh": "teal"}
 
 
-def chart_energie_monate(monate):
-    """Je Monat gestapelt: Antrieb, Klima, Bordelektronik, Batteriepflege in kWh/100 km
-    (laut Bordcomputer), dazu die Rekuperation als Linie."""
-    from energie import KATEGORIEN
-    monate = [m for m in monate if m["km"]]
-    if not monate:
+def chart_energie_monate(eintraege, je_tag=False):
+    """Je Monat (bzw. je Tag: Eintraege mit "datum") gestapelt: Antrieb, Klima, Bordelektronik,
+    Batteriepflege in kWh/100 km laut Bordcomputer – darunter, unter der Nulllinie, die
+    Rekuperation als gruener Balken. Tage unter energie.STAND_KM fallen weg: Ein paar Wh auf
+    wenigen Metern ergaeben absurde Werte je 100 km."""
+    from energie import KATEGORIEN, STAND_KM
+    eintraege = [e for e in eintraege if e["km"] >= STAND_KM]
+    if not eintraege:
         return _leer(_("Noch keine Tage aus der Fahrstatistik"))
-    namen = [m["monat"] for m in monate]
+    namen = [e.get("datum") or e["monat"] for e in eintraege]
     serien = [_balken(_(text), ENERGIE_FARBEN[k],
-                      [round(m[k] / m["km"] / 10, 2) for m in monate], "fn:kwh100",
+                      [round(e[k] / e["km"] / 10, 2) for e in eintraege], "fn:kwh100",
                       stack="energie", itemStyle={"color": _balken_farbe(ENERGIE_FARBEN[k])})
               for k, text in KATEGORIEN]
     serien[-1]["itemStyle"]["borderRadius"] = [4, 4, 0, 0]
-    serien.append(_linie(_("Rekuperation"), "green",
-                         [round(m["rekuperation_wh"] / m["km"] / 10, 2) for m in monate],
-                         "fn:kwh100", lineStyle={"width": 2, "type": "dashed",
-                                                  "color": COLORS["green"]}))
-    opt = _basis(xAxis=_achse_kategorie(namen), yAxis=_achse_wert(min=0), series=serien)
+    # Im selben Stapel, aber negativ: ECharts legt ihn unter die Nulllinie derselben Saeule
+    serien.append(_balken(_("Rekuperation (zurückgewonnen)"), "green",
+                          [-round(e["rekuperation_wh"] / e["km"] / 10, 2) for e in eintraege],
+                          "fn:kwh100Betrag", stack="energie",
+                          itemStyle={"color": COLORS["green"], "borderRadius": [0, 0, 4, 4]}))
+    opt = _basis(xAxis=_achse_kategorie(namen, "fn:datumKurz" if je_tag else "fn:monat"),
+                 yAxis=_achse_wert(axisLabel={"color": COLORS["subtext"], "fontSize": 10,
+                                              "formatter": "fn:zahlBetrag"}),
+                 series=serien)
     opt["legend"]["show"] = True
     opt["tooltip"]["axisPointer"] = {"type": "shadow",
                                      "shadowStyle": {"color": "rgba(255,255,255,0.03)"}}
-    return _bedienung(opt, len(namen), umschalten=False)
+    opt = _bedienung(opt, len(namen), umschalten=False)
+    if je_tag and opt.get("dataZoom"):
+        opt["dataZoom"][0]["labelFormatter"] = "fn:zoomDatum"
+    return opt
 
 
 def chart_energie_anteile(s):

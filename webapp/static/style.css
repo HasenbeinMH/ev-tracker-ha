@@ -202,6 +202,8 @@ h2 { font-size: 15px; color: var(--blau-hell); margin: 22px 0 10px; }
 .punkt-b { background: #c47a3a; }
 table.vergleich th, table.vergleich td.zahl { text-align: right; white-space: nowrap; }
 table.vergleich th:first-child { text-align: left; }
+/* zweite Kopfzeile (km, kWh … unter den Zeitraeumen): ihre erste Zelle ist eine Zahlenspalte */
+table.vergleich th.zahl:first-child { text-align: right; }
 table.vergleich .klein { font-size: 10px; font-weight: 400; }
 table.vergleich tr.summenzeile td { border-top: 1px solid var(--border2); font-weight: 600; }
 /* Monatsbezeichnungen wie "Apr 25 · Okt 24" nicht umbrechen – die Tabelle

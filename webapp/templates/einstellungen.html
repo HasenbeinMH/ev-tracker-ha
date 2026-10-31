@@ -447,8 +447,14 @@
     {% for ha_key, fn_key, label, modul, modul_name in sensor_felder %}
     <tr{% if modul and loop.changed(modul) %} id="sensor-{{ modul }}"{% endif %}>
       <td style="white-space:nowrap">{{ label }}{% if modul %}<div class="muted klein">{{ _("Modul {0}", modul_name) }}</div>{% endif %}</td>
-      <td><input class="breit" name="{{ ha_key }}" value="{{ ha[ha_key] }}"></td>
-      <td data-quelle="influxdb influxdb2 influxdb3">{% if fn_key %}<input class="breit" name="{{ fn_key }}" value="{{ ha[fn_key] }}">{% endif %}</td>
+      <td><input class="breit" name="{{ ha_key }}" id="feld-{{ ha_key }}" value="{{ ha[ha_key] }}">
+        {% if ha_key == "ha_ev_tagesstatistik" and fahrstatistik_vorschlag %}
+        <div class="klein">{{ _("In Home Assistant gefunden:") }}
+          {% for e in fahrstatistik_vorschlag %}<button type="button" class="secondary klein"
+            onclick="document.getElementById('feld-ha_ev_tagesstatistik').value = '{{ e }}'">{{ e }}</button>{% endfor %}
+          <span class="muted">{{ _("– übernehmen, dann speichern") }}</span></div>
+        {% endif %}</td>
+      <td data-quelle="influxdb influxdb2 influxdb3">{% if fn_key %}<input class="breit" name="{{ fn_key }}" value="{{ ha[fn_key] }}">{% else %}<span class="muted klein">{{ _("nur aus Home Assistant") }}</span>{% endif %}</td>
     </tr>
     {% endfor %}
   </table>

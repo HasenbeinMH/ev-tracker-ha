@@ -409,7 +409,7 @@ def dashboard(request: Request, zeitraum: str | None = None):
             any(k["an"] and k["id"] in dashboard_layout.ENERGIE_KACHELN for k in layout["kacheln"])
             or any(d["an"] and d["id"] == "energieaufteilung" for d in layout["diagramme"])):
         energie = energie_mod.auswertung(z)
-    charts_html["energieaufteilung"] = (charts.chart_energie_monate(energie["monate_zeitraum"])
+    charts_html["energieaufteilung"] = (charts.chart_energie_monate(energie["verlauf"], energie["je_tag"])
                                         if energie else charts._leer(_("Nur für ein einzelnes Fahrzeug")))
     antwort = render(request, "dashboard.html", kz=kz, charts=charts_html, amo=amo,
                      layout=layout, abo=abo, akku=akku, leasing=leasing, energie=energie,
@@ -592,7 +592,7 @@ def energie_seite(request: Request, zeitraum: str | None = None, meldung: str = 
 
     def je_auto():
         e = energie_mod.auswertung(z)
-        return {"e": e, "charts": {"monate": charts.chart_energie_monate(e["monate_zeitraum"]),
+        return {"e": e, "charts": {"monate": charts.chart_energie_monate(e["verlauf"], e["je_tag"]),
                                    "anteile": charts.chart_energie_anteile(e["summe"])}}
     return render(request, "energie.html", autos=_je_fahrzeug(je_auto), zeitraum=z,
                   zeitraum_optionen=zeitraum_mod.optionen(zeitraum_mod.laden()),
@@ -2731,12 +2731,13 @@ SENSOR_FELDER = [
     # Fuer Ladeerkennung und Verbrauch aus dem Akkustand
     ("ha_ev_battery",     "fn_ev_battery",     N_("Batteriestand Auto (%)")),
     # Optional, fuer die Akku-Seite: Reichweite laut Auto und Akku-Gesundheit (SoH)
-    ("ha_ev_range",       "fn_ev_range",       N_("Reichweite laut Auto (km, optional)")),
+    ("ha_ev_range",       "",                  N_("Reichweite laut Auto (km, optional)")),
     ("ha_ev_soh",         "fn_ev_soh",         N_("Akku-Gesundheit SoH (%, optional)")),
-    # Module Energie und Fahrtenbuch
-    ("ha_ev_tagesstatistik", "fn_ev_tagesstatistik", N_("Tägliche Fahrstatistik (Attribute je Tag)")),
+    # Module Energie und Fahrtenbuch. Ohne InfluxDB-Name: Reichweite, Fahrstatistik, Standort
+    # und Motor liest der EV Tracker immer direkt aus Home Assistant (Attribute bzw. Verlauf)
+    ("ha_ev_tagesstatistik", "",                N_("Tägliche Fahrstatistik (Attribute je Tag)")),
     ("ha_ev_ort",         "",                  N_("Standort (Auto, Handy oder Person)")),
-    ("ha_ev_fahrt",       "fn_ev_fahrt",       N_("Motor / Zündung an (optional)")),
+    ("ha_ev_fahrt",       "",                  N_("Motor / Zündung an (optional)")),
 ]
 # Nur fuer Module genutzt (Akku, Energie, Fahrtenbuch) – in der Einrichtung kein eigener Schritt
 SENSOR_NUR_AKKU = {"ha_ev_range", "ha_ev_soh", "ha_ev_tagesstatistik", "ha_ev_ort", "ha_ev_fahrt"}
@@ -2788,6 +2789,7 @@ def einstellungen(request: Request, meldung: str = ""):
                                  for m in [module_mod.sensor_modul(h)]
                                  if h not in module_mod.sensoren_aus()],
                   modul_liste=_modul_stand(ha_settings),
+                  fahrstatistik_vorschlag=_fahrstatistik_vorschlag(ha_settings),
                   fahrtenbuch=fahrtenbuch_mod.einstellungen(),
                   quellen=datenquellen.QUELLEN,
                   prom_standard=datenquellen.PROM_SELEKTOR_STANDARD,
@@ -2842,6 +2844,20 @@ def einstellungen_anschaffung(eauto: str = Form(""), verbrenner: str = Form(""),
         if not raw or re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw):
             db.set_einstellung(key, raw)
     return RedirectResponse("../einstellungen#anschaffung", status_code=303)
+
+
+def _fahrstatistik_vorschlag(ha: dict) -> list:
+    """Modul Energie an, aber keine Fahrstatistik eingetragen: passende Entities aus Home
+    Assistant (Attribute mit Tageswerten). Leer ohne Verbindung oder Treffer."""
+    if ha.get("ha_ev_tagesstatistik") or not module_mod.an("energie"):
+        return []
+    client = _ha_client()
+    if client is None:
+        return []
+    try:
+        return energie_mod.kandidaten(client._get("/api/states", timeout=5))[:3]
+    except Exception:
+        return []
 
 
 def _modul_stand(ha: dict) -> list:

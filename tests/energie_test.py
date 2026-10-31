@@ -86,12 +86,30 @@ class FakeHA:
         alt = {"2026-10-10": dict(ATTR["2026-10-29"]), "2026-10-30": dict(ATTR["2026-10-30"])}
         return [{"state": "9", "attributes": alt}]
 
+    def _get(self, pfad, timeout=15):
+        return ZUSTAENDE
+
+
+ZUSTAENDE = [{"entity_id": "sensor.ev3_kilometerzahler", "state": "425.6", "attributes": {"unit_of_measurement": "km"}},
+             {"entity_id": "sensor.ev3_tagliche_fahrstatistik", "state": "9",
+              "attributes": dict(ATTR, unit_of_measurement="d")},
+             {"entity_id": "sensor.kalender", "state": "1", "attributes": {"2026-10-30": "Termin"}}]
+
 
 import ha_client
-ha_client.HAClient = FakeHA
+ha_client.HAClient = webapp.HAClient = FakeHA
 db.save_ha_settings({"ha_url": "http://ha.test:8123", "ha_token": "x"})
 check("Ohne Sensor: nichts", energie.aktualisieren() == "")
+check("Kandidaten: nur Entities mit Tageswerten",
+      energie.kandidaten(ZUSTAENDE) == ["sensor.ev3_tagliche_fahrstatistik"], str(energie.kandidaten(ZUSTAENDE)))
+c.post("/einstellungen/module", data={"akku": "1", "profil": "1", "energie": "1"}, follow_redirects=False)
+html = c.get("/einstellungen").text
+check("Einstellungen: Fahrstatistik aus HA vorgeschlagen", "In Home Assistant gefunden:" in html
+      and "sensor.ev3_tagliche_fahrstatistik</button>" in html and "sensor.kalender</button>" not in html)
+check("Einstellungen: keine InfluxDB-Spalte fuer die Fahrstatistik", 'name="fn_ev_tagesstatistik"' not in html
+      and "nur aus Home Assistant" in html)
 db.save_ha_settings({"ha_ev_tagesstatistik": "sensor.ev3_tagliche_fahrstatistik"})
+check("Eingetragen: kein Vorschlag mehr", "In Home Assistant gefunden:" not in c.get("/einstellungen").text)
 meldung = energie.aktualisieren()
 gespeichert = {t["datum"]: t for t in db.get_energie_tage()}
 check("Naechtlicher Abruf: laufender Tag gespeichert", list(gespeichert) == ["2026-10-30"]
@@ -103,12 +121,28 @@ check("Nachholen: aeltere Tage aus der Historie, aktueller Stand gewinnt",
       str(sorted(gespeichert)))
 
 # ── Seite, Statistik, Bericht ────────────────────────────────────────────────
+import charts
+tage = [{"datum": d, "km": km, "gesamt_wh": wh, "antrieb_wh": wh * 0.8, "klima_wh": wh * 0.15,
+         "elektronik_wh": wh * 0.05, "batterie_wh": 0.0, "rekuperation_wh": wh * 0.4}
+        for d, km, wh in (("2026-10-22", 50.0, 6000.0), ("2026-10-24", 0.1, 245.0),
+                          ("2026-10-30", 185.8, 24383.0))]
+verlauf = energie.je_tag(tage)
+opt = charts.chart_energie_monate(verlauf, je_tag=True)
+rek = opt["series"][-1]
+check("Verlauf je Tag: Tage unter 1 km fallen weg", opt["xAxis"]["data"] == ["2026-10-22", "2026-10-30"],
+      str(opt["xAxis"]["data"]))
+check("Rekuperation als Balken unter null im selben Stapel", rek["type"] == "bar" and rek["stack"] == "energie"
+      and rek["data"] == [-4.8, -5.25], str(rek["data"]))
+check("Verbraucher ueber null", all(v > 0 for serie in opt["series"][:3] for v in serie["data"]))
 check("Modul an (Sensor eingetragen)", module.an("energie"))
 r = c.get("/energie")
 check("Seite Energie", r.status_code == 200 and "Verbrauch laut Bordcomputer" in r.text
       and "opt-monate-1" in r.text, f"HTTP {r.status_code}")
 r = c.get("/energie?zeitraum=2026-Q4")
 check("Seite mit Zeitraum", r.status_code == 200)
+e = energie.auswertung(__import__("zeitraum").aufloesen("2026-Q4"))
+check("Ein Monat im Zeitraum: Verlauf je Tag", e["je_tag"] and e["verlauf"][0].get("datum"), str(e["je_tag"]))
+check("Seite: Titel je Tag", "Je Tag in kWh/100 km" in c.get("/energie").text)
 r = c.get("/statistik?a=2026&b=2025")
 check("Statistik: Zeile Bordcomputer", "Verbrauch laut Bordcomputer" in r.text)
 b = berichte.monatsbericht(2026, 10)

@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.9.4] - 2026-10-31
+
+### Rekuperation im Diagramm, Fahrstatistik-Vorschlag
+- Energie: Die Rekuperation steht im Verlauf als gruener Balken unter der Nulllinie derselben Saeule – vorher eine gestrichelte Linie, die bei nur einem Monat zu einem Punkt im Balken wurde
+- Energie: Bei weniger als zwei Monaten im Zeitraum zeigt der Verlauf die einzelnen Tage; Tage unter 1 km fallen dort weg (sonst absurde Werte je 100 km). Gilt auch fuer das Diagramm im Dashboard
+- Einstellungen: Ist das Modul Energie an und keine Fahrstatistik eingetragen, schlaegt die Seite passende Sensoren aus Home Assistant zum Uebernehmen vor
+- Einstellungen: Fahrstatistik, Reichweite und Motor haben keine InfluxDB-Spalte mehr („nur aus Home Assistant“) – diese Werte liest der EV Tracker immer direkt aus Home Assistant, auch wenn eine Datenbank als Quelle eingestellt ist
+- Behoben: In der Statistik stand die Ueberschrift km der Tabelle „Verbrauch aus dem Akkustand je Monat“ links statt ueber den Zahlen
+- Hilfe: Modul Energie mit Beispiel der Entity-ID und Hinweis zur Datenquelle
+
 ## [3.9.3] - 2026-10-30
 
 ### Ladevorgaenge zaehlen wie in der Ladeliste

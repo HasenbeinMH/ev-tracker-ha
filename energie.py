@@ -39,6 +39,7 @@ MAX_KM_TAG = 2000.0
 MAX_WH_TAG = 300000.0
 STAND_KM = 1.0          # Tage mit weniger km: Standverbrauch (Vorklimatisieren, 12 V …)
 NACHHOLEN_TAGE = 11
+TAGE_UNTER_MONATEN = 2  # weniger Monate im Zeitraum: Verlauf je Tag statt je Monat
 _DATUM = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -65,6 +66,14 @@ def tage_aus_attributen(attr: dict) -> dict:
         tag["km"] = round(tag["km"], 1)
         erg[datum] = tag
     return erg
+
+
+def kandidaten(zustaende: list) -> list:
+    """Entities, deren Attribute wie eine Fahrstatistik aussehen (Tage mit Verbrauchswerten) –
+    fuer den Vorschlag in den Einstellungen. Sortiert nach Entity-ID."""
+    return sorted(z["entity_id"] for z in zustaende or []
+                  if isinstance(z, dict) and z.get("entity_id")
+                  and tage_aus_attributen(z.get("attributes")))
 
 
 def _verbindung():
@@ -122,6 +131,11 @@ def summe(tage: list) -> dict:
     }
 
 
+def je_tag(tage: list) -> list:
+    """[{datum, **summe}] aufsteigend – je Tag eine Zeile."""
+    return [{"datum": t["datum"], **summe([t])} for t in sorted(tage, key=lambda t: t["datum"])]
+
+
 def je_monat(tage: list) -> list:
     """[{monat, **summe}] aufsteigend."""
     monate = {}
@@ -170,8 +184,12 @@ def auswertung(z: dict) -> dict:
     daten = zeitraum.laden()
     preise = strompreise(zeitraum.monatswerte(zeitraum.aufloesen(zeitraum.ALLES), daten))
     monate = je_monat(alle_tage)
+    monate_z = [m for m in monate if zeitraum.enthaelt(z, m["monat"])]
+    # Mit nur einem Monat zeigte der Verlauf eine einzige Saeule – dann lieber je Tag
+    tageweise = len(monate_z) < TAGE_UNTER_MONATEN
     return {"summe": summe(tage), "kosten": kosten(tage, preise), "monate": monate,
-            "monate_zeitraum": [m for m in monate if zeitraum.enthaelt(z, m["monat"])],
+            "monate_zeitraum": monate_z,
+            "verlauf": je_tag(tage) if tageweise else monate_z, "je_tag": tageweise,
             "saison": saison(monate), "tage": len(alle_tage),
             "von": alle_tage[0]["datum"] if alle_tage else None,
             "bis": alle_tage[-1]["datum"] if alle_tage else None}

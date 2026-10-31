@@ -26,6 +26,9 @@
     ctKwh: (v) => f2.format(v) + " ct/kWh",
     kg1: (v) => f1.format(v) + " kg",
     kwh100: (v) => (v == null ? "–" : f1.format(v) + " kWh/100 km"),
+    // Rekuperation steht negativ unter der Nulllinie, gemeint ist ihr Betrag
+    kwh100Betrag: (v) => (v == null ? "–" : f1.format(Math.abs(v)) + " kWh/100 km"),
+    zahlBetrag: (v) => fFrei.format(Math.abs(v)),
     kwh1: (v) => (v == null ? "–" : f1.format(v) + " kWh"),
     km0: (v) => (v == null ? "–" : f0.format(v) + " km"),
     prozent0: (v) => f0.format(v) + " %",
@@ -33,6 +36,7 @@
     monat: (v) => { const s = String(v); return s.slice(5, 7) + "/" + s.slice(0, 4); },
     datumMonat: (v) => { const d = alsDatum(v); return zweistellig(d.getMonth() + 1) + "/" + d.getFullYear(); },
     tag: (v) => String(v) + ".",
+    datumKurz: (v) => { const d = alsDatum(v); return zweistellig(d.getDate()) + "." + zweistellig(d.getMonth() + 1) + "."; },
     datum: (v) => { const d = alsDatum(v); return zweistellig(d.getDate()) + "." + zweistellig(d.getMonth() + 1) + "." + d.getFullYear(); },
     // Schieberegler: bei Kategorien kommt der Wert als zweites Argument
     zoomMonat: (v, s) => FORMAT.monat(s || v),
