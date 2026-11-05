@@ -9,6 +9,9 @@
     new Intl.NumberFormat("de-DE", { minimumFractionDigits: min, maximumFractionDigits: max });
   const f0 = zahlFormat(0, 0), f1 = zahlFormat(1, 1), f2 = zahlFormat(2, 2), fFrei = zahlFormat(0, 2);
 
+  // Tooltips sind HTML: Namen der Datenpunkte maskieren
+  const esc = (t) => String(t ?? "").replace(/[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const zweistellig = (n) => String(n).padStart(2, "0");
   function alsDatum(v) {
     if (typeof v === "number") return new Date(v);
@@ -45,8 +48,8 @@
     labelCt: (p) => f1.format(Array.isArray(p.value) ? p.value[1] : p.value),
     labelRef: (p) => f1.format(p.value) + " kWh Ref.",
     labelAnteil: (p) => p.name + "\n" + f1.format(p.percent) + " %",
-    tooltipAnteilKwh: (p) => p.marker + p.name + ": <b>" + f1.format(p.value) + " kWh</b> (" + f1.format(p.percent) + " %)",
-    tooltipAnteil: (p) => p.marker + p.name + ": <b>" + f2.format(p.value) + " €</b> (" + f1.format(p.percent) + " %)",
+    tooltipAnteilKwh: (p) => p.marker + esc(p.name) + ": <b>" + f1.format(p.value) + " kWh</b> (" + f1.format(p.percent) + " %)",
+    tooltipAnteil: (p) => p.marker + esc(p.name) + ": <b>" + f2.format(p.value) + " €</b> (" + f1.format(p.percent) + " %)",
   };
 
   function aufloesen(wert) {

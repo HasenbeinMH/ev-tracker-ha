@@ -137,20 +137,10 @@ class HAClient:
     #  Statistics API  (primär)
     # ─────────────────────────────────────────
 
-    def _get_statistics(self, entity_ids: list[str],
-                        start: datetime, end: datetime,
-                        period: str = "hour") -> dict:
-        """
-        Ruft Long-Term Statistics ab.
-        Wichtig: Diese API existiert nur über den WebSocket-Endpunkt
-        (recorder/statistics_during_period) – es gibt keinen REST-Endpunkt.
-        Rückgabe: {entity_id: [{"start": "...", "sum": ..., "mean": ..., ...}]}
-        """
-        try:
-            import websocket
-        except ImportError:
-            # websocket-client fehlt → Aufrufer fällt auf die History-API zurück
-            return {}
+    def _ws_anfrage(self, nachricht: dict) -> dict:
+        """Ein Befehl ueber den WebSocket-Endpunkt; Rueckgabe ist die Antwort-Nachricht
+        ({"success": ..., "result": ...}). ImportError, wenn websocket-client fehlt."""
+        import websocket
 
         ws_url = (self.url
                   .replace("https://", "wss://", 1)
@@ -167,24 +157,46 @@ class HAClient:
             if msg.get("type") != "auth_ok":
                 raise ConnectionError("WebSocket-Authentifizierung fehlgeschlagen (Token?)")
 
-            ws.send(json.dumps({
-                "id":            1,
+            ws.send(json.dumps({"id": 1, **nachricht}))
+            while True:
+                msg = json.loads(ws.recv())
+                if msg.get("id") == 1:
+                    return msg
+        finally:
+            ws.close()
+
+    def benutzer(self) -> list[dict]:
+        """Alle HA-Benutzer (config/auth/list: id, name, is_owner, group_ids …).
+        Braucht Admin-Rechte – ueber den Supervisor-Proxy (Add-on) gegeben."""
+        msg = self._ws_anfrage({"type": "config/auth/list"})
+        if not msg.get("success"):
+            raise ConnectionError(f"Benutzerliste nicht lesbar: {msg.get('error')}")
+        return msg.get("result") or []
+
+    def _get_statistics(self, entity_ids: list[str],
+                        start: datetime, end: datetime,
+                        period: str = "hour") -> dict:
+        """
+        Ruft Long-Term Statistics ab.
+        Wichtig: Diese API existiert nur über den WebSocket-Endpunkt
+        (recorder/statistics_during_period) – es gibt keinen REST-Endpunkt.
+        Rückgabe: {entity_id: [{"start": "...", "sum": ..., "mean": ..., ...}]}
+        """
+        try:
+            msg = self._ws_anfrage({
                 "type":          "recorder/statistics_during_period",
                 "start_time":    start.astimezone().isoformat(),
                 "end_time":      end.astimezone().isoformat(),
                 "statistic_ids": entity_ids,
                 "period":        period,
                 "types":         ["sum", "mean", "state"],
-            }))
-            while True:
-                msg = json.loads(ws.recv())
-                if msg.get("id") == 1:
-                    break
-            if not msg.get("success"):
-                return {}
-            result = msg.get("result") or {}
-        finally:
-            ws.close()
+            })
+        except ImportError:
+            # websocket-client fehlt → Aufrufer fällt auf die History-API zurück
+            return {}
+        if not msg.get("success"):
+            return {}
+        result = msg.get("result") or {}
 
         # "start" kommt als Epoch-Millisekunden → in lokale ISO-Strings wandeln,
         # damit die Monats-Zuordnung (String-Prefix "YYYY-MM") funktioniert

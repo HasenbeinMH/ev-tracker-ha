@@ -90,13 +90,18 @@ async def schreibsperre(request: Request, call_next):
         if "/api/" in request.url.path:
             return JSONResponse({"ok": False, "error": _(SCHREIBSPERRE_TEXT)}, status_code=503)
         # Formular: zurueck zur Seite, das Banner meldet "nicht gespeichert"
-        # nur Pfad und Query des Referers – nie auf eine fremde Adresse umleiten
-        from urllib.parse import urlsplit
-        teile = urlsplit(request.headers.get("referer") or "")
-        ziel = (teile.path or ".") + (f"?{teile.query}" if teile.query else "")
-        ziel += ("&" if "?" in ziel else "?") + "nicht_gespeichert=1"
-        return RedirectResponse(ziel, status_code=303)
+        return _zurueck_mit(request, "nicht_gespeichert")
     return await call_next(request)
+
+
+def _zurueck_mit(request: Request, marke: str) -> RedirectResponse:
+    """Zurueck zur aufrufenden Seite mit ?<marke>=1 fuer das Banner in base.html –
+    nur Pfad und Query des Referers, nie auf eine fremde Adresse umleiten."""
+    from urllib.parse import urlsplit
+    teile = urlsplit(request.headers.get("referer") or "")
+    ziel = (teile.path or ".") + (f"?{teile.query}" if teile.query else "")
+    ziel += ("&" if "?" in ziel else "?") + f"{marke}=1"
+    return RedirectResponse(ziel, status_code=303)
 
 
 def _fahrzeug_wert(roh) -> int | str | None:
@@ -118,6 +123,70 @@ async def fahrzeug_waehlen(request: Request, call_next):
     if neu is not None:
         antwort.set_cookie("fahrzeug", str(neu), max_age=365 * 24 * 3600, samesite="lax")
     return antwort
+
+
+# ── Zugriff im Add-on: nur ueber Ingress, heikle Aktionen nur fuer HA-Admins ──
+# Ingress-Anfragen leitet der Supervisor von 172.30.32.2 weiter. Alles andere im internen
+# Add-on-Netz (andere Add-ons) kaeme sonst ohne HA-Anmeldung an die Oberflaeche.
+INGRESS_PROXY = {"172.30.32.2", "127.0.0.1"}
+# Ohne Ingress erreichbar: Heimladungen aus HA – mit eigenem Bearer-Token (siehe _push_url)
+OHNE_INGRESS = {"/api/ladung"}
+# Nur fuer HA-Admins (panel_admin: false zeigt die Seitenleiste allen Benutzern):
+# Zugangsdaten setzen oder ausgeben, die ganze Datenbank ersetzen oder leeren
+NUR_ADMIN = {("POST", "/api/backup/restore"), ("POST", "/api/reset"),
+             ("GET", "/api/settings/export"), ("POST", "/api/settings/import"),
+             ("POST", "/einstellungen/ha"), ("POST", "/einstellungen/mail"),
+             ("POST", "/einstellungen/push-token")}
+NUR_ADMIN_TEXT = N_("Das dürfen nur Administratoren von Home Assistant.")
+_admin_cache = {"zeit": None, "rechte": None}
+
+
+def _ha_admin_rechte() -> dict | None:
+    """{Benutzer-id: ist Admin} aus Home Assistant, 5 Minuten gemerkt. Immer ueber den
+    Supervisor – ein in den Einstellungen eingetragener Token gehoert evtl. keinem Admin.
+    None, wenn die Liste nicht lesbar ist."""
+    import time
+    jetzt = time.monotonic()
+    if _admin_cache["zeit"] is not None and jetzt - _admin_cache["zeit"] < 300:
+        return _admin_cache["rechte"]
+    try:
+        rechte = {b["id"]: bool(b.get("is_owner")) or "system-admin" in (b.get("group_ids") or [])
+                  for b in HAClient(**_ha_verbindung({})).benutzer()}
+    except Exception as e:
+        print(f"[Zugriff] HA-Benutzerliste nicht lesbar ({e}) – Admin-Prüfung ausgesetzt",
+              flush=True)
+        rechte = None
+    _admin_cache.update(zeit=jetzt, rechte=rechte)
+    return rechte
+
+
+@app.middleware("http")
+async def nur_admin(request: Request, call_next):
+    """Heikle Aktionen (NUR_ADMIN) sperren, wenn HA den Benutzer sicher als Nicht-Admin
+    kennt. Ohne Benutzerkennung von Ingress oder ohne lesbare Benutzerliste wird nicht
+    gesperrt – sonst koennte sich auch der Eigentuemer aussperren."""
+    pfad = request.url.path
+    if (IST_ADDON and (request.method, pfad) in NUR_ADMIN
+            and not (pfad == "/api/settings/export" and request.query_params.get("secrets") == "0")):
+        benutzer = request.headers.get("x-remote-user-id")
+        if benutzer:
+            from starlette.concurrency import run_in_threadpool
+            rechte = await run_in_threadpool(_ha_admin_rechte)
+            if rechte is not None and rechte.get(benutzer) is False:
+                if request.method == "POST" and "/api/" in pfad:
+                    return JSONResponse({"ok": False, "error": _(NUR_ADMIN_TEXT)}, status_code=403)
+                return _zurueck_mit(request, "nur_admin")
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def nur_ingress(request: Request, call_next):
+    """Im Add-on nur Anfragen ueber Ingress (Supervisor) annehmen – ausser OHNE_INGRESS."""
+    if IST_ADDON and request.url.path not in OHNE_INGRESS:
+        if (request.client.host if request.client else "") not in INGRESS_PROXY:
+            return JSONResponse({"ok": False, "error": "Nur über Home Assistant (Ingress) erreichbar"},
+                                status_code=403)
+    return await call_next(request)
 
 
 def mit_fahrzeug(func):
@@ -205,6 +274,7 @@ def render(request, template, **ctx):
     ctx.setdefault("schema_zu_neu", db.SCHEMA_ZU_NEU)
     ctx.setdefault("module", module_mod.alle())
     ctx.setdefault("nicht_gespeichert", request.query_params.get("nicht_gespeichert") == "1")
+    ctx.setdefault("nur_admin", request.query_params.get("nur_admin") == "1")
     # Mehrere Fahrzeuge: Liste fuer Umschalter und Formularfeld, gewaehltes (None = alle)
     ctx.setdefault("mehrere", db.mehrere_fahrzeuge())
     ctx.setdefault("fahrzeuge", db.fahrzeuge())

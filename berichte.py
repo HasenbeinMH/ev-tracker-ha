@@ -331,7 +331,7 @@ def als_html(bericht: dict) -> str:
     anbieter_html = ""
     if d["nach_anbieter"]:
         reihen = "".join(
-            f'<tr><td>{name}</td><td class="z">{a["anzahl"]}</td>'
+            f'<tr><td>{html.escape(name)}</td><td class="z">{a["anzahl"]}</td>'
             f'<td class="z">{fmt(a["kwh"], 1, "kWh")}</td>'
             f'<td class="z">{fmt(a["kosten"], 2, "&euro;")}</td></tr>'
             for name, a in sorted(d["nach_anbieter"].items(),
@@ -344,7 +344,7 @@ def als_html(bericht: dict) -> str:
     fahrzeug_html = ""
     if len(d.get("je_fahrzeug") or []) > 1:
         reihen = "".join(
-            f'<tr><td>{x["name"]}</td><td class="z">{fmt(x["km"], 0)}</td>'
+            f'<tr><td>{html.escape(x["name"])}</td><td class="z">{fmt(x["km"], 0)}</td>'
             f'<td class="z">{fmt(x["kwh"], 1)}</td>'
             f'<td class="z">{fmt(x["strom_kosten"], 2)}</td>'
             f'<td class="z {"gruen" if x["ersparnis"] >= 0 else "rot"}">'
@@ -389,12 +389,12 @@ def als_html(bericht: dict) -> str:
     return (
         f'<!DOCTYPE html><html lang="{db.sprache()}"><head><meta charset="utf-8">'
         f'<style>{_STIL}</style></head><body><div class="rahmen">'
-        f'<div class="kopf"><h1>&#9889; EV Tracker – {bericht["titel"]}</h1>'
+        f'<div class="kopf"><h1>&#9889; EV Tracker – {html.escape(bericht["titel"])}</h1>'
         f'<div>{_("Vergleich mit {0}", bericht["vergleich_titel"])}</div></div>'
         '<div class="inhalt">'
         + (f'<div style="background:#fff8e1;border:1px solid #e6d9a8;'
            f'border-radius:6px;padding:10px 12px;font-size:12px;margin-bottom:14px">'
-           f'&#9888; {bericht["hinweis"]}</div>' if bericht.get("hinweis") else '')
+           f'&#9888; {html.escape(bericht["hinweis"])}</div>' if bericht.get("hinweis") else '')
         + f'<div style="margin:0 -1%">{kacheln}</div>'
         f'<h2>{_("Kennzahlen")}</h2><table>{tabelle}</table>'
         f'<p class="grau" style="font-size:12px">{_("Stromkosten, Verbrauch und Ersparnis rechnen mit den kWh, die an Wallbox oder Ladesäule gemessen und bezahlt wurden – die Ladeverluste sind darin enthalten.")}</p>'

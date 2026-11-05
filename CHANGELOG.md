@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.9.5] - 2026-10-31
+
+### Mehr Sicherheit im Add-on
+- Sicherheit: Im Add-on nimmt der EV Tracker nur noch Anfragen ueber Home Assistant (Ingress) an – andere Add-ons im internen Netz kamen vorher ohne Anmeldung an die Oberflaeche. Ladungen aus Home Assistant (/api/ladung mit Token) kommen weiter direkt an
+- Sicherheit: Zugangsdaten aendern (HA-Verbindung, Mail, Push-Token), Export mit Zugangsdaten, Einstellungen importieren, Backup wiederherstellen und Messdaten zuruecksetzen duerfen nur noch Administratoren von Home Assistant. Alle anderen Benutzer erfassen weiter Ladungen, Fahrten und Kosten
+- Sicherheit: Namen von Anbietern, Fahrzeugen und Sensoren sowie Notizen werden ueberall als Text angezeigt – vorher konnte z.B. eine Notiz beim Bearbeiten einer Ladung oder ein Anbietername im Monatsbericht HTML einschleusen
+- Behoben: Beim Bearbeiten einer Ladung war ein Anbieter mit & oder Anfuehrungszeichen im Namen nicht vorausgewaehlt
+- Behoben: Das Einstellungs-Werkzeug (settings_tool.py) exportierte „ohne Secrets“ noch Mail-Passwort und Push-Token
+- Darstellung: Besser lesbar – graue Texte heller (Kontrast etwa 6,5 : 1 statt 3,4 : 1), die Beschriftung der Dashboard-Kacheln 12 statt 10 px auf hellerem Grau (vorher nur 2,1 : 1), Einheiten 13 statt 11 px. Bricht eine Beschriftung um, stehen die Zahlen der Kacheln trotzdem auf einer Linie
+- Hilfe: Was Benutzer ohne Admin-Rechte duerfen
+
 ## [3.9.4] - 2026-10-31
 
 ### Rekuperation im Diagramm, Fahrstatistik-Vorschlag

@@ -17,6 +17,11 @@ window.T = function (text) {
   const werte = Array.prototype.slice.call(arguments, 1);
   return String(text).replace(/\{(\d+)\}/g, function (m, i) { return werte[+i]; });
 };
+// Werte aus HA, Datenbank oder Eingaben vor innerHTML maskieren (Namen, Notizen, Fehlertexte)
+window.esc = function (s) {
+  return String(s ?? "").replace(/[&<>"']/g,
+    function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]; });
+};
 </script>
 </head>
 <body>
@@ -90,6 +95,9 @@ window.T = function (text) {
 <main>
 {% if schema_zu_neu %}
 <div class="sim-banner warn-banner" role="alert">{% if nicht_gespeichert %}{{ _("⛔ <b>Nicht gespeichert.</b>") }} {% endif %}{{ _("⚠️ <b>Nur lesbar</b> – die Datenbank stammt aus einer neueren Version des EV Trackers (Struktur-Stand {0}). Damit keine falschen Zahlen entstehen, wird nichts gespeichert und nichts importiert. Neue Version installieren oder unter <a href=\"backup\">Backup</a> eine Sicherung wiederherstellen.", schema_zu_neu) }}</div>
+{% endif %}
+{% if nur_admin %}
+<div class="sim-banner warn-banner" role="alert">{{ _("⛔ <b>Nicht ausgeführt.</b> Das dürfen nur Administratoren von Home Assistant.") }}</div>
 {% endif %}
 {% if simulation %}
 <div class="sim-banner">{{ _("🧪 <b>Simulationsmodus</b> – die Ladungen sind aus den gefahrenen km gerechnet, so als wäre es ein E-Auto. <a href=\"einstellungen#simulation\">Einstellungen</a>") }}</div>

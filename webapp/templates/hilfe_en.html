@@ -18,7 +18,7 @@
   .hb-formel{background:#0e1015;border:1px solid var(--border2);border-left:3px solid var(--blau);
              border-radius:6px;padding:11px 14px;margin:10px 0 14px;font-family:Consolas,monospace;
              font-size:13px;color:var(--gruen);overflow-x:auto;white-space:nowrap}
-  .hb-formel .lbl{display:block;font-family:'Segoe UI',sans-serif;font-size:10px;
+  .hb-formel .lbl{display:block;font-family:'Segoe UI',sans-serif;font-size:11px;
                   letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
                   margin-bottom:5px;font-weight:700}
   .hb-bsp{border-left:3px solid var(--gelb);background:var(--card);border-radius:0 6px 6px 0;
@@ -644,6 +644,8 @@
 <p>Yes, switch to “Several vehicles” under Settings → Vehicles, see <a href="#fahrzeuge">Several vehicles</a>. If both share a wallbox, home charging is split by km – it gets more accurate with single sessions via push, assignment via battery level or own meters.</p>
 <h3>Can I switch the language back?</h3>
 <p>Yes, at any time with <b>DE | EN</b> at the top right or under Settings → Calculation parameters. Nothing in your data changes.</p>
+<h3>What may users without admin rights do?</h3>
+<p>All Home Assistant users see EV Tracker in the sidebar and can record charges, trips and costs. Credentials (HA connection, database, mail, push token), the export with credentials, importing settings as well as restoring a backup and resetting measurement data are reserved for administrators.</p>
 <h3>Where is my data stored?</h3>
 <p>In an SQLite file in the container's data directory, backed up to OneDrive via cron job. It can be downloaded at any time via the Backup page.</p>
 

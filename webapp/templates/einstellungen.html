@@ -662,23 +662,22 @@ async function sucheSensoren() {
   box.innerHTML = "<span class='muted'>" + {{ _t("Suche …") | tojson }} + "</span>";
   const resp = await fetch("api/entities?q=" + encodeURIComponent(q));
   const d = await resp.json();
-  if (d.error) { box.innerHTML = "<span class='rot'>✗ " + d.error + "</span>"; return; }
+  if (d.error) { box.innerHTML = "<span class='rot'>✗ " + esc(d.error) + "</span>"; return; }
   if (!d.treffer.length) { box.innerHTML = "<span class='gelb'>" + {{ _t("Keine Treffer") | tojson }} + "</span>"; return; }
   let html = `<div class="muted">${T({{ _t("{0} Treffer") | tojson }}, d.anzahl)}${d.anzahl > 60 ? " " + {{ _t("(zeige 60)") | tojson }} : ""} – ${ {{ _t("auf eine Zeile klicken, um sie zu prüfen:") | tojson }} }</div>`;
   html += "<div class='tabelle-scroll' style='max-height:260px; overflow-y:auto'><table>";
   html += "<tr><th>Entity-ID</th><th>" + {{ _t("Name") | tojson }} + "</th><th>" + {{ _t("Wert") | tojson }} + "</th><th>" + {{ _t("Typ") | tojson }} + "</th></tr>";
   for (const t of d.treffer) {
-    html += `<tr style="cursor:pointer" onclick="document.getElementById('sensor-pruef').value='${t.entity_id}'; pruefeSensor()">` +
-            `<td>${t.entity_id}</td><td>${t.name}</td>` +
-            `<td>${t.state} ${t.einheit}</td><td class="muted">${t.klasse || "-"}</td></tr>`;
+    // Entity-ID als data-Attribut, nicht im onclick-Text – Namen aus HA sind fremder Text
+    html += `<tr style="cursor:pointer" data-eid="${esc(t.entity_id)}" onclick="document.getElementById('sensor-pruef').value=this.dataset.eid; pruefeSensor()">` +
+            `<td>${esc(t.entity_id)}</td><td>${esc(t.name)}</td>` +
+            `<td>${esc(t.state)} ${esc(t.einheit)}</td><td class="muted">${esc(t.klasse || "-")}</td></tr>`;
   }
   box.innerHTML = html + "</table></div>";
 }
 
 // ── Suche in der eingestellten Datenbank ────────────────────────────────────
 const SENSOR_ZEILEN = {{ sensor_felder | tojson }};   // [[ha_key, fn_key, label, modul, modul_name], ...]
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
-  c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 let dbTreffer = [], dbSpalte = "entity";
 
 // Passende Zeile der Sensortabelle aus Einheit und Name raten (nur ein Vorschlag).
@@ -785,11 +784,11 @@ async function pruefeSensor() {
   const eid = document.getElementById("sensor-pruef").value.trim();
   const box = document.getElementById("sensor-ergebnis");
   if (!eid) { box.innerHTML = "<span class='gelb'>" + {{ _t("Bitte Entity-ID eingeben") | tojson }} + "</span>"; return; }
-  box.innerHTML = "<span class='muted'>" + T({{ _t("Prüfe {0} – das dauert einen Moment …") | tojson }}, eid) + "</span>";
+  box.innerHTML = "<span class='muted'>" + T({{ _t("Prüfe {0} – das dauert einen Moment …") | tojson }}, esc(eid)) + "</span>";
   const resp = await fetch("api/diagnose?entity=" + encodeURIComponent(eid));
   const d = await resp.json();
-  if (d.error) { box.innerHTML = "<span class='rot'>✗ " + d.error + "</span>"; return; }
-  let html = `<div><strong>${d.entity}</strong> ${d.name ? "(" + d.name + ")" : ""} · ${ {{ _t("aktuell:") | tojson }} } ${d.state} ${d.einheit}</div>`;
+  if (d.error) { box.innerHTML = "<span class='rot'>✗ " + esc(d.error) + "</span>"; return; }
+  let html = `<div><strong>${esc(d.entity)}</strong> ${d.name ? "(" + esc(d.name) + ")" : ""} · ${ {{ _t("aktuell:") | tojson }} } ${esc(d.state)} ${esc(d.einheit)}</div>`;
   if (d.state_class) html += `<div class="muted">state_class: ${esc(d.state_class)}</div>`;
   // Spalten, die der Import fuer diesen Sensor nicht nutzt, ausgrauen (d.genutzt null = unbekannt)
   const SPALTEN = {delta: {{ _t("Delta (Zähler)") | tojson }}, summe: {{ _t("Summe (Tageswerte)") | tojson }},
@@ -798,11 +797,11 @@ async function pruefeSensor() {
   html += "<table style='margin-top:6px'><tr><th>" + {{ _t("Monat") | tojson }} + "</th>" +
           Object.entries(SPALTEN).map(([k, n]) => `<th${grau(k)}>${n}</th>`).join("") + "</tr>";
   for (const m of d.monate) {
-    const f = v => v === null ? "<span class='muted'>–</span>" : v;
+    const f = v => v === null ? "<span class='muted'>–</span>" : esc(v);
     const reset = m.reset ? ` <span class="muted" title="${esc({{ _t("Zähler wurde zurückgesetzt – die Zuwächse sind zusammengezählt") | tojson }})}">↺ ${esc(m.reset)}</span>` : "";
     const sum = m.ha_sum !== null && m.ha_sum !== undefined
       ? ` <span class="gelb" title="${esc(T({{ _t("Home Assistant errechnet {0} – mehr, als der Zähler gestiegen ist (vermutlich kurz auf 0 gefallen). Verwendet wird der tatsächliche Anstieg.") | tojson }}, m.ha_sum))}">⚠ HA: ${esc(m.ha_sum)}</span>` : "";
-    html += `<tr><td>${m.monat}</td><td${grau("delta")}>${f(m.delta)}${reset}${sum}</td>` +
+    html += `<tr><td>${esc(m.monat)}</td><td${grau("delta")}>${f(m.delta)}${reset}${sum}</td>` +
             `<td${grau("summe")}>${f(m.summe)}</td><td${grau("mittel")}>${f(m.mittel)}</td></tr>`;
   }
   html += "</table><div class='hint'>";

@@ -17,7 +17,7 @@
   .hb-formel{background:#0e1015;border:1px solid var(--border2);border-left:3px solid var(--blau);
              border-radius:6px;padding:11px 14px;margin:10px 0 14px;font-family:Consolas,monospace;
              font-size:13px;color:var(--gruen);overflow-x:auto;white-space:nowrap}
-  .hb-formel .lbl{display:block;font-family:'Segoe UI',sans-serif;font-size:10px;
+  .hb-formel .lbl{display:block;font-family:'Segoe UI',sans-serif;font-size:11px;
                   letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
                   margin-bottom:5px;font-weight:700}
   .hb-bsp{border-left:3px solid var(--gelb);background:var(--card);border-radius:0 6px 6px 0;
@@ -640,6 +640,8 @@
 <p>Ja, unter Einstellungen → Fahrzeuge auf „Mehrere Fahrzeuge“ umschalten, siehe <a href="#fahrzeuge">Mehrere Fahrzeuge</a>. Teilen sich beide eine Wallbox, wird die Heimladung nach km verteilt – genauer wird es mit Einzelladungen per Push oder eigenen Zählern.</p>
 <h3>Gibt es den EV Tracker auch auf Englisch?</h3>
 <p>Ja – oben rechts <b>DE | EN</b> oder unter Einstellungen → Berechnungsparameter. Die Sprache gilt für Oberfläche, Hilfe und Mail-Berichte; an den Daten ändert sich nichts.</p>
+<h3>Was dürfen Benutzer ohne Admin-Rechte?</h3>
+<p>Den EV Tracker sehen alle Benutzer von Home Assistant in der Seitenleiste und können Ladungen, Fahrten und Kosten erfassen. Zugangsdaten (HA-Verbindung, Datenbank, Mail, Push-Token), der Export mit Zugangsdaten, der Import von Einstellungen sowie Backup wiederherstellen und Messdaten zurücksetzen sind Administratoren vorbehalten.</p>
 <h3>Wo liegen meine Daten?</h3>
 <p>In einer SQLite-Datei im Datenverzeichnis des Containers, gesichert per Cronjob nach OneDrive. Über die Seite Backup lässt sie sich jederzeit herunterladen.</p>
 

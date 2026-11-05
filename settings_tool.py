@@ -13,20 +13,22 @@ import sys
 from datetime import datetime
 
 import database as db
+import diagnose
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
 except Exception:
     pass
 
-GEHEIM_KEYS = {"ha_token", "influx_password", "influx2_token", "influx3_token", "pg_password", "prom_password"}
+# Dieselbe Liste wie Web-Export und Diagnose-Paket (HA-/DB-Zugaenge, Mail-Passwort, Push-Token)
+GEHEIM_KEYS = diagnose.GEHEIM
 
 
 def exportieren(pfad, mit_secrets=True):
     db.init_db()
     werte = db.get_alle_einstellungen()
     if not mit_secrets:
-        werte = {k: v for k, v in werte.items() if k not in GEHEIM_KEYS}
+        werte = {k: v for k, v in werte.items() if k.split("@", 1)[0] not in GEHEIM_KEYS}
     daten = {
         "typ": "ev-tracker-einstellungen",
         "version": 1,
@@ -59,7 +61,7 @@ def importieren(pfad):
     werte = daten.get("einstellungen") or {}
     vorhanden = db.get_alle_einstellungen()
     werte = {k: v for k, v in werte.items()
-             if not (k in GEHEIM_KEYS and not str(v).strip() and vorhanden.get(k))
+             if not (k.split("@", 1)[0] in GEHEIM_KEYS and not str(v).strip() and vorhanden.get(k))
              and k not in db.NICHT_IMPORTIEREN}
     if str(werte.get("mehrere_fahrzeuge")) == "1" and db.schema_stand() < 3:
         # Umbau mit Sicherung nur ueber die Web-Oberflaeche (Einstellungen → Fahrzeuge)

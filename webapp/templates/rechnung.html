@@ -55,9 +55,6 @@ async function parseRequest(formData) {
   zeigeVorschau(data.vorgaenge);
 }
 
-function esc(t) {
-  return String(t ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"})[c]);
-}
 
 document.getElementById("pdf-form").addEventListener("submit", (e) => {
   e.preventDefault();

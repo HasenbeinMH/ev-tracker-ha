@@ -151,19 +151,17 @@ async function pollStatus() {
 
 // Kennzeichen unter jedem Wert: DB = aus der Datenbank, HA = aus der HA-API
 const HA_API = "HA-API";
-const escHtml = (s) => String(s ?? "").replace(/[&<>"']/g,
-  c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 // grund: warum die Datenbank nichts lieferte ({kurz, lang}) – grau unter dem Feld
 function herkunftMarke(herkunft, grund) {
   let html = "";
   if (herkunft) {
     const db = herkunft !== HA_API;
-    html += `<div class="herkunft" title="${escHtml(herkunft)}" style="font-size:10px; margin-top:2px;` +
+    html += `<div class="herkunft" title="${esc(herkunft)}" style="font-size:11px; margin-top:2px;` +
             ` color:${db ? "#7cc896" : "#6fb0e0"}">${db ? "DB" : "HA"}</div>`;
   }
   if (grund) {
-    html += `<div title="${escHtml(grund.lang)}" style="font-size:10px; color:#8a8f98; max-width:170px;` +
-            ` white-space:normal; line-height:1.2; margin-top:2px">DB: ${escHtml(grund.kurz)}</div>`;
+    html += `<div title="${esc(grund.lang)}" style="font-size:11px; color:#8a8f98; max-width:170px;` +
+            ` white-space:normal; line-height:1.2; margin-top:2px">DB: ${esc(grund.kurz)}</div>`;
   }
   return html;
 }
@@ -182,9 +180,9 @@ function zeigeVorschau(rows, quelle) {
   tabelle.querySelectorAll("tr:not(:first-child)").forEach(tr => tr.remove());
   for (const r of rows) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${r.label}</td>` +
+    tr.innerHTML = `<td>${esc(r.label)}</td>` +
       SPALTEN.map(k =>
-        `<td><input data-monat="${r.monat}" data-key="${k}" value="${r[k] ?? ""}">` +
+        `<td><input data-monat="${esc(r.monat)}" data-key="${k}" value="${esc(r[k])}">` +
         `${herkunftMarke((r._quelle || {})[k], (r._grund || {})[k])}</td>`
       ).join("");
     tabelle.appendChild(tr);

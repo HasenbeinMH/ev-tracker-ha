@@ -145,20 +145,20 @@ async function pruefen(btn) {
       : `<span class="gelb"><strong>${T({{ _t("⚠ {0} ist noch nicht vollständig") | tojson }}, d.monat)}</strong></span>`;
     if (d.offen && d.offen.length) {
       html += "<ul style='margin:6px 0 0 18px; padding:0'>" +
-              d.offen.map(o => `<li>${o}</li>`).join("") + "</ul>";
+              d.offen.map(o => `<li>${esc(o)}</li>`).join("") + "</ul>";
     }
     const le = d.ladeerkennung || {};
-    html += `<div class="hint" style="margin-top:8px">${ {{ _t("Ladeerkennung:") | tojson }} } ${le.meldung || "–"}`;
+    html += `<div class="hint" style="margin-top:8px">${ {{ _t("Ladeerkennung:") | tojson }} } ${esc(le.meldung || "–")}`;
     if (le.fehlend && le.fehlend.length) {
       html += "<table style='margin-top:6px'><tr><th>" + {{ _t("Datum") | tojson }} + "</th><th>" + {{ _t("Batterie") | tojson }} + "</th><th>" + {{ _t("geschätzt") | tojson }} + "</th></tr>" +
         le.fehlend.map(f =>
-          `<tr><td>${f.datum}</td><td>${f.von_prozent} % → ${f.bis_prozent} %</td>` +
-          `<td>~${f.kwh} kWh</td></tr>`).join("") + "</table>" +
+          `<tr><td>${esc(f.datum)}</td><td>${esc(f.von_prozent)} % → ${esc(f.bis_prozent)} %</td>` +
+          `<td>~${esc(f.kwh)} kWh</td></tr>`).join("") + "</table>" +
         "<div style='margin-top:6px'>" + {{ _t("Diese Ladevorgänge im Reiter <a href='laden' style='color:#7a9ec4'>Laden</a> nachtragen.") | tojson }} + "</div>";
     }
     box.innerHTML = html + "</div>";
   } catch (e) {
-    box.innerHTML = "<span class='rot'>✗ " + e + "</span>";
+    box.innerHTML = "<span class='rot'>✗ " + esc(e) + "</span>";
   }
   btn.disabled = false;
 }

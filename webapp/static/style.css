@@ -4,7 +4,7 @@
   --border: #252830;
   --border2: #2e3340;
   --text: #c8ccd4;
-  --muted: #6b7280;
+  --muted: #9aa3b2;   /* Kontrast ca. 6,5:1 auf --card (vorher #6b7280, nur 3,4:1) */
   --blau: #2d6a9f;
   --blau-hell: #7a9ec4;
   --gruen: #5aaa78;
@@ -127,7 +127,7 @@ h2 { font-size: 15px; color: var(--blau-hell); margin: 22px 0 10px; }
 }
 .hero-text { position: relative; z-index: 1; padding: 12px 0; }
 .hero-kicker {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: .12em;
   text-transform: uppercase;
   color: rgb(var(--hero-rgb));
@@ -204,7 +204,7 @@ table.vergleich th, table.vergleich td.zahl { text-align: right; white-space: no
 table.vergleich th:first-child { text-align: left; }
 /* zweite Kopfzeile (km, kWh … unter den Zeitraeumen): ihre erste Zelle ist eine Zahlenspalte */
 table.vergleich th.zahl:first-child { text-align: right; }
-table.vergleich .klein { font-size: 10px; font-weight: 400; }
+table.vergleich .klein { font-size: 11px; font-weight: 400; }
 table.vergleich tr.summenzeile td { border-top: 1px solid var(--border2); font-weight: 600; }
 /* Monatsbezeichnungen wie "Apr 25 · Okt 24" nicht umbrechen – die Tabelle
    scrollt stattdessen waagerecht (.tabelle-scroll) */
@@ -232,7 +232,8 @@ td.schlechter { color: var(--orange); }
 }
 /* Kachel mit Symbol (Dashboard). Farbe kommt aus --farbe; Kacheln ohne Symbol
    auf anderen Seiten bleiben unveraendert. */
-.stat.mit-icon { display: flex; align-items: center; gap: 11px; }
+/* oben ausrichten: bricht eine Beschriftung um, bleiben die Zahlen aller Kacheln auf einer Linie */
+.stat.mit-icon { display: flex; align-items: flex-start; gap: 11px; }
 .stat.mit-icon .wert { color: var(--farbe); }
 /* Icon-Vorrat selbst nie anzeigen – eingebunden wird er ueber <use> */
 .ikonen { display: none; }
@@ -258,8 +259,8 @@ td.schlechter { color: var(--orange); }
   stroke-linejoin: round;
 }
 .stat .wert { font-size: 20px; font-weight: 700; }
-.stat .einheit { font-size: 11px; color: var(--muted); margin-left: 3px; }
-.stat .label { font-size: 10px; color: #4b5263; margin-top: 3px; }
+.stat .einheit { font-size: 13px; color: var(--muted); margin-left: 3px; }
+.stat .label { font-size: 12px; line-height: 1.3; color: var(--muted); margin-top: 3px; }
 .chartgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 900px) { .chartgrid { grid-template-columns: 1fr; } }
 .chart {
