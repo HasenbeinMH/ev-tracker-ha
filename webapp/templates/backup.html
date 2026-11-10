@@ -126,7 +126,7 @@ function diagnoseMail() {
   const text = document.getElementById("diagnose-text").value.trim();
   const betreff = {{ _t("EV Tracker {0} – Diagnose", version) | tojson }};
   const inhalt = (text || {{ _t("(bitte beschreiben, was nicht stimmt)") | tojson }}) + "\n\n" +
-    "---\n" + {{ ("EV Tracker " ~ version ~ " · " ~ datenquelle ~ " · " ~ ("Add-on" if add_on_modus else "Docker")) | tojson }} +
+    "---\nEV Tracker " + {{ (version ~ " · " ~ datenquelle ~ " · ") | tojson }} + "{% if add_on_modus %}Add-on{% else %}Docker{% endif %}" +
     "\n" + {{ _t("Anhang: ev_tracker_diagnose_….zip (bitte anhängen)") | tojson }} + "\n";
   document.getElementById("diagnose-mail-hinweis").style.display = "block";
   // kurz warten, sonst bricht mancher Browser den Download beim Wechsel ab

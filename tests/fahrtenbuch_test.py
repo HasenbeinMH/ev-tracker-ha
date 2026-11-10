@@ -99,7 +99,9 @@ class FakeHA:
         return FakeHA.pos if entity == "device_tracker.handy" else None
 
     def get_history_full(self, entity, start, ende, attribute=True):
-        heute = datetime.now().strftime("%Y-%m-%d")
+        # gestern: mit dem heutigen Datum laegen die Fahrten je nach Uhrzeit des Laufs
+        # noch in der Zukunft und der Test hinge von der Tageszeit ab
+        heute = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
         if entity == "sensor.km":
             return [{"state": str(v), "last_changed": f"{heute}T{t[11:]}:00"} for t, v in KM]
         if entity == "binary_sensor.motor":

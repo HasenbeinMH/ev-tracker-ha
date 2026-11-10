@@ -123,6 +123,22 @@ def vergleich(alt, neu, pfad=""):
     return abw
 
 
+# Gewollte Aenderungen an Kennzahlen: (ab Version, Ende des Pfads, Grund). Gegenueber
+# aelteren Versionen zaehlen Abweichungen an diesen Stellen nicht.
+GEWOLLT_NEU = [((3, 9, 3), "/ladevorgaenge", "Ladevorgaenge zaehlen wie in der Ladeliste")]
+
+
+def ohne_gewollte(abw: list, name: str) -> list:
+    """Abweichungen ohne die gewollten (GEWOLLT_NEU) – `name` wie "Version 3.9.2"."""
+    import re
+    m = re.search(r"(\d+)\.(\d+)\.(\d+)", name)
+    if not m:
+        return abw
+    version = tuple(int(x) for x in m.groups())
+    enden = [ende for ab, ende, _grund in GEWOLLT_NEU if version < ab]
+    return [a for a in abw if not any(a.split(":")[0].endswith(e) for e in enden)]
+
+
 def restore_test(alt_db):
     """Alt-Datenbank ueber die Web-Oberflaeche wiederherstellen (aktueller Code)."""
     tmp = tempfile.mkdtemp(prefix="ev_restore_")
@@ -175,7 +191,7 @@ def main():
                 vor = tabellen(kopie_b)
                 s_alt = snapshot(wt, kopie_a)
                 s_neu = snapshot(REPO, kopie_b)
-                abw = vergleich(s_alt, s_neu)
+                abw = ohne_gewollte(vergleich(s_alt, s_neu), name)
                 check(b, "Kennzahlen, Berichte, Unterhalt unveraendert", not abw,
                       f"{len(abw)} Abweichungen: " + "; ".join(abw[:8]))
                 nach = tabellen(kopie_b)

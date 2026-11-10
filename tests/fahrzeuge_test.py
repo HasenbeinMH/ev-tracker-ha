@@ -76,7 +76,10 @@ HAUPTSEITEN = ["/", "/statistik", "/fahrten", "/laden", "/benzin", "/stromtarif"
 # Seiten, die nach 3.0 gewollt neue Inhalte bekommen haben – beim Vergleich mit 2.16 ausgenommen
 GEWOLLT_NEU = {"/": "3.4.0 Dashboard anpassen, 3.4.2 Hinweis auf Ladungen ohne km",
                "/ladetarife": "3.3.0 Tarife „nur Vergleich“",
-               "/steuer": "3.5.0 Vorschlag aus der Erstzulassung"}
+               "/steuer": "3.5.0 Vorschlag aus der Erstzulassung",
+               "/fahrten": "3.6.3 klarere Namen fuer die beiden Verbrauchswerte",
+               "/laden": "3.8.1 eine Zeile je Ladung",
+               "/statistik": "3.9.3 Ladevorgaenge zaehlen wie in der Ladeliste"}
 
 # ── 1. Ein Fahrzeug: Ausgangslage ─────────────────────────────────────────────
 k_vorher = kennzahlen()
@@ -602,6 +605,9 @@ def html_mit_code(code_dir, db_pfad):
         "from fastapi.testclient import TestClient\n"
         "import app as webapp\n"
         "c = TestClient(webapp.app)\n"
+        # Module (Akku, Profil, …) gab es in 2.16 noch nicht – im neuen Code ausschalten,
+        # sonst unterscheidet sich schon das Menue jeder Seite
+        "if os.path.exists('module.py'): c.post('/einstellungen/module', data={}, follow_redirects=False)\n"
         f"seiten = {HAUPTSEITEN!r}\n"
         "print(json.dumps({s: c.get(s).text for s in seiten}))\n")
     p = subprocess.run([sys.executable, "-c", skript], capture_output=True, text=True, cwd=code_dir,

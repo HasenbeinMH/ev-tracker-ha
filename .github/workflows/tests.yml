@@ -19,7 +19,11 @@ jobs:
       TZ: Europe/Berlin
       PYTHONUTF8: "1"
     steps:
+      # ganze Historie: migrationstest, fahrzeuge_test und i18n_test bauen alte Versionen
+      # (git worktree) und vergleichen damit
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

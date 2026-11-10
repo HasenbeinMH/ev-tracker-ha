@@ -412,9 +412,13 @@ gebuehren = [l for l in lade_alle if l.get("grundgebuehr")]
 check("Ladetarife", "Grundgebuehr fliesst als Eintrag ohne kWh in die Auswertungen",
       len(gebuehren) == len(TARIF_MONATE) and all(l["menge_kwh"] == 0 for l in gebuehren),
       f"{len(gebuehren)} Eintraege / soll {len(TARIF_MONATE)}")
+# Gezaehlt wird wie in der Ladeliste (seit 3.9.3): PV- und Netzteil der importierten
+# Monatssumme sind eine Ladung, jede oeffentliche Ladung zaehlt fuer sich
+echte = [l for l in ladungen if l[1] > 0 and l[0][:7] in MONATE]
+soll_anzahl = (len({l[0] for l in echte if l[3] != berechnung.OEFFENTLICH})
+               + len([l for l in echte if l[3] == berechnung.OEFFENTLICH]))
 check("Ladetarife", "Grundgebuehr zaehlt nicht als Ladevorgang",
-      kz_all["ladevorgaenge"] == len([l for l in ladungen if l[1] > 0 and l[0][:7] in MONATE]),
-      str(kz_all["ladevorgaenge"]))
+      kz_all["ladevorgaenge"] == soll_anzahl, f"{kz_all['ladevorgaenge']} / soll {soll_anzahl}")
 
 # ── 8. Instandhaltung / Versicherung ───────────────────────────────────────
 ih = unterhalt.instandhaltung_daten()
@@ -664,7 +668,8 @@ check("Einstellungen", "Anbieter anlegen", any(a["name"] == "Tesla SuC" for a in
 r = c.get("/api/backup")
 check("Backup", "Standalone ohne Token -> 403", r.status_code == 403)
 webapp.IST_ADDON = True
-r = c.get("/api/backup")
+# im Add-on nur ueber Ingress erreichbar (seit 3.9.5) – die Anfrage kommt vom Supervisor
+r = TestClient(webapp.app, client=("172.30.32.2", 50000)).get("/api/backup")
 webapp.IST_ADDON = False
 check("Backup", "Add-on: DB-Download", r.status_code == 200 and r.content.startswith(b"SQLite format 3"),
       f"{len(r.content)} Bytes")
