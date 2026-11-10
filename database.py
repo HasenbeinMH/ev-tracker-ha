@@ -420,9 +420,7 @@ _fahrzeug = ContextVar("fahrzeug", default=None)   # id, ALLE oder None (= Haupt
 
 
 def _roh(key):
-    with closing(get_connection()) as conn:
-        row = conn.execute("SELECT value FROM einstellungen WHERE key=?", (key,)).fetchone()
-    return row["value"] if row else None
+    return _einstellungen().get(key)
 
 
 # Fahrzeugstatus (Modus, Hauptfahrzeug, Liste, Struktur-Stand) wird bei fast jeder Abfrage
@@ -435,12 +433,35 @@ def _geaendert():
     _puffer.clear()
 
 
-def _status() -> dict:
+def _datei_schluessel():
+    """Kennung des Datenbank-Stands (Datei, Inode, Aenderungszeit, Groesse); None ohne Datei."""
     try:
         st = os.stat(DB_PATH)
-        schluessel_datei = (DB_PATH, st.st_ino, st.st_mtime_ns, st.st_size)
+        return (DB_PATH, st.st_ino, st.st_mtime_ns, st.st_size)
     except OSError:
-        schluessel_datei = None
+        return None
+
+
+def _einstellungen() -> dict:
+    """Alle Einstellungen {gespeicherter Schluessel: Wert}, gepuffert wie der Fahrzeugstatus –
+    eine Seite liest Dutzende einzelner Werte. Nur lesen, nicht veraendern."""
+    schluessel_datei = _datei_schluessel()      # vor der Abfrage: ein Schreiben dazwischen
+    treffer = _puffer.get("werte")              # macht den Eintrag sofort wieder ungueltig
+    if schluessel_datei is not None and treffer and treffer[0] == schluessel_datei:
+        return treffer[1]
+    with closing(get_connection()) as conn:
+        try:
+            werte = {r["key"]: r["value"] for r in conn.execute(
+                "SELECT key, value FROM einstellungen").fetchall()}
+        except sqlite3.OperationalError:          # vor init_db
+            return {}
+    if schluessel_datei is not None:
+        _puffer["werte"] = (schluessel_datei, werte)
+    return werte
+
+
+def _status() -> dict:
+    schluessel_datei = _datei_schluessel()
     if schluessel_datei is not None and _puffer.get("datei") == schluessel_datei:
         return _puffer["status"]
     with closing(get_connection()) as conn:
@@ -708,22 +729,17 @@ def struktur_mehrere_fahrzeuge(_fehler_nach: str | None = None) -> bool:
 # --- Einstellungen ---
 # Schluessel aus FAHRZEUG_SCHLUESSEL beziehen sich auf das aktuelle Fahrzeug (siehe oben).
 def get_einstellung(key):
-    with closing(get_connection()) as conn:
-        row = conn.execute("SELECT value FROM einstellungen WHERE key=?",
-                           (schluessel(key),)).fetchone()
-    if row is None:
+    wert = _einstellungen().get(schluessel(key))
+    if wert is None:
         return None
     try:
-        return float(row["value"])
+        return float(wert)
     except ValueError:
         return None
 
 
 def get_einstellung_str(key):
-    with closing(get_connection()) as conn:
-        row = conn.execute("SELECT value FROM einstellungen WHERE key=?",
-                           (schluessel(key),)).fetchone()
-    return row["value"] if row else None
+    return _einstellungen().get(schluessel(key))
 
 
 def set_einstellung(key, value):
@@ -735,12 +751,8 @@ def set_einstellung(key, value):
 
 def _werte(keys: list) -> dict:
     """{schluessel_ohne_fahrzeug: wert} fuer das aktuelle Fahrzeug, eine Abfrage."""
-    echt = {schluessel(k): k for k in keys}
-    with closing(get_connection()) as conn:
-        rows = conn.execute(
-            f"SELECT key, value FROM einstellungen WHERE key IN ({','.join('?' * len(echt))})",
-            list(echt)).fetchall()
-    return {echt[r["key"]]: r["value"] for r in rows}
+    alle = _einstellungen()
+    return {k: alle[echt] for k in keys if (echt := schluessel(k)) in alle}
 
 
 def get_config() -> dict:
@@ -807,9 +819,7 @@ def set_fahrzeug_liste_roh(liste: list) -> int:
 
 def get_alle_einstellungen() -> dict:
     """Alle Schlüssel/Werte der Einstellungen-Tabelle (für Export)."""
-    with closing(get_connection()) as conn:
-        rows = conn.execute("SELECT key, value FROM einstellungen").fetchall()
-    return {r["key"]: r["value"] for r in rows}
+    return dict(_einstellungen())
 
 
 def set_einstellungen(werte: dict):
@@ -1760,11 +1770,9 @@ def get_ha_settings(fahrzeug_id=None, eigene_zaehler: bool = False):
         erg["km_bei_kauf"] = 0.0
     if eigene_zaehler:
         fid = schreib_fahrzeug(fahrzeug_id)
-        with closing(get_connection()) as conn:
-            for key in WALLBOX_SCHLUESSEL:
-                row = conn.execute("SELECT value FROM einstellungen WHERE key=?",
-                                   (f"{key}@{fid}",)).fetchone()
-                erg[key] = row[0] if row else ""
+        alle = _einstellungen()
+        for key in WALLBOX_SCHLUESSEL:
+            erg[key] = alle.get(f"{key}@{fid}", "")
     return erg
 
 

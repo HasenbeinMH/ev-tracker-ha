@@ -28,3 +28,6 @@ video/demo/
 video/out/
 video/stills/
 video/build/
+
+# Eigene Sensor-Zuordnungen (Export vom Desktop) – persoenlich, nicht ins Repo
+sensoren_transfer.json

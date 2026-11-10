@@ -390,9 +390,10 @@ def km_pro_tag(fahrten: list | None = None, monate: int = 12) -> float | None:
 
 # ── Gesamtauswertung ─────────────────────────────────────────────────────────
 
-def auswertung(heute: date | None = None) -> dict:
+def auswertung(heute: date | None = None, daten: dict | None = None) -> dict:
     """Alles fuer die Akku-Seite und die Dashboard-Kacheln – fuer das aktuelle Fahrzeug
-    (in der Gesamtsicht je Fahrzeug mit db.fahrzeug_kontext aufrufen)."""
+    (in der Gesamtsicht je Fahrzeug mit db.fahrzeug_kontext aufrufen).
+    daten: schon geladene Rohdaten desselben Fahrzeugs (zeitraum.laden), sonst frisch."""
     import akkuverbrauch
     import zeitraum
     heute = heute or date.today()
@@ -401,7 +402,7 @@ def auswertung(heute: date | None = None) -> dict:
     abschnitte = db.get_akku_abschnitte()
     ladungen = ladungen_aus_abschnitten(abschnitte)
 
-    daten = zeitraum.laden()
+    daten = daten or zeitraum.laden()
     werte = zeitraum.monatswerte(zeitraum.aufloesen(zeitraum.ALLES), daten)
     liste = paare(werte)
     lade_kwh = {w["monat"]: w["kwh"] for w in werte if w["kwh"]}

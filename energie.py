@@ -176,12 +176,13 @@ def saison(monate: list) -> dict:
     return {"sommer": wert((6, 7, 8)), "winter": wert((12, 1, 2))}
 
 
-def auswertung(z: dict) -> dict:
-    """Alles fuer die Energie-Seite im Zeitraum z (zeitraum.aufloesen) – aktuelles Fahrzeug."""
+def auswertung(z: dict, daten: dict | None = None) -> dict:
+    """Alles fuer die Energie-Seite im Zeitraum z (zeitraum.aufloesen) – aktuelles Fahrzeug.
+    daten: schon geladene Rohdaten desselben Fahrzeugs (zeitraum.laden), sonst frisch."""
     import zeitraum
     alle_tage = db.get_energie_tage()
     tage = [t for t in alle_tage if zeitraum.enthaelt(z, t["datum"])]
-    daten = zeitraum.laden()
+    daten = daten or zeitraum.laden()
     preise = strompreise(zeitraum.monatswerte(zeitraum.aufloesen(zeitraum.ALLES), daten))
     monate = je_monat(alle_tage)
     monate_z = [m for m in monate if zeitraum.enthaelt(z, m["monat"])]

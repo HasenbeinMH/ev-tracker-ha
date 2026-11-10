@@ -470,15 +470,15 @@ def dashboard(request: Request, zeitraum: str | None = None):
     akku = None
     if not gesamt and any(k["an"] and k["id"] in dashboard_layout.AKKU_KACHELN
                           for k in layout["kacheln"]):
-        akku = akku_mod.auswertung()
-    leasing = ([(fz, l) for fz, l in _je_fahrzeug(leasing_mod.auswertung) if l]
+        akku = akku_mod.auswertung(daten=daten)     # ein Fahrzeug: dieselben Rohdaten
+    leasing =([(fz, l) for fz, l in _je_fahrzeug(leasing_mod.auswertung) if l]
                if module_mod.an("leasing") else [])
     # Energie-Aufteilung: Kacheln und Diagramm im gewaehlten Zeitraum, nur ein Fahrzeug
     energie = None
     if not gesamt and module_mod.an("energie") and (
             any(k["an"] and k["id"] in dashboard_layout.ENERGIE_KACHELN for k in layout["kacheln"])
             or any(d["an"] and d["id"] == "energieaufteilung" for d in layout["diagramme"])):
-        energie = energie_mod.auswertung(z)
+        energie = energie_mod.auswertung(z, daten=daten)
     charts_html["energieaufteilung"] = (charts.chart_energie_monate(energie["verlauf"], energie["je_tag"])
                                         if energie else charts._leer(_("Nur für ein einzelnes Fahrzeug")))
     antwort = render(request, "dashboard.html", kz=kz, charts=charts_html, amo=amo,

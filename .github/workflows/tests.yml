@@ -1,0 +1,50 @@
+# Tests bei jedem Push und Pull Request – unter Linux wie im Add-on (python:3.12).
+# Nicht dabei: oberflaeche_test.py (Browser ueber Playwright) und die datenquellen-Tests
+# (brauchen echte Datenbank-Container).
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TZ: Europe/Berlin
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: webapp/requirements-web.txt
+      # i18n_test.py und vorlagen_test.py fuehren JavaScript in Node.js aus
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Abhaengigkeiten
+        run: pip install -r webapp/requirements-web.txt httpx
+      - name: Uebersetzungen vollstaendig
+        run: python i18n/pruefen.py
+      - name: Tests
+        run: |
+          fehler=""
+          for test in tests/*test.py; do
+            case "$test" in
+              tests/oberflaeche_test.py|tests/datenquellen_test.py|tests/datenquellen_docker_test.py) continue ;;
+            esac
+            echo "::group::$test"
+            python "$test" || fehler="$fehler $test"
+            echo "::endgroup::"
+          done
+          if [ -n "$fehler" ]; then
+            echo "::error::Fehlgeschlagen:$fehler"
+            exit 1
+          fi
