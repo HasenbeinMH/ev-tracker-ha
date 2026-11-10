@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.9.6] - 2026-11-10
+
+### Schnellere Seiten
+- Schneller: Dashboard, Akku, Energie, Profil, Statistik und Einstellungen laden rund ein Drittel schneller – das Dashboard liest seine Daten nur noch einmal statt dreimal, und die Einstellungen kommen aus einer Abfrage statt aus Dutzenden einzelner Datenbankzugriffe je Seite
+- Intern: Die Tests laufen bei jeder Aenderung automatisch auf GitHub
+
 ## [3.9.5] - 2026-10-31
 
 ### Mehr Sicherheit im Add-on

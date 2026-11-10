@@ -21,18 +21,18 @@ jobs:
     steps:
       # ganze Historie: migrationstest, fahrzeuge_test und i18n_test bauen alte Versionen
       # (git worktree) und vergleichen damit
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: webapp/requirements-web.txt
       # i18n_test.py und vorlagen_test.py fuehren JavaScript in Node.js aus
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
       - name: Abhaengigkeiten
         run: pip install -r webapp/requirements-web.txt httpx
       - name: Uebersetzungen vollstaendig

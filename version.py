@@ -19,10 +19,19 @@ Zaehlweise: major = grosse Umbauten, minor = neue Funktion,
 patch = Fehlerbehebung oder Detailverbesserung.
 """
 
-VERSION = "3.9.5"
+VERSION = "3.9.6"
 
 # Neueste Version zuerst. "aenderungen" ist eine Liste von Klartextzeilen.
 CHANGELOG = [
+    {
+        "version": "3.9.6",
+        "datum": "2026-11-10",
+        "titel": "Schnellere Seiten",
+        "aenderungen": [
+            "Schneller: Dashboard, Akku, Energie, Profil, Statistik und Einstellungen laden rund ein Drittel schneller – das Dashboard liest seine Daten nur noch einmal statt dreimal, und die Einstellungen kommen aus einer Abfrage statt aus Dutzenden einzelner Datenbankzugriffe je Seite",
+            "Intern: Die Tests laufen bei jeder Aenderung automatisch auf GitHub",
+        ],
+    },
     {
         "version": "3.9.5",
         "datum": "2026-10-31",
